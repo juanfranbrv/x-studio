@@ -1,0 +1,62 @@
+{
+  "meta": {
+    "title": "Brand Studio | Post laboratory",
+    "description": "Create the perfect brand kit for your business"
+  },
+  "progress": {
+    "step": "{{current}} of {{total}}"
+  },
+  "nav": {
+    "back": "Back",
+    "next": "Next",
+    "exit": "Exit",
+    "exitConfirm": "Are you sure you want to exit? Your progress will be lost.",
+    "exitYes": "Yes, exit",
+    "exitNo": "Continue"
+  },
+  "source": {
+    "title": "Where do we start?",
+    "subtitle": "The more information we have, the better the result",
+    "web": {
+      "title": "I have a website",
+      "subtitle": "We'll analyze your site to extract colors, fonts, and style",
+      "placeholder": "https://your-site.com"
+    },
+    "instagram": {
+      "title": "I have Instagram",
+      "subtitle": "We'll analyze your profile to extract your visual style",
+      "placeholder": "@your_account"
+    },
+    "scratch": {
+      "title": "Start from scratch",
+      "subtitle": "We'll guide you step by step to create your brand identity"
+    }
+  },
+  "name": {
+    "title": "What's your brand name?",
+    "placeholder": "Your brand name",
+    "descriptionLabel": "What do you do?",
+    "descriptionPlaceholder": "Briefly describe your business in 1-2 sentences...",
+    "descriptionHint": "This helps us generate better proposals for your brand"
+  },
+  "brandBoard": {
+    "title": "Your brand is ready",
+    "subtitle": "Here's your brand identity summary",
+    "save": "Save and start creating",
+    "editStep": "Edit",
+    "sections": {
+      "logo": "Logo",
+      "colors": "Colors",
+      "typography": "Typography",
+      "personality": "Personality",
+      "voice": "Voice & tagline"
+    },
+    "empty": {
+      "logo": "No logo configured",
+      "colors": "No color palette",
+      "typography": "No typography selected",
+      "personality": "No personality defined",
+      "voice": "No tagline defined"
+    }
+  }
+}

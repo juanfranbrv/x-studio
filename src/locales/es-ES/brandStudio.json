@@ -1,0 +1,62 @@
+{
+  "meta": {
+    "title": "Brand Studio | Post laboratory",
+    "description": "Crea el kit de marca perfecto para tu negocio"
+  },
+  "progress": {
+    "step": "{{current}} de {{total}}"
+  },
+  "nav": {
+    "back": "Atrás",
+    "next": "Siguiente",
+    "exit": "Salir",
+    "exitConfirm": "¿Seguro que quieres salir? Tu progreso se perderá.",
+    "exitYes": "Sí, salir",
+    "exitNo": "Continuar"
+  },
+  "source": {
+    "title": "¿De dónde partimos?",
+    "subtitle": "Cuanta más información tengamos, mejor será el resultado",
+    "web": {
+      "title": "Tengo una web",
+      "subtitle": "Analizaremos tu sitio web para extraer colores, tipografías y estilo",
+      "placeholder": "https://tu-web.com"
+    },
+    "instagram": {
+      "title": "Tengo Instagram",
+      "subtitle": "Analizaremos tu perfil para extraer tu estilo visual",
+      "placeholder": "@tu_cuenta"
+    },
+    "scratch": {
+      "title": "Empiezo de cero",
+      "subtitle": "Te guiaremos paso a paso para crear tu identidad de marca"
+    }
+  },
+  "name": {
+    "title": "¿Cómo se llama tu marca?",
+    "placeholder": "Nombre de tu marca",
+    "descriptionLabel": "¿A qué te dedicas?",
+    "descriptionPlaceholder": "Describe brevemente tu negocio en 1-2 frases...",
+    "descriptionHint": "Esto nos ayuda a generar mejores propuestas para tu marca"
+  },
+  "brandBoard": {
+    "title": "Tu marca está lista",
+    "subtitle": "Este es el resumen de tu identidad de marca",
+    "save": "Guardar y empezar a crear",
+    "editStep": "Editar",
+    "sections": {
+      "logo": "Logo",
+      "colors": "Colores",
+      "typography": "Tipografía",
+      "personality": "Personalidad",
+      "voice": "Voz y eslogan"
+    },
+    "empty": {
+      "logo": "Sin logo configurado",
+      "colors": "Sin paleta de colores",
+      "typography": "Sin tipografía seleccionada",
+      "personality": "Sin personalidad definida",
+      "voice": "Sin eslogan definido"
+    }
+  }
+}
