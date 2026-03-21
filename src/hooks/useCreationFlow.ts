@@ -1517,6 +1517,21 @@ export function useCreationFlow(options?: UseCreationFlowOptions) {
         })
     }, [invalidateFromStep])
 
+    const swapBrandColorPositions = useCallback((colorA: string, colorB: string) => {
+        setState(prev => {
+            const normA = colorA.startsWith('#') ? colorA.toLowerCase() : `#${colorA.toLowerCase()}`
+            const normB = colorB.startsWith('#') ? colorB.toLowerCase() : `#${colorB.toLowerCase()}`
+            const idxA = prev.selectedBrandColors.findIndex(c => c.color.toLowerCase() === normA)
+            const idxB = prev.selectedBrandColors.findIndex(c => c.color.toLowerCase() === normB)
+            if (idxA === -1 || idxB === -1 || idxA === idxB) return prev
+            const newColors = [...prev.selectedBrandColors]
+            const temp = newColors[idxA]
+            newColors[idxA] = newColors[idxB]
+            newColors[idxB] = temp
+            return { ...prev, selectedBrandColors: newColors }
+        })
+    }, [])
+
     const refreshBrandColorsFromKit = useCallback(() => {
         const nextColors = buildBrandColorsFromKit()
         if (nextColors.length === 0) return
@@ -2604,6 +2619,7 @@ RESPONDE ÚNICAMENTE con el texto generado, sin comillas ni explicaciones adicio
         onGenerateCustomFieldCopy: generateCustomFieldCopy,
         toggleBrandColor,
         removeBrandColor,
+        swapBrandColorPositions,
         refreshBrandColorsFromKit,
         syncBrandingFromActiveKit,
         addCustomColor,

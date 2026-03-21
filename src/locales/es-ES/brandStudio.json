@@ -4,59 +4,208 @@
     "description": "Crea el kit de marca perfecto para tu negocio"
   },
   "progress": {
-    "step": "{{current}} de {{total}}"
+    "step": "{{current}} de {{total}}",
+    "steps": {
+      "source": "Fuente",
+      "name": "Nombre",
+      "logo": "Logo",
+      "palette": "Colores",
+      "typography": "Tipografia",
+      "personality": "Personalidad",
+      "voice": "Voz",
+      "brandBoard": "Resumen"
+    }
   },
   "nav": {
-    "back": "Atrás",
+    "back": "Atras",
     "next": "Siguiente",
     "exit": "Salir",
-    "exitConfirm": "¿Seguro que quieres salir? Tu progreso se perderá.",
-    "exitYes": "Sí, salir",
+    "exitConfirm": "Seguro que quieres salir? Tu progreso se perdera.",
+    "exitYes": "Si, salir",
     "exitNo": "Continuar"
   },
   "source": {
-    "title": "¿De dónde partimos?",
-    "subtitle": "Cuanta más información tengamos, mejor será el resultado",
+    "title": "De donde partimos?",
+    "subtitle": "Puedes seleccionar varias fuentes. Cuanta mas informacion, mejor resultado",
+    "analysisSection": "Analiza tu marca",
     "web": {
-      "title": "Tengo una web",
-      "subtitle": "Analizaremos tu sitio web para extraer colores, tipografías y estilo",
+      "title": "Pagina web",
+      "subtitle": "Analizaremos tu sitio para extraer colores, tipografias y estilo",
       "placeholder": "https://tu-web.com"
     },
     "instagram": {
-      "title": "Tengo Instagram",
+      "title": "Instagram",
       "subtitle": "Analizaremos tu perfil para extraer tu estilo visual",
       "placeholder": "@tu_cuenta"
     },
+    "or": "o",
     "scratch": {
       "title": "Empiezo de cero",
       "subtitle": "Te guiaremos paso a paso para crear tu identidad de marca"
+    },
+    "upload": {
+      "title": "Sube tus propias imagenes",
+      "subtitle": "Capturas, logos, referencias visuales...",
+      "button": "Subir imagenes"
     }
   },
   "name": {
-    "title": "¿Cómo se llama tu marca?",
+    "title": "Como se llama tu marca?",
     "placeholder": "Nombre de tu marca",
-    "descriptionLabel": "¿A qué te dedicas?",
+    "descriptionLabel": "A que te dedicas?",
     "descriptionPlaceholder": "Describe brevemente tu negocio en 1-2 frases...",
-    "descriptionHint": "Esto nos ayuda a generar mejores propuestas para tu marca"
+    "descriptionHint": "Esto nos ayuda a generar mejores propuestas para tu marca",
+    "languageLabel": "Idioma de la marca",
+    "languages": {
+      "es": "Espanol",
+      "en": "Ingles",
+      "fr": "Frances",
+      "de": "Aleman",
+      "pt": "Portugues",
+      "it": "Italiano",
+      "ca": "Catalan"
+    }
+  },
+  "loading": {
+    "title": "Analizando tu marca",
+    "stop": "Detener",
+    "retry": "Reintentar",
+    "done": "Analisis completado",
+    "doneSubtitle": "Hemos extraido los elementos de tu marca. Continua cuando estes listo",
+    "error": "Algo ha fallado durante el analisis",
+    "errorCheckUrl": "Comprueba que la direccion esta bien escrita e intentalo de nuevo",
+    "messages": {
+      "web": {
+        "1": "Accediendo a tu sitio web...",
+        "2": "Escaneando colores y tipografias...",
+        "3": "Extrayendo la personalidad de tu marca...",
+        "4": "Generando paletas de color...",
+        "5": "Preparando tu identidad visual..."
+      },
+      "instagram": {
+        "1": "Conectando con tu perfil de Instagram...",
+        "2": "Analizando tus publicaciones recientes...",
+        "3": "Extrayendo paleta de colores visual...",
+        "4": "Detectando tono y personalidad...",
+        "5": "Construyendo tu identidad de marca..."
+      },
+      "both": {
+        "1": "Accediendo a tu web y tu Instagram...",
+        "2": "Escaneando colores y estilo visual...",
+        "3": "Cruzando datos de ambas fuentes...",
+        "4": "Extrayendo la personalidad de tu marca...",
+        "5": "Preparando tu identidad visual..."
+      },
+      "scratch": {
+        "1": "Analizando tu sector de negocio...",
+        "2": "Generando propuestas de color...",
+        "3": "Seleccionando tipografias ideales...",
+        "4": "Definiendo personalidad de marca...",
+        "5": "Puliendo los ultimos detalles..."
+      }
+    }
+  },
+  "logo": {
+    "title": "Tu logo",
+    "subtitle": "Gestiona los logos de tu marca. Puedes reordenarlos arrastrando, eliminar o subir nuevos",
+    "empty": "No se ha detectado ningun logo",
+    "variationsTitle": "Variaciones",
+    "variationsSubtitle": "Versiones generadas automaticamente a partir de tu logo principal",
+    "addToKit": "Anadir al kit",
+    "download": "Descargar"
+  },
+  "palette": {
+    "title": "Tu paleta de colores",
+    "subtitle": "Estos son los colores detectados de tu marca. Puedes editarlos, cambiar roles o eliminarlos"
+  },
+  "typography": {
+    "title": "Elige tu tipografia",
+    "subtitle": "Selecciona la combinacion que define la voz de tu marca",
+    "headingLabel": "Titulares",
+    "bodyLabel": "Texto de cuerpo",
+    "sampleHeading": "Tu identidad de marca",
+    "sampleBody": "Una buena tipografia hace que el contenido sea facil de leer y refuerza tu identidad visual.",
+    "noProposals": "No hay propuestas disponibles",
+    "regenerate": "Generar nuevas propuestas",
+    "orChooseCombo": "o elige una combinacion rapida"
+  },
+  "personality": {
+    "title": "Define la personalidad de tu marca",
+    "subtitle": "Selecciona las palabras que mejor describen tu marca",
+    "visualStyle": "Estilo visual",
+    "toneOfVoice": "Tono de voz",
+    "values": "Valores",
+    "noProposals": "No hay propuestas disponibles",
+    "regenerate": "Generar nuevas propuestas",
+    "regenerating": "Generando...",
+    "newOptions": "Nuevas opciones"
+  },
+  "voice": {
+    "title": "Elige la voz de tu marca",
+    "subtitle": "Selecciona los eslogans y las llamadas a la accion que mejor encajen",
+    "taglineSection": "Eslogan",
+    "ctaSection": "Llamadas a la accion",
+    "hooksSection": "Titulares de marketing",
+    "ctaHint": "Selecciona al menos una",
+    "noProposals": "No hay propuestas disponibles",
+    "regenerate": "Generar nuevas propuestas",
+    "newOptions": "Nuevas opciones",
+    "regenerating": "Generando..."
+  },
+  "preview": {
+    "title": "Preview",
+    "brandName": "Tu marca",
+    "sampleTitle": "Tu Marca",
+    "sampleCaption": "Descubre lo que nos hace únicos",
+    "engagement": {
+      "likes": "42",
+      "comments": "8",
+      "shares": "3"
+    }
   },
   "brandBoard": {
-    "title": "Tu marca está lista",
+    "title": "Tu marca esta lista",
     "subtitle": "Este es el resumen de tu identidad de marca",
     "save": "Guardar y empezar a crear",
     "editStep": "Editar",
     "sections": {
       "logo": "Logo",
       "colors": "Colores",
-      "typography": "Tipografía",
+      "typography": "Tipografia",
       "personality": "Personalidad",
       "voice": "Voz y eslogan"
     },
     "empty": {
       "logo": "Sin logo configurado",
       "colors": "Sin paleta de colores",
-      "typography": "Sin tipografía seleccionada",
+      "typography": "Sin tipografia seleccionada",
       "personality": "Sin personalidad definida",
       "voice": "Sin eslogan definido"
+    },
+    "brandContext": {
+      "label": "Vision y contexto de marca",
+      "placeholder": "Resumen estrategico de tu marca...",
+      "hint": "Generado automaticamente. Puedes editarlo para ajustar el tono"
+    },
+    "contact": {
+      "label": "Canales y contacto",
+      "emailPlaceholder": "correo@tumarca.com",
+      "phonePlaceholder": "+34 600 000 000",
+      "addressPlaceholder": "Direccion fisica",
+      "addEmail": "Anadir email",
+      "addPhone": "Anadir telefono",
+      "addAddress": "Anadir direccion",
+      "socialLabel": "Redes sociales",
+      "addSocial": "Anadir red social",
+      "platforms": {
+        "instagram": "Instagram",
+        "twitter": "X (Twitter)",
+        "linkedin": "LinkedIn",
+        "facebook": "Facebook",
+        "youtube": "YouTube",
+        "tiktok": "TikTok",
+        "pinterest": "Pinterest"
+      }
     }
   }
 }

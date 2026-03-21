@@ -114,7 +114,7 @@ function RoleColorSwatch({
     draggable = false,
     onDragStart,
     onDragEnd,
-    sizeClass = "w-12 h-12 rounded-full",
+    sizeClass = "w-14 h-14 rounded-2xl",
 }: {
     color: string
     onCommit: (nextColor: string) => void
@@ -191,7 +191,7 @@ function AddAccentSwatch({
                     type="button"
                     disabled={disabled}
                     className={cn(
-                        "flex h-12 w-12 items-center justify-center rounded-full border border-dashed border-border/80 text-muted-foreground transition-colors",
+                        "flex h-14 w-14 items-center justify-center rounded-2xl border border-dashed border-border/80 text-muted-foreground transition-colors",
                         "hover:border-primary/60 hover:text-primary",
                         disabled && "cursor-not-allowed opacity-40"
                     )}
@@ -2405,7 +2405,23 @@ export function CarouselControlsPanel({
         explicitTargetColor?: string
     ) => {
         const sourceColor = normalizeHexColor(source.color)
+        const sourceRole = source.role
         const targetColor = explicitTargetColor ? normalizeHexColor(explicitTargetColor) : null
+
+        // Same role (e.g. both Accents) → swap positions in array
+        if (sourceRole === targetRole && targetColor && targetColor !== sourceColor) {
+            setSelectedColors((prev) => {
+                const idxA = prev.findIndex(c => normalizeHexColor(c.color) === sourceColor)
+                const idxB = prev.findIndex(c => normalizeHexColor(c.color) === targetColor)
+                if (idxA === -1 || idxB === -1) return prev
+                const next = [...prev]
+                const temp = next[idxA]
+                next[idxA] = next[idxB]
+                next[idxB] = temp
+                return next
+            })
+            return
+        }
 
         setSelectedColors((prev) => prev.map((item) => {
             const itemColor = normalizeHexColor(item.color)
@@ -2413,7 +2429,7 @@ export function CarouselControlsPanel({
                 return { ...item, role: targetRole }
             }
             if (targetColor && itemColor === targetColor) {
-                return { ...item, role: source.role }
+                return { ...item, role: sourceRole }
             }
             return item
         }))
@@ -3598,7 +3614,7 @@ export function CarouselControlsPanel({
                                                 <div
                                                     key={accentColor}
                                                     className={cn(
-                                                        "group/accent relative inline-flex items-center rounded-full",
+                                                        "group/accent relative inline-flex items-center rounded-2xl",
                                                         draggedBrandColor && draggedBrandColor.color !== accentColor && "ring-2 ring-primary/30 ring-offset-1 ring-offset-background"
                                                     )}
                                                     onDragOver={(event) => event.preventDefault()}
@@ -3613,7 +3629,7 @@ export function CarouselControlsPanel({
                                                         color={accentColor}
                                                         onCommit={(nextColor) => replaceRoleColor('Acento', nextColor, accentColor)}
                                                         applyLabel={t('ui.applyColor')}
-                                                        sizeClass="w-12 h-12 rounded-full"
+                                                        sizeClass="w-14 h-14 rounded-2xl"
                                                         draggable
                                                         onDragStart={() => setDraggedBrandColor({ role: 'Acento', color: accentColor })}
                                                         onDragEnd={() => setDraggedBrandColor(null)}
@@ -3628,11 +3644,12 @@ export function CarouselControlsPanel({
                                                     </button>
                                                 </div>
                                             ))}
-                                            <AddAccentSwatch
-                                                onAdd={addAccentColor}
-                                                disabled={brandColorsByRole.Acento.length >= 5}
-                                                label={t('ui.addAccent')}
-                                            />
+                                            {brandColorsByRole.Acento.length < 5 && (
+                                                <AddAccentSwatch
+                                                    onAdd={addAccentColor}
+                                                    label={t('ui.addAccent')}
+                                                />
+                                            )}
                                         </div>
                                         <span className="w-12 text-center text-[10px] text-muted-foreground">{t('ui.accents')}</span>
                                     </div>

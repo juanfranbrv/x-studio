@@ -199,6 +199,18 @@ export function BrandDNAPanel({
         }))
     }
 
+    const handleSwapColorPositions = (indexA: number, indexB: number) => {
+        updateData(prev => {
+            const newColors = [...(prev.colors || [])]
+            if (newColors[indexA] && newColors[indexB]) {
+                const temp = newColors[indexA]
+                newColors[indexA] = newColors[indexB]
+                newColors[indexB] = temp
+            }
+            return { ...prev, colors: newColors }
+        })
+    }
+
     const handleToggleColorSelection = (index: number) => {
         const colorObj = colors[index]
         const isCurrentlySelected = selectedContext.some(c => c.id === `color-${index}`)
@@ -572,6 +584,7 @@ export function BrandDNAPanel({
                                     onUpdateColor={handleUpdateColor}
                                     onUpdateRole={handleUpdateColorRole}
                                     onToggleSelection={handleToggleColorSelection}
+                                    onSwapPositions={handleSwapColorPositions}
                                     onRemoveColor={handleRemoveColor}
                                     onAddColor={handleAddColor}
                                     onReset={handleResetColors}

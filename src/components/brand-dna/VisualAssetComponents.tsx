@@ -32,6 +32,8 @@ interface LogoCardProps {
     onToggle?: (index: number) => void;
     onReorder?: (fromIndex: number, toIndex: number) => void;
     isUploading?: boolean;
+    /** Prevents single-logo full-width expansion */
+    compactGrid?: boolean;
 }
 
 interface FaviconCardProps {
@@ -53,7 +55,7 @@ interface ImageGalleryProps {
 
 // --- Components ---
 
-export function LogoCard({ logoUrl, logos = [], onUpload, onRemove, onToggle, onReorder, isUploading }: LogoCardProps) {
+export function LogoCard({ logoUrl, logos = [], onUpload, onRemove, onToggle, onReorder, isUploading, compactGrid }: LogoCardProps) {
     const { t } = useTranslation('brandKit');
     const fileInputRef = useRef<HTMLInputElement>(null);
     const suppressNextClickRef = useRef(false);
@@ -113,9 +115,11 @@ export function LogoCard({ logoUrl, logos = [], onUpload, onRemove, onToggle, on
                                 key={idx}
                                 className={cn(
                                     "group relative min-h-[176px] min-w-0 max-w-full cursor-pointer overflow-hidden rounded-[1.35rem] border transition-all transparency-grid",
-                                    effectiveLogos.length === 1
+                                    effectiveLogos.length === 1 && !compactGrid
                                         ? "basis-full"
-                                        : "basis-[min(100%,15.5rem)] flex-[1_1_15.5rem]",
+                                        : compactGrid
+                                            ? "basis-[min(100%,15.5rem)] flex-[0_1_15.5rem]"
+                                            : "basis-[min(100%,15.5rem)] flex-[1_1_15.5rem]",
                                     logo.selected !== false
                                         ? BRAND_KIT_ACTIVE_TOKEN_CARD_CLASS
                                         : BRAND_KIT_PANEL_SUBTLE_CLASS,

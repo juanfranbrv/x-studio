@@ -24,5 +24,5 @@ export default function BrandStudioPage() {
     )
   }
 
-  return <BrandStudio />
+  return <BrandStudio userId={user.id} />
 }

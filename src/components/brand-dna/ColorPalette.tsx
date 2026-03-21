@@ -32,7 +32,10 @@ interface ColorPaletteProps {
     onAddColor: () => void;
     onReset: () => void;
     hideHeader?: boolean;
+    maxColors?: number;
     selectedColorIds?: string[];
+    onSwapRoles?: (indexA: number, indexB: number) => void;
+    onSwapPositions?: (indexA: number, indexB: number) => void;
     onDragStart?: (e: React.DragEvent, element: ContextElement) => void;
     onDragEnd?: () => void;
 }
@@ -47,6 +50,9 @@ export function ColorPalette({
     onAddColor,
     onReset,
     hideHeader = false,
+    maxColors = 10,
+    onSwapRoles,
+    onSwapPositions,
     selectedColorIds = [],
     onDragStart,
     onDragEnd
@@ -133,12 +139,22 @@ export function ColorPalette({
         }
     };
 
-    const swapColorRoles = (sourceIndex: number, targetIndex: number) => {
+    const handleDragDrop = (sourceIndex: number, targetIndex: number) => {
         if (sourceIndex === targetIndex) return;
-        const sourceRole = colors[sourceIndex]?.role || 'Acento';
-        const targetRole = colors[targetIndex]?.role || 'Acento';
-        onUpdateRole(sourceIndex, targetRole);
-        onUpdateRole(targetIndex, sourceRole);
+        const sourceRole = normalizeRole(colors[sourceIndex]?.role);
+        const targetRole = normalizeRole(colors[targetIndex]?.role);
+
+        if (sourceRole === targetRole && onSwapPositions) {
+            // Same role (e.g. both Accents) → swap positions in array
+            onSwapPositions(sourceIndex, targetIndex);
+        } else if (onSwapRoles) {
+            // Different roles → swap roles (Texto ↔ Acento, etc.)
+            onSwapRoles(sourceIndex, targetIndex);
+        } else {
+            // Legacy fallback — two separate calls
+            onUpdateRole(sourceIndex, targetRole);
+            onUpdateRole(targetIndex, sourceRole);
+        }
     };
 
     return (
@@ -225,11 +241,11 @@ export function ColorPalette({
                                                     onDrop={(e) => {
                                                         e.preventDefault();
                                                         if (draggedColorIndex === null) return;
-                                                        swapColorRoles(draggedColorIndex, idx);
+                                                        handleDragDrop(draggedColorIndex, idx);
                                                         setDraggedColorIndex(null);
                                                     }}
                                                     className={cn(
-                                                        "aspect-square rounded-full cursor-grab active:cursor-grabbing transition-all duration-300",
+                                                        "aspect-square rounded-2xl cursor-grab active:cursor-grabbing transition-all duration-300",
                                                         "hover:scale-110 hover:shadow-xl border-2",
                                                         "relative overflow-visible flex items-center justify-center w-20 h-20",
                                                         addLeftSpacingForAccents && "ml-2",
@@ -328,15 +344,28 @@ export function ColorPalette({
                                 </div>
                             </div>
                         )})}
-                        {colors.length < 10 && (
+                        {colors.length < maxColors && (
                             <div
                                 onClick={onAddColor}
-                                className="h-20 w-20 cursor-pointer rounded-full border-2 border-dashed border-border bg-[hsl(var(--surface-alt))]/55 flex items-center justify-center transition-colors group hover:border-primary/25 hover:bg-[hsl(var(--surface))]"
+                                className="h-20 w-20 cursor-pointer rounded-2xl border-2 border-dashed border-border bg-[hsl(var(--surface-alt))]/55 flex items-center justify-center transition-colors group hover:border-primary/25 hover:bg-[hsl(var(--surface))]"
                             >
                                 <IconPlus className="w-6 h-6 text-muted-foreground group-hover:text-primary transition-colors" />
                             </div>
                         )}
                     </div>
+                    {hideHeader && isEdited && (
+                        <div className="mt-3">
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={onReset}
+                                className={cn(BRAND_KIT_GHOST_BUTTON_CLASS, "gap-1.5 text-muted-foreground")}
+                            >
+                                <IconRotate className="w-3.5 h-3.5" />
+                                {t('palette.reset', { defaultValue: 'Reset' })}
+                            </Button>
+                        </div>
+                    )}
                 </CardContent>
             </Card>
         </TooltipProvider>

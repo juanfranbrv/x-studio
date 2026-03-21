@@ -2484,7 +2484,7 @@ export async function analyzeBrandDNA(url: string, forceRefresh: boolean = false
         }
 
         if (!jinaContent && !htmlAssets.html) {
-            throw new Error('No se pudo obtener información de la URL (Fallo total de Jina y Fetch)');
+            throw new Error('No se pudo acceder al contenido de la URL. Comprueba que la dirección es correcta e inténtalo de nuevo.');
         }
 
         // === CONSOLIDAR CANDIDATOS DE LOGO INICIALES ===

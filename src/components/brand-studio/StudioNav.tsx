@@ -14,6 +14,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog'
+import { WIZARD_SECONDARY_BUTTON, WIZARD_GHOST_BUTTON, WIZARD_CTA_BUTTON } from './brandStudioStyles'
 
 interface StudioNavProps {
   canGoBack: boolean
@@ -37,29 +38,30 @@ export function StudioNav({
   const { t } = useTranslation('brandStudio')
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-50 flex items-center justify-between px-4 py-3 sm:px-8 sm:py-4 bg-background/80 backdrop-blur-sm border-t">
+    <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-border/30 bg-background/80 backdrop-blur-sm">
+      <div className="mx-auto flex w-full max-w-[min(92vw,56rem)] items-center justify-between px-[clamp(1rem,3vw,2rem)] py-[clamp(0.75rem,1.5vh,1.25rem)]">
       <div>
         {canGoBack ? (
-          <Button variant="ghost" size="sm" onClick={onBack} className="gap-2">
+          <Button variant="ghost" onClick={onBack} className={`${WIZARD_GHOST_BUTTON} gap-2`}>
             <ArrowLeft className="h-4 w-4" />
             <span className="hidden sm:inline">{t('nav.back')}</span>
           </Button>
         ) : (
           <AlertDialog>
             <AlertDialogTrigger asChild>
-              <Button variant="ghost" size="sm" className="gap-2 text-muted-foreground">
+              <Button variant="ghost" className={`${WIZARD_GHOST_BUTTON} gap-2`}>
                 <X className="h-4 w-4" />
                 <span className="hidden sm:inline">{t('nav.exit')}</span>
               </Button>
             </AlertDialogTrigger>
-            <AlertDialogContent>
+            <AlertDialogContent className="rounded-[1.6rem] border-border/70">
               <AlertDialogHeader>
                 <AlertDialogTitle>{t('nav.exit')}</AlertDialogTitle>
                 <AlertDialogDescription>{t('nav.exitConfirm')}</AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
-                <AlertDialogCancel>{t('nav.exitNo')}</AlertDialogCancel>
-                <AlertDialogAction onClick={onExit}>{t('nav.exitYes')}</AlertDialogAction>
+                <AlertDialogCancel className={WIZARD_SECONDARY_BUTTON}>{t('nav.exitNo')}</AlertDialogCancel>
+                <AlertDialogAction onClick={onExit} className={WIZARD_SECONDARY_BUTTON}>{t('nav.exitYes')}</AlertDialogAction>
               </AlertDialogFooter>
             </AlertDialogContent>
           </AlertDialog>
@@ -68,15 +70,15 @@ export function StudioNav({
 
       {canGoNext && (
         <Button
-          size="sm"
           onClick={onNext}
           disabled={nextDisabled}
-          className="gap-2"
+          className={`${WIZARD_CTA_BUTTON} gap-2`}
         >
           <span>{nextLabel ?? t('nav.next')}</span>
           <ArrowRight className="h-4 w-4" />
         </Button>
       )}
+      </div>
     </div>
   )
 }

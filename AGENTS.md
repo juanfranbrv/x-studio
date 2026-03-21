@@ -237,6 +237,17 @@ Cada plan o microplan para `EmilIA` debe incluir:
 - el agente principal sigue siendo responsable de revisar, corregir y decidir si aplicar o no
 - si una tarea necesita demasiada explicación para delegarse con seguridad, no es tarea para `EmilIA`
 
+### 19. Reutilizacion Obligatoria de Componentes Existentes
+- **PROHIBIDO crear componentes nuevos** cuando ya exista un componente en el proyecto que cumpla la misma funcion o una funcion equivalente.
+- Antes de crear cualquier componente de UI, **BUSCAR PRIMERO** si ya existe uno en el proyecto que haga lo mismo (por ejemplo: editor de paleta de colores, selector de color, chips de tags, etc.).
+- Si existe un componente equivalente, **REUTILIZARLO** con las props necesarias (por ejemplo, `hideHeader`, variantes, etc.) en lugar de crear uno nuevo.
+- **Razon**: Cada componente nuevo que duplica funcionalidad existente introduce inconsistencia visual, duplica mantenimiento y se aleja del lenguaje visual de la app.
+- **Referencia de componentes reutilizables clave**:
+  - `ColorPalette` (`src/components/brand-dna/ColorPalette.tsx`): editor de colores con roles (Texto/Fondo/Acento), color picker, eyedropper, drag-to-swap, eliminar (X), añadir (+).
+  - `BrandingConfigurator` (`src/components/studio/creation-flow/BrandingConfigurator.tsx`): configurador visual de branding.
+  - `RoleColorSwatch` / `AddAccentSwatch` en ControlsPanel y CarouselControlsPanel.
+- Si un componente existente necesita una adaptacion menor (nueva prop, variante visual), **extiende** el componente en lugar de crear uno desde cero.
+
 ### 16. Regla Anti-Mojibake (UTF-8 estricto)
 - Antes de cerrar una tarea con cambios de texto UI, ejecutar: `rg -n -P "\\u00C3|\\u00C2|\\uFFFD" src`.
 - Si hay coincidencias, no finalizar hasta corregirlas.

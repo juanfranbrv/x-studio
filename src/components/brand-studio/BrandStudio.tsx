@@ -1,14 +1,26 @@
 'use client'
 
-import { useCallback } from 'react'
+import { useCallback, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
+import { useTranslation } from 'react-i18next'
 import { AnimatePresence, motion } from 'framer-motion'
 import { useWizardState, type WizardStep } from './hooks/useWizardState'
 import { StudioProgress } from './StudioProgress'
 import { StudioNav } from './StudioNav'
 import { SourceStep } from './steps/SourceStep'
 import { NameStep } from './steps/NameStep'
+import { LoadingStep } from './steps/LoadingStep'
+import { LogoStep } from './steps/LogoStep'
+import { PaletteStep } from './steps/PaletteStep'
+import { TypographyStep } from './steps/TypographyStep'
+import { PersonalityStep } from './steps/PersonalityStep'
+import { VoiceStep } from './steps/VoiceStep'
 import { BrandBoardStep } from './steps/BrandBoardStep'
+import { BrandPreviewCard } from './BrandPreviewCard'
+import { analyzeBrandDNA } from '@/app/actions/analyze-brand-dna'
+import { analyzeBrandInstagram } from '@/app/actions/analyze-brand-instagram'
+import { generateBrandFromScratch } from '@/app/actions/generate-brand-from-scratch'
+import { generateBrandProposals } from '@/app/actions/generate-brand-proposals'
 
 const slideVariants = {
   enter: (direction: number) => ({
@@ -25,8 +37,13 @@ const slideVariants = {
   }),
 }
 
-export function BrandStudio() {
+interface BrandStudioProps {
+  userId: string
+}
+
+export function BrandStudio({ userId }: BrandStudioProps) {
   const router = useRouter()
+  const { i18n } = useTranslation()
   const {
     state,
     dispatch,
@@ -34,28 +51,214 @@ export function BrandStudio() {
     canGoNext,
     currentStepIndex,
     totalSteps,
+    visibleSteps,
     goNext,
     goBack,
     goToStep,
   } = useWizardState()
+
+  const abortRef = useRef<AbortController | null>(null)
+  const analysisStartedRef = useRef(false)
+
+  // Reset ref guard when leaving loading step
+  useEffect(() => {
+    if (state.currentStep !== 'loading') {
+      analysisStartedRef.current = false
+    }
+  }, [state.currentStep])
+
+  // Run analysis when entering loading step
+  useEffect(() => {
+    if (state.currentStep !== 'loading') return
+    if (state.analysisStatus !== 'idle') return
+    if (analysisStartedRef.current) return
+
+    analysisStartedRef.current = true
+    // Clear stale screenshot from previous analysis
+    dispatch({ type: 'UPDATE_DRAFT', data: { screenshot_url: undefined } })
+    dispatch({ type: 'SET_ANALYSIS_STATUS', status: 'running' })
+
+    const controller = new AbortController()
+    abortRef.current = controller
+
+    const preferredLang = i18n.language?.split('-')[0] || 'es'
+
+    const runAnalysis = async () => {
+      try {
+        let result: { success: boolean; data?: any; error?: string }
+
+        switch (state.sourceType) {
+          case 'web':
+            result = await analyzeBrandDNA(state.webUrl, false, userId)
+            break
+          case 'instagram':
+            result = await analyzeBrandInstagram(state.instagramHandle, userId, preferredLang)
+            break
+          case 'both': {
+            const [webResult, instaResult] = await Promise.all([
+              analyzeBrandDNA(state.webUrl, false, userId),
+              analyzeBrandInstagram(state.instagramHandle, userId, preferredLang),
+            ])
+
+            if (webResult.success && webResult.data) {
+              const instaData = instaResult.success ? instaResult.data : null
+              result = {
+                success: true,
+                data: {
+                  ...webResult.data,
+                  brand_values: webResult.data.brand_values?.length
+                    ? webResult.data.brand_values
+                    : instaData?.brand_values ?? [],
+                  tone_of_voice: webResult.data.tone_of_voice?.length
+                    ? webResult.data.tone_of_voice
+                    : instaData?.tone_of_voice ?? [],
+                  visual_aesthetic: webResult.data.visual_aesthetic?.length
+                    ? webResult.data.visual_aesthetic
+                    : instaData?.visual_aesthetic ?? [],
+                  images: [
+                    ...(webResult.data.images ?? []),
+                    ...(instaData?.images ?? []).filter(
+                      (img) => !webResult.data!.images?.some((w) => w.url === img.url)
+                    ),
+                  ],
+                  tagline: webResult.data.tagline || instaData?.tagline || '',
+                  business_overview:
+                    webResult.data.business_overview || instaData?.business_overview || '',
+                },
+              }
+            } else if (instaResult.success && instaResult.data) {
+              result = instaResult
+            } else {
+              result = webResult
+            }
+            break
+          }
+          case 'scratch':
+            result = await generateBrandFromScratch(
+              state.draft.brand_name || '',
+              state.draft.business_overview || '',
+              preferredLang
+            )
+            break
+          default:
+            throw new Error('Unknown source type')
+        }
+
+        if (controller.signal.aborted) return
+
+        if (result.success && result.data) {
+          // 1. Update draft — screenshot appears in browser mockup while scan animation keeps running
+          dispatch({ type: 'UPDATE_DRAFT', data: result.data })
+
+          // Generate proposals in parallel (non-blocking)
+          dispatch({ type: 'SET_PROPOSALS_STATUS', status: 'running' })
+          const existingColors = result.data.colors?.map((c: any) => c.color).filter(Boolean)
+          generateBrandProposals({
+            brandName: result.data.brand_name || state.draft.brand_name || '',
+            businessOverview: result.data.business_overview || state.draft.business_overview || '',
+            existingColors,
+            preferredLanguage: preferredLang,
+          })
+            .then((proposals) => {
+              if (!controller.signal.aborted) {
+                dispatch({ type: 'SET_PROPOSALS', proposals })
+              }
+            })
+            .catch(() => {
+              if (!controller.signal.aborted) {
+                dispatch({ type: 'SET_PROPOSALS_STATUS', status: 'error' })
+              }
+            })
+
+          // 2. Let scan animation play over the real screenshot for 2s (the "illusion")
+          setTimeout(() => {
+            if (controller.signal.aborted) return
+            // 3. Mark success — user advances manually via "Next" button
+            dispatch({ type: 'SET_ANALYSIS_STATUS', status: 'success' })
+          }, 2000)
+        } else {
+          dispatch({
+            type: 'SET_ANALYSIS_STATUS',
+            status: 'error',
+            error: result.error || 'Analysis failed',
+          })
+        }
+      } catch (err: any) {
+        if (controller.signal.aborted) return
+        dispatch({
+          type: 'SET_ANALYSIS_STATUS',
+          status: 'error',
+          error: err.message || 'Unexpected error',
+        })
+      }
+    }
+
+    runAnalysis()
+
+    // NO cleanup abort here — the ref guard prevents double-runs
+    // Cancel is handled explicitly by handleCancel via abortRef
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- only trigger on step entry
+  }, [state.currentStep, state.analysisStatus])
+
+  const handleCancel = useCallback(() => {
+    abortRef.current?.abort()
+    dispatch({ type: 'CANCEL_ANALYSIS' })
+  }, [dispatch])
+
+  const handleRetry = useCallback(() => {
+    dispatch({ type: 'SET_ANALYSIS_STATUS', status: 'idle' })
+  }, [dispatch])
 
   const handleExit = useCallback(() => {
     router.push('/brand-kit')
   }, [router])
 
   const handleSave = useCallback(() => {
-    // TODO: Phase 2 — save draft to Convex and redirect
+    // TODO: save draft to Convex and redirect
     router.push('/brand-kit')
   }, [router])
+
+  const handleRegenerateProposals = useCallback(() => {
+    const preferredLang = i18n.language?.split('-')[0] || 'es'
+    dispatch({ type: 'SET_PROPOSALS_STATUS', status: 'running' })
+    const existingColors = state.draft.colors?.map((c) => c.color).filter(Boolean)
+    generateBrandProposals({
+      brandName: state.draft.brand_name || '',
+      businessOverview: state.draft.business_overview || '',
+      existingColors,
+      preferredLanguage: preferredLang,
+    })
+      .then((proposals) => {
+        dispatch({ type: 'SET_PROPOSALS', proposals })
+      })
+      .catch(() => {
+        dispatch({ type: 'SET_PROPOSALS_STATUS', status: 'error' })
+      })
+  }, [state.draft, i18n.language, dispatch])
 
   const isNextDisabled = (() => {
     switch (state.currentStep) {
       case 'source':
         if (!state.sourceType) return true
         if (state.sourceType === 'scratch') return false
-        return state.sourceValue.length < 3
+        if (state.sourceType === 'both') return state.webUrl.length < 6 || state.instagramHandle.length < 2
+        if (state.sourceType === 'web') return state.webUrl.length < 6
+        if (state.sourceType === 'instagram') return state.instagramHandle.length < 2
+        return true
       case 'name':
         return !state.draft.brand_name || state.draft.brand_name.length < 1
+      case 'palette':
+        return !state.draft.colors || state.draft.colors.length === 0
+      case 'typography':
+        return !state.draft.fonts || state.draft.fonts.length < 2
+      case 'personality':
+        return (
+          (!state.draft.visual_aesthetic || state.draft.visual_aesthetic.length === 0) &&
+          (!state.draft.tone_of_voice || state.draft.tone_of_voice.length === 0) &&
+          (!state.draft.brand_values || state.draft.brand_values.length === 0)
+        )
+      case 'voice':
+        return !state.draft.tagline || state.draft.tagline.length === 0
       default:
         return false
     }
@@ -69,17 +272,73 @@ export function BrandStudio() {
         return (
           <SourceStep
             sourceType={state.sourceType}
-            sourceValue={state.sourceValue}
+            webUrl={state.webUrl}
+            instagramHandle={state.instagramHandle}
+            uploadedImages={state.uploadedImages}
             dispatch={dispatch}
             onNext={goNext}
           />
         )
       case 'name':
         return <NameStep draft={state.draft} dispatch={dispatch} />
+      case 'loading':
+        return (
+          <LoadingStep
+            sourceType={state.sourceType || 'web'}
+            status={state.analysisStatus}
+            error={state.analysisError}
+            targetUrl={state.webUrl}
+            screenshotUrl={state.draft.screenshot_url}
+            onCancel={handleCancel}
+            onRetry={handleRetry}
+            onNext={goNext}
+            onUrlChange={(url) => dispatch({ type: 'SET_WEB_URL', url })}
+          />
+        )
+      case 'logo':
+        return <LogoStep draft={state.draft} dispatch={dispatch} userId={userId} />
+      case 'palette':
+        return (
+          <PaletteStep
+            draft={state.draft}
+            dispatch={dispatch}
+          />
+        )
+      case 'typography':
+        return (
+          <TypographyStep
+            draft={state.draft}
+            proposals={state.proposals}
+            dispatch={dispatch}
+            onRegenerate={handleRegenerateProposals}
+          />
+        )
+      case 'personality':
+        return (
+          <PersonalityStep
+            draft={state.draft}
+            proposals={state.proposals}
+            dispatch={dispatch}
+            onRegenerate={handleRegenerateProposals}
+            isRegenerating={state.proposalsStatus === 'running'}
+          />
+        )
+      case 'voice':
+        return (
+          <VoiceStep
+            draft={state.draft}
+            proposals={state.proposals}
+            dispatch={dispatch}
+            onRegenerate={handleRegenerateProposals}
+            isRegenerating={state.proposalsStatus === 'running'}
+          />
+        )
       case 'brandBoard':
         return (
           <BrandBoardStep
             draft={state.draft}
+            proposals={state.proposals}
+            dispatch={dispatch}
             onSave={handleSave}
             onEditStep={goToStep}
           />
@@ -95,28 +354,62 @@ export function BrandStudio() {
     }
   }
 
-  const showNav = state.currentStep !== 'brandBoard'
+  const showNav = state.currentStep !== 'brandBoard' && state.currentStep !== 'loading'
+  const showSidebar = ['logo', 'palette', 'typography', 'personality', 'voice'].includes(state.currentStep)
 
   return (
     <div className="relative min-h-dvh bg-background overflow-hidden">
+      {/* Mobile progress bar (hidden on lg when sidebar is visible) */}
       <StudioProgress
         currentIndex={currentStepIndex}
         totalSteps={totalSteps}
       />
 
-      <AnimatePresence mode="wait" custom={direction}>
-        <motion.div
-          key={state.currentStep}
-          custom={direction}
-          variants={slideVariants}
-          initial="enter"
-          animate="center"
-          exit="exit"
-          transition={{ duration: 0.35, ease: 'easeInOut' }}
-        >
-          {renderStep()}
-        </motion.div>
-      </AnimatePresence>
+      <div className={showSidebar ? 'flex min-h-dvh' : ''}>
+        {/* ── Left sidebar (desktop only) ──────────────────── */}
+        {showSidebar && (
+          <aside className="hidden lg:flex w-[340px] xl:w-[380px] shrink-0 flex-col border-r border-border/30 bg-[linear-gradient(180deg,hsl(var(--surface-alt))/0.4,hsl(var(--background)))]">
+            <div className="flex flex-1 flex-col justify-between p-6 xl:p-8">
+              {/* Preview card — builds up as user makes decisions */}
+              <div className="space-y-8">
+                <BrandPreviewCard draft={state.draft} className="w-full" />
+
+                {/* Vertical stepper */}
+                <StudioProgress
+                  currentIndex={currentStepIndex}
+                  totalSteps={totalSteps}
+                  visibleSteps={visibleSteps}
+                  onStepClick={goToStep}
+                />
+              </div>
+            </div>
+          </aside>
+        )}
+
+        {/* ── Right main area ──────────────────────────────── */}
+        <div className={showSidebar ? 'flex-1 overflow-y-auto overflow-x-visible' : ''}>
+          <AnimatePresence mode="wait" custom={direction}>
+            <motion.div
+              key={state.currentStep}
+              custom={direction}
+              variants={slideVariants}
+              initial="enter"
+              animate="center"
+              exit="exit"
+              transition={{ duration: 0.35, ease: 'easeInOut' }}
+            >
+              {renderStep()}
+            </motion.div>
+          </AnimatePresence>
+        </div>
+      </div>
+
+      {/* Mobile preview (floating above nav) */}
+      {showSidebar && (
+        <div className="fixed bottom-[60px] right-3 z-40 w-[180px] lg:hidden">
+          <BrandPreviewCard draft={state.draft} className="scale-90 origin-bottom-right" />
+        </div>
+      )}
 
       {showNav && (
         <StudioNav

@@ -75,6 +75,7 @@ interface TypographySectionProps {
   onRemoveFont: (index: number) => void;
   onUpdateRole: (index: number, role?: 'heading' | 'body') => void;
   guidedMode?: boolean;
+  hideHeader?: boolean;
   onSelectFontForRole?: (family: string, role: 'heading' | 'body') => void;
 }
 
@@ -85,6 +86,7 @@ export function TypographySection({
   onRemoveFont,
   onUpdateRole,
   guidedMode = false,
+  hideHeader = false,
   onSelectFontForRole,
 }: TypographySectionProps) {
   const { t } = useTranslation('brandKit');
@@ -288,17 +290,19 @@ export function TypographySection({
   );
 
   return (
-    <Card className={cn(BRAND_KIT_PANEL_CLASS, "overflow-hidden")}>
-      <CardHeader className={cn(BRAND_KIT_PANEL_HEADER_CLASS, "pb-4")}>
-        <CardTitle className={BRAND_KIT_PANEL_TITLE_CLASS}>
-          <IconTextFont className="w-5 h-5 text-primary" />
-          {t('typography.title', { defaultValue: 'Typography' })}
-        </CardTitle>
-        <p className={BRAND_KIT_PANEL_DESCRIPTION_CLASS}>
-          {t('typography.description', { defaultValue: 'Elige tipografia para titulares y parrafos con el mismo criterio visual usado en Imagen y Carrusel.' })}
-        </p>
-      </CardHeader>
-      <CardContent className="space-y-6 px-6 pb-6 pt-0">
+    <Card className={cn(BRAND_KIT_PANEL_CLASS, "overflow-hidden", hideHeader && "bg-transparent backdrop-blur-0 border-none shadow-none")}>
+      {!hideHeader && (
+        <CardHeader className={cn(BRAND_KIT_PANEL_HEADER_CLASS, "pb-4")}>
+          <CardTitle className={BRAND_KIT_PANEL_TITLE_CLASS}>
+            <IconTextFont className="w-5 h-5 text-primary" />
+            {t('typography.title', { defaultValue: 'Typography' })}
+          </CardTitle>
+          <p className={BRAND_KIT_PANEL_DESCRIPTION_CLASS}>
+            {t('typography.description', { defaultValue: 'Elige tipografia para titulares y parrafos con el mismo criterio visual usado en Imagen y Carrusel.' })}
+          </p>
+        </CardHeader>
+      )}
+      <CardContent className={cn("space-y-6 px-6 pb-6 pt-0", hideHeader && "p-0")}>
         <div className="grid grid-cols-1 gap-4">
           {(guidedMode ? fonts.filter((f) => f.role === 'heading' || f.role === 'body') : fonts).map((fontObj, idx) => (
             <div key={`${fontObj.family}-${idx}`} className="space-y-4">

@@ -97,7 +97,7 @@ function RoleColorSwatch({
     draggable = false,
     onDragStart,
     onDragEnd,
-    sizeClass = "w-12 h-12 rounded-full",
+    sizeClass = "w-14 h-14 rounded-2xl",
 }: {
     color: string
     onCommit: (nextColor: string) => void
@@ -173,7 +173,7 @@ function AddAccentSwatch({
                     type="button"
                     disabled={disabled}
                     className={cn(
-                        "w-12 h-12 rounded-[1rem] border border-dashed border-border/80 flex items-center justify-center text-muted-foreground shadow-[0_14px_28px_-24px_rgba(15,23,42,0.2)]",
+                        "w-14 h-14 rounded-2xl border border-dashed border-border/80 flex items-center justify-center text-muted-foreground shadow-[0_14px_28px_-24px_rgba(15,23,42,0.2)]",
                         "hover:text-primary hover:border-primary/60 transition-colors",
                         disabled && "opacity-40 cursor-not-allowed"
                     )}
@@ -335,6 +335,7 @@ export function ControlsPanel({
         setApplyStyleToTypography,
         toggleBrandColor,
         removeBrandColor,
+        swapBrandColorPositions,
         addCustomColor,
         syncBrandingFromActiveKit,
         selectPlatform,
@@ -648,6 +649,12 @@ export function ControlsPanel({
             : (targetRole === 'Acento' ? undefined : brandColorsByRole[targetRole][0])
 
         if (sourceRole === targetRole && (!targetColor || targetColor === sourceColor)) return
+
+        // Same role (e.g. both Accents) → swap positions in array
+        if (sourceRole === targetRole && targetColor && targetColor !== sourceColor) {
+            swapBrandColorPositions(sourceColor, targetColor)
+            return
+        }
 
         setColorRole(sourceColor, targetRole)
 
@@ -1386,7 +1393,7 @@ export function ControlsPanel({
                                                     <div
                                                         key={accentColor}
                                                         className={cn(
-                                                            "relative inline-flex items-center group/accent rounded-full",
+                                                            "relative inline-flex items-center group/accent rounded-2xl",
                                                             draggedBrandColor && draggedBrandColor.color !== accentColor && "ring-2 ring-primary/30 ring-offset-1 ring-offset-background"
                                                         )}
                                                         onDragOver={(event) => event.preventDefault()}
@@ -1405,7 +1412,7 @@ export function ControlsPanel({
                                                             color={accentColor}
                                                             onCommit={(nextColor) => replaceRoleColor('Acento', nextColor, accentColor)}
                                                             applyLabel={t('ui.applyColor')}
-                                                            sizeClass="w-12 h-12 rounded-full"
+                                                            sizeClass="w-14 h-14 rounded-2xl"
                                                             draggable
                                                             onDragStart={() => setDraggedBrandColor({ role: 'Acento', color: accentColor })}
                                                             onDragEnd={() => setDraggedBrandColor(null)}
@@ -1420,11 +1427,12 @@ export function ControlsPanel({
                                                         </button>
                                                     </div>
                                                 ))}
-                                                <AddAccentSwatch
-                                                    onAdd={addAccentColor}
-                                                    disabled={brandColorsByRole.Acento.length >= 5}
-                                                    label={t('ui.addAccent')}
-                                                />
+                                                {brandColorsByRole.Acento.length < 5 && (
+                                                    <AddAccentSwatch
+                                                        onAdd={addAccentColor}
+                                                        label={t('ui.addAccent')}
+                                                    />
+                                                )}
                                             </div>
                                             <span className="text-[0.8rem] font-medium text-muted-foreground">{t('ui.accents')}</span>
                                         </div>

@@ -4,7 +4,17 @@
     "description": "Create the perfect brand kit for your business"
   },
   "progress": {
-    "step": "{{current}} of {{total}}"
+    "step": "{{current}} of {{total}}",
+    "steps": {
+      "source": "Source",
+      "name": "Name",
+      "logo": "Logo",
+      "palette": "Colors",
+      "typography": "Typography",
+      "personality": "Personality",
+      "voice": "Voice",
+      "brandBoard": "Summary"
+    }
   },
   "nav": {
     "back": "Back",
@@ -16,20 +26,27 @@
   },
   "source": {
     "title": "Where do we start?",
-    "subtitle": "The more information we have, the better the result",
+    "subtitle": "You can select multiple sources. The more information, the better the result",
+    "analysisSection": "Analyze your brand",
     "web": {
-      "title": "I have a website",
+      "title": "Website",
       "subtitle": "We'll analyze your site to extract colors, fonts, and style",
       "placeholder": "https://your-site.com"
     },
     "instagram": {
-      "title": "I have Instagram",
+      "title": "Instagram",
       "subtitle": "We'll analyze your profile to extract your visual style",
       "placeholder": "@your_account"
     },
+    "or": "or",
     "scratch": {
       "title": "Start from scratch",
       "subtitle": "We'll guide you step by step to create your brand identity"
+    },
+    "upload": {
+      "title": "Upload your own images",
+      "subtitle": "Screenshots, logos, visual references...",
+      "button": "Upload images"
     }
   },
   "name": {
@@ -37,7 +54,114 @@
     "placeholder": "Your brand name",
     "descriptionLabel": "What do you do?",
     "descriptionPlaceholder": "Briefly describe your business in 1-2 sentences...",
-    "descriptionHint": "This helps us generate better proposals for your brand"
+    "descriptionHint": "This helps us generate better proposals for your brand",
+    "languageLabel": "Brand language",
+    "languages": {
+      "es": "Spanish",
+      "en": "English",
+      "fr": "French",
+      "de": "German",
+      "pt": "Portuguese",
+      "it": "Italian",
+      "ca": "Catalan"
+    }
+  },
+  "loading": {
+    "title": "Analyzing your brand",
+    "stop": "Stop",
+    "retry": "Retry",
+    "done": "Analysis complete",
+    "doneSubtitle": "We've extracted your brand elements. Continue when you're ready",
+    "error": "Something went wrong during analysis",
+    "errorCheckUrl": "Check that the address is spelled correctly and try again",
+    "messages": {
+      "web": {
+        "1": "Accessing your website...",
+        "2": "Scanning colors and fonts...",
+        "3": "Extracting your brand personality...",
+        "4": "Generating color palettes...",
+        "5": "Preparing your visual identity..."
+      },
+      "instagram": {
+        "1": "Connecting to your Instagram profile...",
+        "2": "Analyzing your recent posts...",
+        "3": "Extracting visual color palette...",
+        "4": "Detecting tone and personality...",
+        "5": "Building your brand identity..."
+      },
+      "both": {
+        "1": "Accessing your website and Instagram...",
+        "2": "Scanning colors and visual style...",
+        "3": "Cross-referencing both sources...",
+        "4": "Extracting your brand personality...",
+        "5": "Preparing your visual identity..."
+      },
+      "scratch": {
+        "1": "Analyzing your business sector...",
+        "2": "Generating color proposals...",
+        "3": "Selecting ideal typefaces...",
+        "4": "Defining brand personality...",
+        "5": "Polishing final details..."
+      }
+    }
+  },
+  "logo": {
+    "title": "Your logo",
+    "subtitle": "Manage your brand logos. You can reorder by dragging, delete, or upload new ones",
+    "empty": "No logo detected",
+    "variationsTitle": "Variations",
+    "variationsSubtitle": "Automatically generated versions from your primary logo",
+    "addToKit": "Add to kit",
+    "download": "Download"
+  },
+  "palette": {
+    "title": "Your color palette",
+    "subtitle": "These are the colors detected from your brand. You can edit them, change roles, or remove them"
+  },
+  "typography": {
+    "title": "Choose your typography",
+    "subtitle": "Select the font pairing that defines your brand voice",
+    "headingLabel": "Headings",
+    "bodyLabel": "Body text",
+    "sampleHeading": "Your brand identity",
+    "sampleBody": "Good typography makes content easy to read and strengthens your visual identity.",
+    "noProposals": "No proposals available",
+    "regenerate": "Generate new proposals",
+    "orChooseCombo": "or choose a quick combo"
+  },
+  "personality": {
+    "title": "Define your brand personality",
+    "subtitle": "Select the words that best describe your brand",
+    "visualStyle": "Visual style",
+    "toneOfVoice": "Tone of voice",
+    "values": "Values",
+    "noProposals": "No proposals available",
+    "regenerate": "Generate new proposals",
+    "regenerating": "Generating...",
+    "newOptions": "New options"
+  },
+  "voice": {
+    "title": "Choose your brand voice",
+    "subtitle": "Select the taglines and calls to action that fit best",
+    "taglineSection": "Tagline",
+    "ctaSection": "Calls to action",
+    "hooksSection": "Marketing headlines",
+    "ctaHint": "Select at least one",
+    "noProposals": "No proposals available",
+    "regenerate": "Generate new proposals",
+    "newOptions": "New options",
+    "regenerating": "Generating..."
+  },
+  "preview": {
+    "title": "Preview",
+    "brandName": "Your brand",
+    "sampleTitle": "Your Brand",
+    "sampleCaption": "Discover what makes us unique",
+    "engagement": {
+      "likes": "42",
+      "comments": "8",
+      "shares": "3"
+    }
   },
   "brandBoard": {
     "title": "Your brand is ready",
@@ -57,6 +181,31 @@
       "typography": "No typography selected",
       "personality": "No personality defined",
       "voice": "No tagline defined"
+    },
+    "brandContext": {
+      "label": "Brand vision & context",
+      "placeholder": "Strategic summary of your brand...",
+      "hint": "Auto-generated. You can edit it to adjust the tone"
+    },
+    "contact": {
+      "label": "Channels & contact",
+      "emailPlaceholder": "hello@yourbrand.com",
+      "phonePlaceholder": "+1 555 000 0000",
+      "addressPlaceholder": "Physical address",
+      "addEmail": "Add email",
+      "addPhone": "Add phone",
+      "addAddress": "Add address",
+      "socialLabel": "Social media",
+      "addSocial": "Add social network",
+      "platforms": {
+        "instagram": "Instagram",
+        "twitter": "X (Twitter)",
+        "linkedin": "LinkedIn",
+        "facebook": "Facebook",
+        "youtube": "YouTube",
+        "tiktok": "TikTok",
+        "pinterest": "Pinterest"
+      }
     }
   }
 }

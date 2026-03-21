@@ -364,6 +364,18 @@ export function BrandDNABoard({
         }));
     };
 
+    const handleSwapColorPositions = (indexA: number, indexB: number) => {
+        updateData(prev => {
+            const newColors = [...(prev.colors || [])];
+            if (newColors[indexA] && newColors[indexB]) {
+                const temp = newColors[indexA];
+                newColors[indexA] = newColors[indexB];
+                newColors[indexB] = temp;
+            }
+            return { ...prev, colors: newColors };
+        });
+    };
+
     const handleResetColors = () => {
         updateData(prev => ({
             ...prev,
@@ -1154,6 +1166,7 @@ export function BrandDNABoard({
                                 isEdited={JSON.stringify(data.colors) !== JSON.stringify(initialData.colors)}
                                 onUpdateColor={handleUpdateColor}
                                 onUpdateRole={handleUpdateColorRole}
+                                onSwapPositions={handleSwapColorPositions}
                                 onRemoveColor={handleRemoveColor}
                                 onAddColor={handleAddColor}
                                 onReset={handleResetColors}
