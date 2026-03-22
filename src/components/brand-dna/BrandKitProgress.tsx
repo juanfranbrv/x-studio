@@ -34,40 +34,44 @@ export function BrandKitProgress({ brandKit, showDetails = true, compact = false
     const completeness = useMemo(() => calculateBrandKitCompleteness(brandKit), [brandKit])
     const message = useMemo(() => getCompletenessMessage(completeness.percentage), [completeness.percentage])
 
+    const subtlePct = completeness.percentage
+    const subtleStrokeColor = subtlePct >= 70 ? '#10b981' : subtlePct >= 40 ? '#fb923c' : '#fbbf24'
+    const subtleTextColor = subtlePct >= 70 ? 'text-emerald-500' : subtlePct >= 40 ? 'text-orange-400' : 'text-amber-400'
+
     if (subtle) {
         return (
             <div className={cn(
                 BRAND_KIT_CALLOUT_CLASS,
-                "flex flex-col sm:flex-row items-center gap-4 sm:gap-8 py-3 px-6", 
+                "flex flex-col sm:flex-row items-center gap-4 sm:gap-8 py-3 px-6",
                 "animate-in fade-in slide-in-from-top-2 duration-500",
                 className
             )}>
                 <div className="flex items-center gap-3 shrink-0">
-                    <div className="relative flex h-10 w-10 items-center justify-center">
+                    <div className="relative flex h-16 w-16 items-center justify-center">
                         <svg className="h-full w-full -rotate-90" viewBox="0 0 36 36">
                             <circle
-                                className="text-muted/10 stroke-current"
-                                strokeWidth="3"
+                                className="stroke-current text-muted/15"
+                                strokeWidth="2.5"
                                 fill="transparent"
-                                r="16"
+                                r="15"
                                 cx="18"
                                 cy="18"
                             />
                             <motion.circle
-                                className="text-primary stroke-current"
-                                strokeWidth="3"
+                                stroke={subtleStrokeColor}
+                                strokeWidth="2.5"
                                 strokeLinecap="round"
                                 fill="transparent"
-                                r="16"
+                                r="15"
                                 cx="18"
                                 cy="18"
-                                initial={{ strokeDasharray: "100, 100", strokeDashoffset: 100 }}
-                                animate={{ strokeDashoffset: 100 - completeness.percentage }}
-                                transition={{ duration: 1, ease: "easeOut" }}
+                                initial={{ strokeDasharray: "94.25, 94.25", strokeDashoffset: 94.25 }}
+                                animate={{ strokeDashoffset: 94.25 - (94.25 * subtlePct / 100) }}
+                                transition={{ duration: 1.2, ease: "easeOut" }}
                             />
                         </svg>
-                        <span className="absolute text-[10px] font-bold text-foreground">
-                            {completeness.percentage}%
+                        <span className={cn("absolute text-[13px] font-black tabular-nums leading-none", subtleTextColor)}>
+                            {subtlePct}%
                         </span>
                     </div>
                     <div className="flex flex-col">
@@ -146,49 +150,59 @@ export function BrandKitProgress({ brandKit, showDetails = true, compact = false
         )
     }
 
+    const pct = completeness.percentage
+    const progressColor = pct >= 70
+        ? 'text-emerald-500'
+        : pct >= 40
+            ? 'text-orange-400'
+            : 'text-amber-400'
+    const barColor = pct >= 70
+        ? 'bg-emerald-500'
+        : pct >= 40
+            ? 'bg-orange-400'
+            : 'bg-amber-400'
+
     return (
-        <div className={cn("rounded-[1.5rem] border border-border/40 bg-muted/20 px-6 py-5 shadow-sm", className)}>
-            <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-                <div className={cn(BRAND_KIT_PANEL_HEADER_CLASS, "px-0 pt-0")}>
-                    <div className={BRAND_KIT_PANEL_TITLE_CLASS}>
-                    {completeness.isComplete ? (
-                            <IconCheck className="h-[18px] w-[18px] text-primary" />
-                    ) : (
-                            <IconSparkles className="h-[18px] w-[18px] text-primary" />
-                    )}
-                        <span className="text-[13px] font-bold uppercase tracking-[0.12em] text-foreground/85">
-                            {t('progress.title', { defaultValue: 'Completitud del Kit de Marca' })}
+        <div className={cn("rounded-[1.5rem] border border-border/40 bg-muted/20 px-6 py-6 shadow-sm", className)}>
+            <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
+                {/* Porcentaje hero */}
+                <div className="flex items-center gap-5">
+                    <div className="flex flex-col items-center justify-center shrink-0">
+                        <span className={cn("text-5xl font-black leading-none tabular-nums tracking-tight", progressColor)}>
+                            {pct}
                         </span>
+                        <span className={cn("text-lg font-bold leading-none", progressColor)}>%</span>
                     </div>
-                    <p className={BRAND_KIT_PANEL_DESCRIPTION_CLASS}>
-                        {completeness.isComplete
-                            ? t('progress.complete', { defaultValue: 'Tu Kit de Marca esta listo para generar contenido de alta calidad.' })
-                            : t('progress.description', { defaultValue: 'Completa los activos visuales y editoriales para que el resto de la app genere con mas precision.' })}
-                    </p>
-                </div>
-                <div className="rounded-[1.1rem] border border-border/50 bg-background/50 px-4 py-2.5 text-right shadow-sm">
-                    <p className="text-[0.72rem] font-bold uppercase tracking-[0.15em] text-muted-foreground/80">
-                        {t('progress.scoreLabel', { defaultValue: 'Progreso' })}
-                    </p>
-                    <span className="text-[1.25rem] font-bold tracking-tight text-foreground">
-                        {completeness.percentage}%
-                    </span>
+                    <div className="flex flex-col gap-1">
+                        <div className={BRAND_KIT_PANEL_TITLE_CLASS}>
+                            {completeness.isComplete ? (
+                                <IconCheck className="!text-emerald-500" />
+                            ) : (
+                                <IconSparkles />
+                            )}
+                            <span>
+                                {t('progress.title', { defaultValue: 'Completitud del Kit de Marca' })}
+                            </span>
+                        </div>
+                        <p className={BRAND_KIT_PANEL_DESCRIPTION_CLASS}>
+                            {completeness.isComplete
+                                ? t('progress.complete', { defaultValue: 'Tu Kit de Marca esta listo para generar contenido de alta calidad.' })
+                                : t('progress.description', { defaultValue: 'Completa los activos visuales y editoriales para que el resto de la app genere con mas precision.' })}
+                        </p>
+                    </div>
                 </div>
             </div>
 
-            <div className="mt-4 h-2 w-full overflow-hidden rounded-full bg-muted/40">
-                <div
-                    className={cn(
-                        "h-full rounded-full transition-all duration-700 ease-out",
-                        completeness.isComplete
-                            ? "bg-primary"
-                            : "bg-primary/80"
-                    )}
-                    style={{ width: `${completeness.percentage}%` }}
+            <div className="mt-5 h-2.5 w-full overflow-hidden rounded-full bg-muted/40">
+                <motion.div
+                    className={cn("h-full rounded-full", barColor)}
+                    initial={{ width: 0 }}
+                    animate={{ width: `${pct}%` }}
+                    transition={{ duration: 0.8, ease: "easeOut" }}
                 />
             </div>
 
-            <p className={cn("mt-4 text-[1rem] font-medium", message.color)}>
+            <p className={cn("mt-3 text-[1rem] font-medium", message.color)}>
                 {message.emoji} {message.message}
             </p>
 
@@ -201,7 +215,7 @@ export function BrandKitProgress({ brandKit, showDetails = true, compact = false
                     <ul className="space-y-2.5">
                         {completeness.tips.map((tip, i) => (
                             <li key={i} className="flex items-start gap-2.5 text-[0.96rem] leading-relaxed text-foreground/85">
-                                <span className="mt-1 h-2 w-2 rounded-full bg-primary/65" />
+                                <span className={cn("mt-2 h-2 w-2 shrink-0 rounded-full", barColor)} />
                                 {tip}
                             </li>
                         ))}

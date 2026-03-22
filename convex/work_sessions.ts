@@ -937,9 +937,71 @@ export const listSessions = query({
       limit,
     });
 
-    return rows
-      .map((row) => {
-        const snapshot = row.snapshot as { generatedImage?: unknown } | undefined;
+    return Promise.all(
+      rows.map(async (row) => {
+        const snapshot = row.snapshot as Record<string, unknown> | undefined;
+        let preview_image_url: string | undefined;
+
+        if (snapshot?.module === "image") {
+          // 1) Try creationFlowState.generatedImage (most recent sessions)
+          const cfs = snapshot.creationFlowState as Record<string, unknown> | undefined;
+          const img = cfs?.generatedImage;
+          if (typeof img === "string" && img) {
+            preview_image_url = img.startsWith("http")
+              ? img
+              : (await ctx.storage.getUrl(img as Id<"_storage">).catch(() => null)) ?? undefined;
+          }
+          // 2) Fallback: last entry in sessionGenerations (older sessions)
+          if (!preview_image_url) {
+            const gens = Array.isArray(snapshot.sessionGenerations)
+              ? (snapshot.sessionGenerations as Array<Record<string, unknown>>)
+              : [];
+            const last = gens[gens.length - 1];
+            if (last) {
+              const directUrl = (last.preview_image_url ?? last.image_url) as string | undefined;
+              if (directUrl?.startsWith("http")) {
+                preview_image_url = directUrl;
+              } else {
+                const sid = (last.preview_image_storage_id ?? last.image_storage_id) as string | undefined;
+                if (sid) {
+                  preview_image_url = (await ctx.storage.getUrl(sid as Id<"_storage">).catch(() => null)) ?? undefined;
+                }
+              }
+            }
+          }
+        } else if (snapshot?.module === "carousel") {
+          // Helper: resolve a slide's image URL
+          const resolveSlide = async (s: Record<string, unknown>): Promise<string | undefined> => {
+            const directUrl = (s.imagePreviewUrl ?? s.imageUrl) as string | undefined;
+            if (directUrl?.startsWith("http")) return directUrl;
+            const sid = (s.image_preview_storage_id ?? s.image_storage_id) as string | undefined;
+            if (sid) return (await ctx.storage.getUrl(sid as Id<"_storage">).catch(() => null)) ?? undefined;
+            return undefined;
+          };
+
+          // 1) Try previewState.slides (current slides)
+          const ps = snapshot.previewState as Record<string, unknown> | undefined;
+          const slides = Array.isArray(ps?.slides) ? (ps!.slides as Array<Record<string, unknown>>) : [];
+          for (const slide of slides) {
+            const url = await resolveSlide(slide);
+            if (url) { preview_image_url = url; break; }
+          }
+          // 2) Fallback: sessionHistory entries (older generations in the same session)
+          if (!preview_image_url) {
+            const history = Array.isArray(ps?.sessionHistory)
+              ? (ps!.sessionHistory as Array<Record<string, unknown>>)
+              : [];
+            for (const entry of [...history].reverse()) {
+              const entrySlides = Array.isArray(entry.slides) ? (entry.slides as Array<Record<string, unknown>>) : [];
+              for (const slide of entrySlides) {
+                const url = await resolveSlide(slide);
+                if (url) { preview_image_url = url; break; }
+              }
+              if (preview_image_url) break;
+            }
+          }
+        }
+
         return {
           _id: row._id,
           module: row.module,
@@ -950,9 +1012,10 @@ export const listSessions = query({
           active: row.active,
           created_at: row.created_at,
           updated_at: row.updated_at,
-          preview_image_url: typeof snapshot?.generatedImage === "string" ? snapshot.generatedImage : undefined,
+          preview_image_url,
         };
-      });
+      })
+    );
   },
 });
 

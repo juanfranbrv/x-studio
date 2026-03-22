@@ -63,6 +63,7 @@ export function TextAssetsSection({ data, onChange, onAppendData }: TextAssetsSe
             defaultValue: 'Casa rural de alquiler completo situada en Rubielos de Mora, pueblo medieval. Ambiente relajado y exclusivo.',
         }),
     };
+
     const mergeWithDefaults = (incoming?: TextAssets): TextAssets => ({
         marketing_hooks: incoming?.marketing_hooks ?? defaultData.marketing_hooks,
         visual_keywords: incoming?.visual_keywords ?? defaultData.visual_keywords,
@@ -105,53 +106,40 @@ export function TextAssetsSection({ data, onChange, onAppendData }: TextAssetsSe
         updateAssets({ ...assets, [section]: [...assets[section], newItem] });
     };
 
-    const SectionTitle = ({
-        icon: Icon,
-        title,
-        tooltipKey,
-    }: {
-        icon: any;
-        title: string;
-        tooltipKey: TooltipKey;
-    }) => (
-        <div className="flex items-center gap-2 mb-1.5">
-            <Icon className="w-[1.125rem] h-[1.125rem] text-primary/80" />
-            <span className={BRAND_KIT_SECTION_LABEL_CLASS}>{title}</span>
-            <TooltipProvider delayDuration={200}>
-                <Tooltip>
-                    <TooltipTrigger asChild>
-                        <button className="p-0.5 rounded-full hover:bg-[var(--surface-hover)] transition-colors" type="button">
-                            <IconInfo className="w-3.5 h-3.5 text-[var(--text-secondary)] opacity-60" />
-                        </button>
-                    </TooltipTrigger>
-                    <TooltipContent side="top" className="max-w-xs text-xs bg-popover border-border text-popover-foreground">
-                        <p>{t(`textAssets.tooltips.${tooltipKey}`, { defaultValue: String(tooltipKey) })}</p>
-                    </TooltipContent>
-                </Tooltip>
-            </TooltipProvider>
-        </div>
+    const SectionTooltip = ({ tooltipKey }: { tooltipKey: TooltipKey }) => (
+        <TooltipProvider delayDuration={200}>
+            <Tooltip>
+                <TooltipTrigger asChild>
+                    <button className="p-0.5 rounded-full hover:bg-[var(--surface-hover)] transition-colors" type="button">
+                        <IconInfo className="w-3.5 h-3.5 text-muted-foreground/50" />
+                    </button>
+                </TooltipTrigger>
+                <TooltipContent side="top" className="max-w-xs text-xs bg-popover border-border text-popover-foreground">
+                    <p>{t(`textAssets.tooltips.${tooltipKey}`, { defaultValue: String(tooltipKey) })}</p>
+                </TooltipContent>
+            </Tooltip>
+        </TooltipProvider>
     );
 
-    const DirectEditableCard = ({
+    const EditableItem = ({
         value,
         onChange,
         onDelete,
-        sectionType,
+        minHeight,
+        rows,
     }: {
         value: string;
         onChange: (val: string) => void;
         onDelete: () => void;
-        sectionType: 'marketing_hooks' | 'ctas' | 'visual_keywords';
+        minHeight: string;
+        rows: number;
     }) => (
         <div className="group relative flex items-start gap-2 py-1.5">
             <textarea
                 value={value}
                 onChange={(e) => onChange(e.target.value)}
-                className={cn(
-                    BRAND_KIT_TEXTAREA_CLASS,
-                    sectionType === 'marketing_hooks' ? 'min-h-[118px]' : 'min-h-[88px]'
-                )}
-                rows={sectionType === 'marketing_hooks' ? 4 : 3}
+                className={cn(BRAND_KIT_TEXTAREA_CLASS, minHeight)}
+                rows={rows}
             />
             <button
                 className={BRAND_KIT_INLINE_REMOVE_BUTTON_CLASS}
@@ -165,118 +153,135 @@ export function TextAssetsSection({ data, onChange, onAppendData }: TextAssetsSe
     );
 
     return (
-        <Card className={cn(BRAND_KIT_PANEL_CLASS, "relative overflow-visible")}>
-            <CardHeader className={cn(BRAND_KIT_PANEL_HEADER_CLASS, "relative flex-row items-start justify-between pb-4")}>
-                <div>
-                    <CardTitle className={BRAND_KIT_PANEL_TITLE_CLASS}>
-                        <IconFileText className="w-[1.125rem] h-[1.125rem] text-primary" />
-                        {t('textAssets.title', { defaultValue: 'Text assets' })}
-                    </CardTitle>
-                    <p className={cn(BRAND_KIT_PANEL_DESCRIPTION_CLASS, "mt-1")}>{t('textAssets.description', { defaultValue: 'Textos editables para campañas y generación de contenido' })}</p>
-                </div>
+        <>
+            {/* Card 1: Titulares de marketing */}
+            <Card className={cn(BRAND_KIT_PANEL_CLASS, "relative overflow-visible")}>
+                <CardHeader className={cn(BRAND_KIT_PANEL_HEADER_CLASS, "relative flex-row items-start justify-between pb-4")}>
+                    <div>
+                        <CardTitle className={BRAND_KIT_PANEL_TITLE_CLASS}>
+                            <IconMegaphone />
+                            {t('textAssets.marketingHooksTitle', { defaultValue: 'Marketing headlines' })}
+                        </CardTitle>
+                        <p className={cn(BRAND_KIT_PANEL_DESCRIPTION_CLASS, "mt-1")}>
+                            {t('textAssets.marketingHooksDescription', { defaultValue: 'Titulares y mensajes clave para campañas' })}
+                        </p>
+                    </div>
 
-                <div className="flex gap-2">
-                    <input
-                        type="file"
-                        id="brand-file-upload"
-                        className="hidden"
-                        accept=".pdf,.txt,.md"
-                        onChange={async (e) => {
-                            const inputEl = e.currentTarget;
-                            const file = inputEl.files?.[0];
-                            if (!file) return;
+                    <div className="flex gap-2 shrink-0">
+                        <input
+                            type="file"
+                            id="brand-file-upload"
+                            className="hidden"
+                            accept=".pdf,.txt,.md"
+                            onChange={async (e) => {
+                                const inputEl = e.currentTarget;
+                                const file = inputEl.files?.[0];
+                                if (!file) return;
 
-                            setIsAnalyzing(true);
-                            const formData = new FormData();
-                            formData.append('file', file);
+                                setIsAnalyzing(true);
+                                const formData = new FormData();
+                                formData.append('file', file);
 
-                            try {
-                                const result = await analyzeBrandFile(formData);
-                                if (result.success && result.data) {
-                                    setExtractedData(result.data);
-                                    setShowExtractionModal(true);
-                                } else {
-                                    toast({
-                                        title: t('textAssets.analyzeErrorTitle', { defaultValue: 'Analysis error' }),
-                                        description: result.error || t('textAssets.analyzeErrorDescription', { defaultValue: 'The file could not be processed.' }),
-                                        variant: 'destructive',
-                                    });
+                                try {
+                                    const result = await analyzeBrandFile(formData);
+                                    if (result.success && result.data) {
+                                        setExtractedData(result.data);
+                                        setShowExtractionModal(true);
+                                    } else {
+                                        toast({
+                                            title: t('textAssets.analyzeErrorTitle', { defaultValue: 'Analysis error' }),
+                                            description: result.error || t('textAssets.analyzeErrorDescription', { defaultValue: 'The file could not be processed.' }),
+                                            variant: 'destructive',
+                                        });
+                                    }
+                                } catch (err) {
+                                    console.error(err);
+                                } finally {
+                                    setIsAnalyzing(false);
+                                    if (inputEl) inputEl.value = '';
                                 }
-                            } catch (err) {
-                                console.error(err);
-                            } finally {
-                                setIsAnalyzing(false);
-                                if (inputEl) inputEl.value = '';
-                            }
-                        }}
-                    />
+                            }}
+                        />
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            className={cn(BRAND_KIT_SECONDARY_BUTTON_CLASS, "gap-2 border-primary/20 bg-primary/5 text-primary cursor-pointer hover:bg-primary/10")}
+                            disabled={isAnalyzing}
+                            asChild
+                        >
+                            <label htmlFor="brand-file-upload">
+                                {isAnalyzing ? <Loader2 className="w-3.5 h-3.5" /> : <IconUpload className="w-3.5 h-3.5" />}
+                                {t('textAssets.importFromFile', { defaultValue: 'Import from file' })}
+                            </label>
+                        </Button>
+                    </div>
+                </CardHeader>
+                <CardContent className="relative space-y-1 px-6 pb-6 pt-0">
+                    <div className="flex items-center gap-2 mb-3">
+                        <span className={BRAND_KIT_SECTION_LABEL_CLASS}>{t('textAssets.marketingHooksTitle', { defaultValue: 'Marketing headlines' })}</span>
+                        <SectionTooltip tooltipKey="marketing_hooks" />
+                    </div>
+                    {assets.marketing_hooks.map((hook, idx) => (
+                        <EditableItem
+                            key={`hook-${idx}`}
+                            value={hook}
+                            onChange={(val) => updateItem('marketing_hooks', idx, val)}
+                            onDelete={() => handleDelete('marketing_hooks', idx)}
+                            minHeight="min-h-[96px]"
+                            rows={3}
+                        />
+                    ))}
                     <Button
                         variant="outline"
                         size="sm"
-                        className={cn(BRAND_KIT_SECONDARY_BUTTON_CLASS, "gap-2 border-primary/20 bg-primary/5 text-primary cursor-pointer hover:bg-primary/10")}
-                        disabled={isAnalyzing}
-                        asChild
+                        className={BRAND_KIT_OUTLINE_DASHED_BUTTON_CLASS}
+                        onClick={() => handleAdd('marketing_hooks')}
+                        type="button"
                     >
-                        <label htmlFor="brand-file-upload">
-                            {isAnalyzing ? <Loader2 className="w-3.5 h-3.5" /> : <IconUpload className="w-3.5 h-3.5" />}
-                            {t('textAssets.importFromFile', { defaultValue: 'Import from file' })}
-                        </label>
+                        <IconPlus className="w-4 h-4 mr-1" />
+                        {t('textAssets.addHeadline', { defaultValue: 'Add headline' })}
                     </Button>
-                </div>
-            </CardHeader>
-            <CardContent className="relative space-y-4 px-6 pb-6 pt-0">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="space-y-3">
-                        <SectionTitle icon={IconMegaphone} title={t('textAssets.marketingHooksTitle', { defaultValue: 'Marketing headlines' })} tooltipKey="marketing_hooks" />
-                        <div className="space-y-1">
-                            {assets.marketing_hooks.map((hook, idx) => (
-                                <DirectEditableCard
-                                    key={`hook-${idx}`}
-                                    value={hook}
-                                    onChange={(val) => updateItem('marketing_hooks', idx, val)}
-                                    onDelete={() => handleDelete('marketing_hooks', idx)}
-                                    sectionType="marketing_hooks"
-                                />
-                            ))}
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                className={BRAND_KIT_OUTLINE_DASHED_BUTTON_CLASS}
-                                onClick={() => handleAdd('marketing_hooks')}
-                                type="button"
-                            >
-                                <IconPlus className="w-4 h-4 mr-1" />
-                                {t('textAssets.addHeadline', { defaultValue: 'Add headline' })}
-                            </Button>
-                        </div>
-                    </div>
+                </CardContent>
+            </Card>
 
-                    <div className="space-y-3">
-                        <SectionTitle icon={IconMouseClick} title={t('textAssets.ctasTitle', { defaultValue: 'Calls to action' })} tooltipKey="ctas" />
-                        <div className="space-y-1">
-                            {assets.ctas.map((cta, idx) => (
-                                <DirectEditableCard
-                                    key={`cta-${idx}`}
-                                    value={cta}
-                                    onChange={(val) => updateItem('ctas', idx, val)}
-                                    onDelete={() => handleDelete('ctas', idx)}
-                                    sectionType="ctas"
-                                />
-                            ))}
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                className={BRAND_KIT_OUTLINE_DASHED_BUTTON_CLASS}
-                                onClick={() => handleAdd('ctas')}
-                                type="button"
-                            >
-                                <IconPlus className="w-4 h-4 mr-1" />
-                                {t('textAssets.addCta', { defaultValue: 'Add CTA' })}
-                            </Button>
-                        </div>
+            {/* Card 2: Calls to action */}
+            <Card className={cn(BRAND_KIT_PANEL_CLASS, "relative overflow-visible")}>
+                <CardHeader className={cn(BRAND_KIT_PANEL_HEADER_CLASS, "pb-4")}>
+                    <CardTitle className={BRAND_KIT_PANEL_TITLE_CLASS}>
+                        <IconMouseClick />
+                        {t('textAssets.ctasTitle', { defaultValue: 'Calls to action' })}
+                    </CardTitle>
+                    <p className={cn(BRAND_KIT_PANEL_DESCRIPTION_CLASS, "mt-1")}>
+                        {t('textAssets.ctasDescription', { defaultValue: 'Textos de botones y llamadas a la acción' })}
+                    </p>
+                </CardHeader>
+                <CardContent className="relative space-y-1 px-6 pb-6 pt-0">
+                    <div className="flex items-center gap-2 mb-3">
+                        <span className={BRAND_KIT_SECTION_LABEL_CLASS}>{t('textAssets.ctasTitle', { defaultValue: 'Calls to action' })}</span>
+                        <SectionTooltip tooltipKey="ctas" />
                     </div>
-                </div>
-            </CardContent>
+                    {assets.ctas.map((cta, idx) => (
+                        <EditableItem
+                            key={`cta-${idx}`}
+                            value={cta}
+                            onChange={(val) => updateItem('ctas', idx, val)}
+                            onDelete={() => handleDelete('ctas', idx)}
+                            minHeight="min-h-[72px]"
+                            rows={2}
+                        />
+                    ))}
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        className={BRAND_KIT_OUTLINE_DASHED_BUTTON_CLASS}
+                        onClick={() => handleAdd('ctas')}
+                        type="button"
+                    >
+                        <IconPlus className="w-4 h-4 mr-1" />
+                        {t('textAssets.addCta', { defaultValue: 'Add CTA' })}
+                    </Button>
+                </CardContent>
+            </Card>
 
             <ExtractionPreviewModal
                 open={showExtractionModal}
@@ -290,8 +295,6 @@ export function TextAssetsSection({ data, onChange, onAppendData }: TextAssetsSe
                     });
                 }}
             />
-        </Card>
+        </>
     );
 }
-
-

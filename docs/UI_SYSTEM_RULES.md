@@ -227,6 +227,54 @@ Si una nueva necesidad obliga a romper alguna de estas reglas:
   - mismo lenguaje para estados activos e inactivos
   - mismo tono visual en overlays y toolbar del canvas
 
+## Cabeceras de tarjeta en Brand Kit
+
+Las tarjetas del Brand Kit deben usar **exactamente** el mismo lenguaje visual que las secciones del panel derecho del módulo imagen (`ControlsPanel`). La fuente de verdad es `SectionHeader.tsx` + `PANEL_SECTION_HEADER_ICON_CLASS` / `PANEL_SECTION_HEADER_TITLE_CLASS`.
+
+### Icono de sección
+
+- **Tamaño del SVG**: `h-[18px] w-[18px]` — ni más ni menos
+- **Color**: `text-foreground/72` — nunca `text-primary` en iconos de cabecera
+- **Fondo/borde**: ninguno — icono limpio sin cápsula, sin `bg-primary/10`, sin `border`
+- **Librería**: `hugeicons` siempre
+
+Regla operativa: el selector `[&_svg]` de `BRAND_KIT_PANEL_TITLE_CLASS` en `brandKitStyles.ts` impone estos valores sobre todos los SVG descendientes del título. **No añadir clases de tamaño ni color explícitas al icono** — se heredan del padre. Excepción única: si el icono tiene significado semántico de estado (ej. check de completitud verde), usar `!text-emerald-500` con `!important` para sobreescribir.
+
+### Título de sección
+
+- **Tamaño**: `text-[0.94rem]` (≈ 15px)
+- **Peso**: `font-bold`
+- **Caja**: `uppercase`
+- **Tracking**: `tracking-[0.14em]`
+- **Color**: `text-foreground/92`
+- **Constante**: `BRAND_KIT_PANEL_TITLE_CLASS` en `brandKitStyles.ts`
+
+### Prohibido en cabeceras de tarjeta
+
+- Iconos con `h-9 w-9` (36px) — ese era el tamaño antiguo, ya no se usa
+- Iconos con `text-primary` en cabecera — reservado para CTAs y acciones, no para iconos de sección
+- Mezclar `text-[11px]` o `tracking-[0.16em]` — son los valores por defecto del `SectionHeader` sin customizar, no del estudio
+
+### Paleta flotante de herramientas (Brand Kit, Imagen, Carrusel)
+
+Las tres vistas comparten **la misma clase base**:
+
+- **Contenedor**: `STUDIO_CANVAS_FLOATING_TOOLBAR_CLASS` de `canvasStyles.ts`
+  - `rounded-[1.65rem]`, `border border-border/60`, fondo blanco translúcido, `backdrop-blur-xl`, `shadow-[0_24px_54px_-34px_...]`, `p-2`, `grid-cols-3 gap-1.5`
+- **Botones**: `STUDIO_CANVAS_TOOL_BUTTON_CLASS` — `h-[3.2rem] w-[3.2rem]`, sin fondo, hover con borde y sombra suave
+- **Iconos dentro de botones de paleta**: `!h-8 !w-8` (32px) — constante local `TOOL_ICON_CLASS`
+- **Brand Kit añade**: `!fixed right-6 top-24 z-[60] !hidden md:!grid` — se usa `!fixed` con `!important` porque `STUDIO_CANVAS_FLOATING_TOOLBAR_CLASS` contiene `absolute` baked-in, y en el CSS generado por Tailwind `.absolute` aparece después de `.fixed`, sobreescribiéndolo sin el modificador `!`
+
+Cualquier nueva paleta flotante en cualquier módulo debe reutilizar estas constantes. No crear variantes locales.
+
+### Logo en la tarjeta de cabecera del Brand Kit
+
+El logo de marca que aparece en la primera tarjeta (junto al nombre del kit) usa:
+
+- **Contenedor**: `h-[12.5rem] w-[12.5rem]` (200px) con `BRAND_KIT_CALLOUT_CLASS`
+- **Imagen del logo**: `w-[8.75rem] h-[8.75rem]` (140px), `object-contain`
+- **Fallback de letra**: `text-6xl font-bold text-foreground/40`
+
 ## Brand Kit
 
 - `brand-kit` debe alinearse con el lenguaje premium de `image` y `carousel`, no con el lenguaje historico de dashboard o backoffice.

@@ -12,7 +12,9 @@ export const BRAND_KIT_PANEL_SUBTLE_CLASS =
 export const BRAND_KIT_PANEL_HEADER_CLASS = 'flex flex-col gap-2 px-6 pb-0 pt-[1.15rem]'
 
 export const BRAND_KIT_PANEL_TITLE_CLASS =
-  'flex items-center gap-3 text-[11px] font-bold uppercase tracking-[0.16em] text-foreground/92 [&>svg]:h-[14px] [&>svg]:w-[14px] [&>svg]:shrink-0 [&>svg]:self-center'
+  'flex items-center gap-3 text-[0.94rem] font-bold uppercase tracking-[0.14em] text-foreground/92 [&_svg]:h-[18px] [&_svg]:w-[18px] [&_svg]:shrink-0 [&_svg]:self-center [&_svg]:text-foreground/72'
+
+export const BRAND_KIT_PANEL_HEADER_ICON_CLASS = 'shrink-0 text-foreground/72'
 
 export const BRAND_KIT_PANEL_DESCRIPTION_CLASS =
   'text-[0.84rem] leading-relaxed text-muted-foreground/80'
@@ -58,6 +60,9 @@ export const BRAND_KIT_ASSET_SURFACE_CLASS =
 
 export const BRAND_KIT_UPLOAD_SURFACE_CLASS =
   'rounded-[1.35rem] border border-border/65 bg-[linear-gradient(180deg,hsl(var(--surface-alt))/0.68,white)] shadow-[inset_0_1px_0_rgba(255,255,255,0.78)] transition-all hover:border-primary/25 hover:bg-[linear-gradient(180deg,hsl(var(--surface))/0.94,white)]'
+
+export const BRAND_KIT_FLOATING_PALETTE_CLASS =
+  'fixed right-6 top-24 z-[60] hidden md:grid grid-cols-3 gap-1.5 pointer-events-auto rounded-[1.65rem] border border-border/60 bg-[linear-gradient(180deg,rgba(255,255,255,0.96),rgba(248,250,252,0.96))] p-2 text-muted-foreground shadow-[0_24px_54px_-34px_rgba(15,23,42,0.28)] backdrop-blur-xl'
 
 export const BRAND_KIT_MODAL_CLASS =
   'max-w-[min(92vw,38rem)] rounded-[1.8rem] border border-border/70 bg-background/98 p-0 shadow-[0_40px_100px_-58px_rgba(15,23,42,0.42)]'

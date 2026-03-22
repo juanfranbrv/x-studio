@@ -158,7 +158,7 @@ export function ContactSocialCard({ socialLinks = [], emails = [], phones = [], 
         <Card className={cn(BRAND_KIT_PANEL_CLASS, "relative overflow-hidden")}>
             <CardHeader className={cn(BRAND_KIT_PANEL_HEADER_CLASS, "pb-4")}>
                 <CardTitle className={BRAND_KIT_PANEL_TITLE_CLASS}>
-                    <IconLink className="w-[1.125rem] h-[1.125rem] text-primary" />
+                    <IconLink />
                     {t('contact.title', { defaultValue: 'Channels and direct contact' })}
                 </CardTitle>
                 <p className={BRAND_KIT_PANEL_DESCRIPTION_CLASS}>{t('contact.subtitle', { defaultValue: 'Información de contacto oficial detectada en la web' })}</p>

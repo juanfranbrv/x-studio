@@ -33,7 +33,7 @@ export function LanguageCard({ selectedLanguage = 'es', onLanguageChange }: Lang
         <Card className={cn(BRAND_KIT_PANEL_CLASS, "overflow-hidden")}>
             <CardHeader className={cn(BRAND_KIT_PANEL_HEADER_CLASS, "pb-4")}>
                 <CardTitle className={BRAND_KIT_PANEL_TITLE_CLASS}>
-                    <IconGlobe className="w-[1.125rem] h-[1.125rem] text-primary" />
+                    <IconGlobe />
                     {t('language.title', { defaultValue: 'Preferencias de idioma' })}
                 </CardTitle>
             </CardHeader>

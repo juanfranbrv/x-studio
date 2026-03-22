@@ -54,6 +54,9 @@ import {
     Delete01Icon,
     Download02Icon,
     Upload02Icon,
+    UploadSquare02Icon,
+    DownloadSquare02Icon,
+    PropertyDeleteIcon,
     Edit02Icon,
     Refresh01Icon,
     CheckmarkCircle01Icon,
@@ -180,6 +183,9 @@ export const IconEdit = createIcon(Edit02Icon)
 export const IconDelete = createIcon(Delete01Icon)
 export const IconDownload = createIcon(Download02Icon)
 export const IconUpload = createIcon(Upload02Icon)
+export const IconUploadSquare = createIcon(UploadSquare02Icon)
+export const IconDownloadSquare = createIcon(DownloadSquare02Icon)
+export const IconPropertyDelete = createIcon(PropertyDeleteIcon)
 export const IconRefresh = createIcon(Refresh01Icon)
 export const IconRotate = createIcon(Rotate01Icon)
 export const IconCopy = createIcon(Copy01Icon)

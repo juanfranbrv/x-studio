@@ -75,7 +75,7 @@ export function LogoCard({ logoUrl, logos = [], onUpload, onRemove, onToggle, on
             <CardHeader className={cn(BRAND_KIT_PANEL_HEADER_CLASS, "pb-4")}>
                 <CardTitle className={cn(BRAND_KIT_PANEL_TITLE_CLASS, "justify-between")}>
                     <div className="flex items-center gap-2">
-                        <IconBuilding className="text-primary" />
+                        <IconBuilding />
                         {t('visualAssets.logoTitle', { defaultValue: 'Brand logo' })}
                     </div>
                     <span className="text-sm font-medium text-muted-foreground">
@@ -338,7 +338,7 @@ export function ImageGallery({
         <Card className={BRAND_KIT_PANEL_CLASS}>
             <CardHeader className={cn(BRAND_KIT_PANEL_HEADER_CLASS, "pb-4")}>
                 <CardTitle className={BRAND_KIT_PANEL_TITLE_CLASS}>
-                    <IconImage className="w-[1.125rem] h-[1.125rem] text-primary" />
+                    <IconImage />
                     {t('visualAssets.analyzedGallery', { defaultValue: 'Analyzed image gallery' })}
                 </CardTitle>
                 <p className={BRAND_KIT_PANEL_DESCRIPTION_CLASS}>

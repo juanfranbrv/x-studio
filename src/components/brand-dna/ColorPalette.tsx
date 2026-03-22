@@ -170,7 +170,7 @@ export function ColorPalette({
                         <CardHeader className={cn(BRAND_KIT_PANEL_HEADER_CLASS, "flex-row items-start justify-between pb-4")}>
                             <div className="space-y-1.5">
                             <CardTitle className={BRAND_KIT_PANEL_TITLE_CLASS}>
-                                <IconPalette className="w-[1.125rem] h-[1.125rem] text-primary" />
+                                <IconPalette />
                                 {t('palette.title', { defaultValue: 'Color palette' })}
                             </CardTitle>
                                 <p className={BRAND_KIT_PANEL_DESCRIPTION_CLASS}>

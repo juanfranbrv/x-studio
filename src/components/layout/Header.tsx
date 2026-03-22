@@ -3,7 +3,7 @@
 import { ReactNode, useState } from 'react'
 import { useUser } from '@clerk/nextjs'
 import { useTranslation } from 'react-i18next'
-import { IconArrowDown, IconPlus, IconSettings, IconDelete } from '@/components/ui/icons'
+import { IconArrowDown, IconPlus, IconSettings, IconDelete, IconCheckSimple } from '@/components/ui/icons'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { CreditsBadge } from './CreditsBadge'
@@ -141,7 +141,7 @@ export function Header({
                                     <DropdownMenuItem
                                         key={brand.id}
                                         onSelect={() => onBrandChange?.(brand.id)}
-                                        className={`group ${HEADER_DROPDOWN_ITEM_CLASS} ${brand.id === currentBrand?.id ? 'bg-accent' : ''}`}
+                                        className={`group ${HEADER_DROPDOWN_ITEM_CLASS} ${brand.id === currentBrand?.id ? 'bg-primary/8 border border-primary/20' : 'border border-transparent'}`}
                                     >
                                         <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center overflow-hidden rounded-xl border border-border/60 bg-muted/60">
                                             {brand.favicon_url ? (
@@ -158,14 +158,18 @@ export function Header({
                                                 {Math.max(0, Math.min(100, Math.round(brand.completeness ?? 0)))}%
                                             </span>
                                         </div>
-                                        <Button
-                                            variant="ghost"
-                                            size="icon"
-                                            className="h-8 w-8 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100 hover:text-destructive"
-                                            onClick={(e) => handleDeleteClick(brand, e)}
-                                        >
-                                            <IconDelete className="h-4 w-4" />
-                                        </Button>
+                                        {brand.id === currentBrand?.id ? (
+                                            <IconCheckSimple className="h-4 w-4 shrink-0 text-primary" />
+                                        ) : (
+                                            <Button
+                                                variant="ghost"
+                                                size="icon"
+                                                className="h-8 w-8 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100 hover:text-destructive"
+                                                onClick={(e) => handleDeleteClick(brand, e)}
+                                            >
+                                                <IconDelete className="h-4 w-4" />
+                                            </Button>
+                                        )}
                                     </DropdownMenuItem>
                                 ))}
                                 <DropdownMenuItem className={`${HEADER_DROPDOWN_ITEM_CLASS} cursor-pointer text-primary`} onClick={onNewBrandKit}>

@@ -1327,6 +1327,7 @@ function BrandKitPageContent() {
                             onPreviewUrlFromAssistant={handlePreviewFromAssistant}
                             onNewBrandKit={handleNewProfile}
                             onSaveSuccess={reloadBrandKits}
+                            onDeleteCurrent={() => setShowDeleteCurrentConfirm(true)}
                         />
                     </div>
                 )}

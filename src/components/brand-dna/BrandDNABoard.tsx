@@ -16,6 +16,7 @@ import { TechnicalAudit } from './TechnicalAudit';
 import { ContactSocialCard } from './ContactSocialCard';
 import { TargetAudienceCard } from './TargetAudienceCard';
 import { BrandKitFloatingPalette } from './BrandKitFloatingPalette';
+import { BrandKitSessionsSection } from './BrandKitSessionsSection';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -27,7 +28,7 @@ import { hexToRgb } from '@/lib/color-utils';
 import { calculateBrandKitCompleteness } from '@/lib/brand-kit-utils';
 import { useTranslation } from 'react-i18next';
 
-import { IconGlobe, IconSave, IconCheck, IconRotate, IconAlertCircle, IconClose, IconBug, IconUpload, IconDownload, IconDelete } from '@/components/ui/icons';
+import { IconGlobe, IconAlertCircle, IconClose, IconInstagram, IconPackage, IconEdit } from '@/components/ui/icons';
 import {
     BRAND_KIT_CALLOUT_CLASS,
     BRAND_KIT_FIELD_CLASS,
@@ -38,11 +39,7 @@ import {
     BRAND_KIT_MODAL_TITLE_CLASS,
     BRAND_KIT_PAGE_SHELL_CLASS,
     BRAND_KIT_PANEL_CLASS,
-    BRAND_KIT_PANEL_DESCRIPTION_CLASS,
-    BRAND_KIT_PANEL_HEADER_CLASS,
-    BRAND_KIT_PANEL_TITLE_CLASS,
     BRAND_KIT_SECONDARY_BUTTON_CLASS,
-    BRAND_KIT_SECTION_LABEL_CLASS,
 } from './brandKitStyles';
 
 interface BrandDNABoardProps {
@@ -193,6 +190,7 @@ export function BrandDNABoard({
     const importFileInputRef = useRef<HTMLInputElement | null>(null);
     const handledImportLaunchNonceRef = useRef(0);
     const handledExportLaunchNonceRef = useRef(0);
+    const nameInputRef = useRef<HTMLInputElement | null>(null);
     const [errorModal, setErrorModal] = useState<{ open: boolean; title: string; message: string }>({
         open: false,
         title: '',
@@ -203,8 +201,11 @@ export function BrandDNABoard({
     const canUseDebugAudit = isDebug;
     const rawBrandUrl = (data.url || '').trim();
     const isManualPlaceholderUrl = rawBrandUrl.toLowerCase().startsWith('manual-');
+    const isScratchKit = rawBrandUrl.toLowerCase().startsWith('scratch-');
+    const isManualOrScratch = isManualPlaceholderUrl || isScratchKit;
+    const isInstagramSource = !isManualOrScratch && rawBrandUrl.toLowerCase().includes('instagram.com');
     const normalizedAnalysisUrl = (() => {
-        if (!rawBrandUrl || isManualPlaceholderUrl) return null;
+        if (!rawBrandUrl || isManualOrScratch) return null;
         try {
             const withProtocol = rawBrandUrl.startsWith('http://') || rawBrandUrl.startsWith('https://')
                 ? rawBrandUrl
@@ -955,113 +956,6 @@ export function BrandDNABoard({
 
     return (
         <div className="space-y-8 pb-12">
-            {!assistantPriorityMode && (
-            <div className={cn(BRAND_KIT_PAGE_SHELL_CLASS, "mb-6 p-5 transition-all duration-200 md:p-6")}>
-                <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                    <div className="flex-1 space-y-4">
-                        <div className={cn(BRAND_KIT_CALLOUT_CLASS, "p-4")}>
-                            <p className="mb-1 text-[0.82rem] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t('board.howToCompleteTitle', { defaultValue: 'How to complete this section' })}</p>
-                            <p className={BRAND_KIT_PANEL_DESCRIPTION_CLASS}>{t('board.howToCompleteDescription', { defaultValue: 'Step 1: give your kit a name. Step 2 (optional): paste a URL and click Analyze URL to autofill content.' })}</p>
-                        </div>
-
-                        <div className="flex items-stretch gap-3">
-                            <div className={cn(BRAND_KIT_CALLOUT_CLASS, "min-h-[132px] w-20 shrink-0 self-stretch flex items-center justify-center text-accent-foreground md:w-24")}>
-                                {data.logo_url ? (
-                                      <img src={data.logo_url} className="w-14 h-14 md:w-16 md:h-16 object-contain" alt="Logo" />
-                                  ) : (
-                                    <span className="text-2xl md:text-3xl font-bold">{data.brand_name?.[0] || 'M'}</span>
-                                )}
-                            </div>
-
-                            <div className="flex-1 space-y-3">
-                                <div>
-                                    <p className={BRAND_KIT_SECTION_LABEL_CLASS}>{t('board.stepName', { defaultValue: 'Step 1 · Kit name' })}</p>
-                                    <Input
-                                        value={data.brand_name || ''}
-                                        onChange={(e) => {
-                                            setData((prev) => ({ ...prev, brand_name: e.target.value }));
-                                            setHasUnsavedChanges(true);
-                                        }}
-                                        className={cn(BRAND_KIT_FIELD_CLASS, "h-[42px] font-semibold")}
-                                        placeholder={t('board.namePlaceholder', { defaultValue: 'Ex: My Brand' })}
-                                    />
-                                </div>
-
-                                <div>
-                                    <p className={cn(BRAND_KIT_SECTION_LABEL_CLASS, "flex items-center gap-1.5")}>
-                                        <IconGlobe className="w-[1.125rem] h-[1.125rem]" />
-                                        {t('board.stepUrl', { defaultValue: 'Step 2 (optional) · Website URL to analyze' })}
-                                    </p>
-                                    <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-                                        <Input
-                                            value={data.url || ''}
-                                            onChange={(e) => {
-                                                setData((prev) => ({ ...prev, url: e.target.value }));
-                                                setHasUnsavedChanges(true);
-                                            }}
-                                            placeholder={t('board.urlPlaceholder', { defaultValue: 'https://your-site.com' })}
-                                            className={cn(BRAND_KIT_FIELD_CLASS, "h-[42px] text-[0.96rem] sm:max-w-[360px]")}
-                                        />
-                                        {onRegenerate && (
-                                            <Button
-                                                variant="outline"
-                                                size="sm"
-                                                className={cn(BRAND_KIT_SECONDARY_BUTTON_CLASS, "w-full sm:w-auto")}
-                                                disabled={!normalizedAnalysisUrl}
-                                                onClick={() => onRegenerate(normalizedAnalysisUrl || rawBrandUrl)}
-                                            >
-                                                {t('board.analyzeUrl', { defaultValue: 'Analyze URL' })}
-                                            </Button>
-                                        )}
-                                    </div>
-                                    <p className="text-[11px] text-muted-foreground/80 mt-1">
-                                        {isManualPlaceholderUrl
-                                            ? t('board.manualUrlHint', { defaultValue: 'Your kit was created manually. Add a valid URL to complete it automatically.' })
-                                            : normalizedAnalysisUrl
-                                                ? t('board.validUrlHint', { defaultValue: 'Valid URL. Click "Analyze URL" to update this kit with website data.' })
-                                                : t('board.emptyUrlHint', { defaultValue: 'If you add a valid URL, you can analyze it to complete this kit faster.' })}
-                                    </p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="flex items-center gap-3 lg:pt-1">
-                        {isSaving ? (
-                            <div className={cn(BRAND_KIT_CALLOUT_CLASS, "flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-muted-foreground animate-pulse")}>
-                                <Loader2 className="w-[1.125rem] h-[1.125rem] mr-2" />
-                                {t('board.saving', { defaultValue: 'Saving...' })}
-                            </div>
-                        ) : hasUnsavedChanges ? (
-                            <div className={cn(BRAND_KIT_CALLOUT_CLASS, "flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-muted-foreground")}>
-                                <IconSave className="w-[1.125rem] h-[1.125rem] mr-2" />
-                                {t('board.pendingChanges', { defaultValue: 'Pending changes' })}
-                            </div>
-                        ) : (
-                            <div className={cn(BRAND_KIT_CALLOUT_CLASS, "flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-muted-foreground")}>
-                                <IconCheck className="w-[1.125rem] h-[1.125rem] mr-2" />
-                                {t('board.synced', { defaultValue: 'Synced' })}
-                            </div>
-                        )}
-                    </div>
-                </div>
-
-                <div className="mt-4 flex flex-wrap items-center justify-between gap-4 border-t border-border/50 pt-4">
-                    <div className="flex flex-wrap items-center gap-2.5">
-                        <input
-                            ref={importFileInputRef}
-                            type="file"
-                            accept="application/json,.json"
-                            className="hidden"
-                            onChange={handleImportKitFile}
-                        />
-
-
-
-                        </div>
-                    </div>
-                </div>
-            )}
             {assistantPriorityMode && !allowAssistantExit ? (
                 <div className={cn(BRAND_KIT_CALLOUT_CLASS, "p-6")}>
                     <p className="text-base font-medium text-foreground mb-1">{t('board.completeAssistantTitle', { defaultValue: 'Complete the guided assistant first' })}</p>
@@ -1072,128 +966,135 @@ export function BrandDNABoard({
                 </div>
             ) : (
                 <>
-                    {/* NEW LAYOUT IMPLEMENTATION */}
+                    {/* LAYOUT: columna derecha sticky (screenshot) + izquierda 2 cols + galería full-width */}
+                    <div className="flex flex-col gap-8">
+                        {/* Cuerpo principal: izquierda (contenido) + derecha (screenshot sticky) */}
+                        <div className="flex gap-8 items-start">
+                            {/* ── Columna izquierda: todo el contenido editable ── */}
+                            <div className="flex-1 min-w-0 space-y-8">
+                                {/* Setup block */}
+                                {!assistantPriorityMode && (
+                                    <div className={cn(BRAND_KIT_PAGE_SHELL_CLASS, "p-4 md:p-5 transition-all duration-200")}>
+                                        <div className="flex items-center gap-4">
+                                            {/* Logo thumbnail */}
+                                            <div className={cn(BRAND_KIT_CALLOUT_CLASS, "h-[12.5rem] w-[12.5rem] shrink-0 flex items-center justify-center text-foreground/60")}>
+                                                {data.logo_url ? (
+                                                    <img src={data.logo_url} className="w-[8.75rem] h-[8.75rem] object-contain" alt="Logo" />
+                                                ) : (
+                                                    <span className="text-6xl font-bold text-foreground/40">{data.brand_name?.[0]?.toUpperCase() || 'M'}</span>
+                                                )}
+                                            </div>
+                                            {/* Kit name + fuente de análisis */}
+                                            <div className="flex-1 min-w-0 space-y-2">
+                                                <div className="flex items-center gap-2">
+                                                    <Input
+                                                        ref={nameInputRef}
+                                                        value={data.brand_name || ''}
+                                                        onChange={(e) => { setData((prev) => ({ ...prev, brand_name: e.target.value })); setHasUnsavedChanges(true); }}
+                                                        className={cn(BRAND_KIT_FIELD_CLASS, "h-[42px] max-w-[280px] font-semibold text-[1rem]")}
+                                                        placeholder={t('board.namePlaceholder', { defaultValue: 'Nombre del kit de marca' })}
+                                                    />
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => { nameInputRef.current?.focus(); nameInputRef.current?.select(); }}
+                                                        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-border/60 bg-background text-muted-foreground transition-all hover:border-primary/30 hover:text-primary"
+                                                        title={t('board.rename', { defaultValue: 'Renombrar' })}
+                                                    >
+                                                        <IconEdit className="h-3.5 w-3.5" />
+                                                    </button>
+                                                </div>
+                                                {/* Fuente del kit — read-only */}
+                                                <div className="flex items-center gap-2 text-[0.82rem] text-muted-foreground/70 pl-1">
+                                                    {isManualOrScratch ? (
+                                                        <>
+                                                            <IconPackage className="h-[18px] w-[18px] shrink-0" />
+                                                            <span>{t('board.sourceManual', { defaultValue: 'Kit creado manualmente' })}</span>
+                                                        </>
+                                                    ) : isInstagramSource ? (
+                                                        <>
+                                                            <IconInstagram className="h-[18px] w-[18px] shrink-0" />
+                                                            <span className="truncate">
+                                                                {(() => {
+                                                                    try {
+                                                                        const path = new URL(rawBrandUrl).pathname.replace(/\//g, '').trim();
+                                                                        return path ? `@${path}` : rawBrandUrl;
+                                                                    } catch { return rawBrandUrl; }
+                                                                })()}
+                                                            </span>
+                                                        </>
+                                                    ) : normalizedAnalysisUrl ? (
+                                                        <>
+                                                            <IconGlobe className="h-[18px] w-[18px] shrink-0" />
+                                                            <span className="truncate">
+                                                                {(() => { try { return new URL(normalizedAnalysisUrl).hostname; } catch { return normalizedAnalysisUrl; } })()}
+                                                            </span>
+                                                        </>
+                                                    ) : null}
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <input ref={importFileInputRef} type="file" accept="application/json,.json" className="hidden" onChange={handleImportKitFile} />
+                                    </div>
+                                )}
 
-                    {/* Main content layout: editable content on the left, visual references on the right */}
-                    {/* REFINED THREE-COLUMN LAYOUT */}
-                    <div className="space-y-8">
-                        {/* ROW 1: Brand Context & Website Reference */}
-                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                            <div className="lg:col-span-2">
+                                {/* Visión y contexto de marca */}
                                 <BrandContextCard
                                     context={data.business_overview || ''}
                                     minHeightClassName="min-h-[160px]"
                                     onUpdate={(val) => updateData(prev => ({
                                         ...prev,
                                         business_overview: val,
-                                        text_assets: prev.text_assets ? { ...prev.text_assets, brand_context: val } : {
-                                            marketing_hooks: [],
-                                            visual_keywords: [],
-                                            ctas: [],
-                                            brand_context: val
-                                        }
+                                        text_assets: prev.text_assets ? { ...prev.text_assets, brand_context: val } : { marketing_hooks: [], visual_keywords: [], ctas: [], brand_context: val }
                                     }))}
                                 />
+
+                                {/* 2 columnas: identidad + sistema visual + narrativa */}
+                                <div className="grid grid-cols-1 md:grid-cols-2 items-start gap-8">
+                                    {/* Columna A */}
+                                    <div className="space-y-8">
+                                        <LogoCard logoUrl={data.logo_url} logos={data.logos} onUpload={handleUploadLogos} onRemove={handleRemoveLogo} onToggle={handleToggleLogoSelection} onReorder={handleReorderLogos} isUploading={isUploading} />
+                                        <TaglineCard tagline={data.tagline || ''} onUpdateTagline={handleUpdateTagline} />
+                                        <LanguageCard preferredLanguage={data.preferred_language} onUpdateLanguage={handleUpdatePreferredLanguage} />
+                                        <TargetAudienceCard audience={data.target_audience} />
+                                        <BrandValuesCard values={data.brand_values || []} onUpdateValue={handleUpdateBrandValue} onAddValue={handleAddBrandValue} onRemoveValue={handleRemoveBrandValue} />
+                                        <ToneOfVoiceCard tone={data.tone_of_voice || []} onUpdateTone={handleUpdateTone} onAddTone={handleAddTone} onRemoveTone={handleRemoveTone} />
+                                    </div>
+                                    {/* Columna B */}
+                                    <div className="space-y-8">
+                                        <ColorPalette colors={data.colors || []} isEdited={JSON.stringify(data.colors) !== JSON.stringify(initialData.colors)} onUpdateColor={handleUpdateColor} onUpdateRole={handleUpdateColorRole} onSwapPositions={handleSwapColorPositions} onRemoveColor={handleRemoveColor} onAddColor={handleAddColor} onReset={handleResetColors} />
+                                        <TypographySection fonts={(data.fonts || []).map(f => typeof f === 'string' ? { family: f } : f)} tagline={data.tagline || ''} onAddFont={handleAddFont} onSelectFontForRole={handleSelectFontForRole} onRemoveFont={handleRemoveFont} onUpdateRole={handleUpdateFontRole} />
+                                        <VisualAestheticCard aesthetic={data.visual_aesthetic || []} onUpdateAesthetic={handleUpdateAesthetic} onAddAesthetic={handleAddAesthetic} onRemoveAesthetic={handleRemoveAesthetic} />
+                                        <ContactSocialCard socialLinks={data.social_links} emails={data.emails} phones={data.phones} addresses={data.addresses} onUpdate={handleUpdateContact} />
+                                    </div>
+                                    {/* Fila full-width: Titulares de marketing */}
+                                    <div className="md:col-span-2 space-y-8">
+                                        <TextAssetsSection data={data.text_assets} onChange={handleTextAssetsChange} onAppendData={handleAppendExtractedData} />
+                                    </div>
+                                </div>
                             </div>
-                            <div className="lg:col-span-1">
-                                <ScreenshotCard 
-                                    screenshotUrl={data.screenshot_url} 
-                                    faviconUrl={data.favicon_url} 
+
+                            {/* ── Columna derecha: screenshot sticky, ocupa todo el carril ── */}
+                            <div className="hidden lg:block w-[360px] xl:w-[420px] shrink-0 sticky top-6">
+                                <ScreenshotCard
+                                    screenshotUrl={data.screenshot_url}
+                                    faviconUrl={data.favicon_url}
                                 />
                             </div>
                         </div>
 
-                        {/* ROW 2: Main Brand Components (3 Columns) */}
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 items-start gap-8">
-                            {/* Column 1: Identity */}
-                            <div className="space-y-8">
-                                <LogoCard
-                                    logoUrl={data.logo_url}
-                                    logos={data.logos}
-                                    onUpload={handleUploadLogos}
-                                    onRemove={handleRemoveLogo}
-                                    onToggle={handleToggleLogoSelection}
-                                    onReorder={handleReorderLogos}
-                                    isUploading={isUploading}
-                                />
-                                <TaglineCard
-                                    tagline={data.tagline || ''}
-                                    onUpdateTagline={handleUpdateTagline}
-                                />
-                                <LanguageCard
-                                    preferredLanguage={data.preferred_language}
-                                    onUpdateLanguage={handleUpdatePreferredLanguage}
-                                />
-                                <TargetAudienceCard audience={data.target_audience} />
-                            </div>
+                        {/* Galería de imágenes — ancho completo */}
+                        <ImageGallery
+                            images={data.images || []}
+                            isUploading={isUploading}
+                            onUpload={handleUploadFiles}
+                            onRemoveImage={handleRemoveImage}
+                            onOpenLightbox={setLightboxImage}
+                        />
 
-                            {/* Column 2: Visual System */}
-                            <div className="space-y-8">
-                                <ColorPalette
-                                    colors={data.colors || []}
-                                    isEdited={JSON.stringify(data.colors) !== JSON.stringify(initialData.colors)}
-                                    onUpdateColor={handleUpdateColor}
-                                    onUpdateRole={handleUpdateColorRole}
-                                    onSwapPositions={handleSwapColorPositions}
-                                    onRemoveColor={handleRemoveColor}
-                                    onAddColor={handleAddColor}
-                                    onReset={handleResetColors}
-                                />
-                                <TypographySection
-                                    fonts={(data.fonts || []).map(f => typeof f === 'string' ? { family: f } : f)}
-                                    tagline={data.tagline || ''}
-                                    onAddFont={handleAddFont}
-                                    onSelectFontForRole={handleSelectFontForRole}
-                                    onRemoveFont={handleRemoveFont}
-                                    onUpdateRole={handleUpdateFontRole}
-                                />
-                                <VisualAestheticCard
-                                    aesthetic={data.visual_aesthetic || []}
-                                    onUpdateAesthetic={handleUpdateAesthetic}
-                                    onAddAesthetic={handleAddAesthetic}
-                                    onRemoveAesthetic={handleRemoveAesthetic}
-                                />
-                            </div>
-
-                            {/* Column 3: Narrative & Contact */}
-                            <div className="space-y-8">
-                                <BrandValuesCard
-                                    values={data.brand_values || []}
-                                    onUpdateValue={handleUpdateBrandValue}
-                                    onAddValue={handleAddBrandValue}
-                                    onRemoveValue={handleRemoveBrandValue}
-                                />
-                                <ContactSocialCard
-                                    socialLinks={data.social_links}
-                                    emails={data.emails}
-                                    phones={data.phones}
-                                    addresses={data.addresses}
-                                    onUpdate={handleUpdateContact}
-                                />
-                                <ToneOfVoiceCard
-                                    tone={data.tone_of_voice || []}
-                                    onUpdateTone={handleUpdateTone}
-                                    onAddTone={handleAddTone}
-                                    onRemoveTone={handleRemoveTone}
-                                />
-                                <TextAssetsSection
-                                    data={data.text_assets}
-                                    onChange={handleTextAssetsChange}
-                                    onAppendData={handleAppendExtractedData}
-                                />
-                            </div>
-                        </div>
-
-                        {/* ROW 3: Secondary Visual Assets (Full Width) */}
-                        <div className="w-full">
-                            <ImageGallery
-                                images={data.images || []}
-                                isUploading={isUploading}
-                                onUpload={handleUploadFiles}
-                                onRemoveImage={handleRemoveImage}
-                                onOpenLightbox={setLightboxImage}
-                            />
-                        </div>
+                        {/* Sesiones de trabajo vinculadas a este kit */}
+                        {data.id && (
+                            <BrandKitSessionsSection brandId={data.id} />
+                        )}
                     </div>
 
                     {canUseDebugAudit && showDebug && <TechnicalAudit trace={data.api_trace} isVisible={showDebug} debugData={data.debug} />}
@@ -1289,7 +1190,8 @@ export function BrandDNABoard({
                 onImport={handleImportKitClick}
                 onExport={handleExportJSON}
                 onDelete={onDeleteCurrent}
-                onOpenAssistant={onOpenAssistant}
+                onNew={onNewBrandKit}
+                onRename={() => { nameInputRef.current?.focus(); nameInputRef.current?.select(); }}
                 isSaving={isSaving}
                 isExporting={isExportingPortable}
                 hasUnsavedChanges={hasUnsavedChanges}

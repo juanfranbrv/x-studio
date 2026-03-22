@@ -29,6 +29,16 @@ export const metadata: Metadata = {
       { rel: "manifest", url: "/site.webmanifest" },
     ],
   },
+  openGraph: {
+    title: `${brand.name} | Crea contenido visual con IA`,
+    description: "Plataforma de generacion de assets de marketing visual con IA que respeta el ADN de tu marca.",
+    images: [{ url: "/opengraph-image.png", width: 1200, height: 1200 }],
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    images: ["/opengraph-image.png"],
+  },
 };
 
 export default function RootLayout({
