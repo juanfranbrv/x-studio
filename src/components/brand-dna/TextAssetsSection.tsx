@@ -1,4 +1,4 @@
-﻿'use client'
+'use client'
 
 import { Loader2 } from '@/components/ui/spinner'
 ;
@@ -28,6 +28,7 @@ import {
     BRAND_KIT_PANEL_HEADER_CLASS,
     BRAND_KIT_PANEL_TITLE_CLASS,
     BRAND_KIT_SECONDARY_BUTTON_CLASS,
+    BRAND_KIT_SECTION_LABEL_CLASS,
     BRAND_KIT_TEXTAREA_CLASS,
 } from './brandKitStyles';
 
@@ -113,9 +114,9 @@ export function TextAssetsSection({ data, onChange, onAppendData }: TextAssetsSe
         title: string;
         tooltipKey: TooltipKey;
     }) => (
-        <div className="flex items-center gap-2">
-            <Icon className="w-4 h-4 text-[var(--accent)]" />
-            <span className="text-xs font-bold uppercase tracking-wider text-[var(--text-secondary)]">{title}</span>
+        <div className="flex items-center gap-2 mb-1.5">
+            <Icon className="w-[1.125rem] h-[1.125rem] text-primary/80" />
+            <span className={BRAND_KIT_SECTION_LABEL_CLASS}>{title}</span>
             <TooltipProvider delayDuration={200}>
                 <Tooltip>
                     <TooltipTrigger asChild>
@@ -168,7 +169,7 @@ export function TextAssetsSection({ data, onChange, onAppendData }: TextAssetsSe
             <CardHeader className={cn(BRAND_KIT_PANEL_HEADER_CLASS, "relative flex-row items-start justify-between pb-4")}>
                 <div>
                     <CardTitle className={BRAND_KIT_PANEL_TITLE_CLASS}>
-                        <IconFileText className="w-5 h-5 text-primary" />
+                        <IconFileText className="w-[1.125rem] h-[1.125rem] text-primary" />
                         {t('textAssets.title', { defaultValue: 'Text assets' })}
                     </CardTitle>
                     <p className={cn(BRAND_KIT_PANEL_DESCRIPTION_CLASS, "mt-1")}>{t('textAssets.description', { defaultValue: 'Textos editables para campañas y generación de contenido' })}</p>

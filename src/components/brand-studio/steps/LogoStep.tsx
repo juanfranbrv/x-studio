@@ -201,7 +201,7 @@ export function LogoStep({ draft, dispatch, userId }: LogoStepProps) {
                   const bgClass =
                     variation.type === 'transparent' || variation.type === 'grayscale'
                       ? 'transparency-grid'
-                      : variation.type === 'mono'
+                      : variation.type === 'mono' || variation.type === 'whiteBg'
                         ? 'bg-white'
                         : 'transparency-grid'
                   return (
@@ -221,31 +221,27 @@ export function LogoStep({ draft, dispatch, userId }: LogoStepProps) {
                     </div>
 
                     {/* Footer */}
-                    <div className="flex items-center justify-between border-t border-border/40 px-3 py-2">
-                      <span className="text-xs font-medium text-muted-foreground">
+                    <div className="flex flex-col gap-1.5 border-t border-border/40 px-3 py-3">
+                      <span className="text-[0.65rem] font-bold uppercase tracking-wider text-muted-foreground/60 mb-0.5">
                         {variation.label}
                       </span>
-                      <div className="flex gap-1">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-7 w-7 rounded-lg text-muted-foreground hover:text-primary"
-                          onClick={() => handleAddVariation(variation)}
-                          disabled={logos.length >= 6}
-                          title={t('logo.addToKit')}
-                        >
-                          <Plus className="h-3.5 w-3.5" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-7 w-7 rounded-lg text-muted-foreground hover:text-primary"
-                          onClick={() => handleDownloadVariation(variation)}
-                          title={t('logo.download')}
-                        >
-                          <Download className="h-3.5 w-3.5" />
-                        </Button>
-                      </div>
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        className="h-8 w-full justify-center rounded-xl px-2 text-[0.7rem] font-semibold"
+                        onClick={() => handleAddVariation(variation)}
+                        disabled={logos.length >= 6}
+                      >
+                        {t('logo.addToKit')}
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-8 w-full justify-center rounded-xl px-2 text-[0.7rem] font-medium"
+                        onClick={() => handleDownloadVariation(variation)}
+                      >
+                        {t('logo.download')}
+                      </Button>
                     </div>
                   </div>
                   )

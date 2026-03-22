@@ -11,8 +11,11 @@
       "logo": "Logo",
       "palette": "Colors",
       "typography": "Typography",
+      "language": "Language",
       "personality": "Personality",
       "voice": "Voice",
+      "brandContext": "Context",
+      "contact": "Contact",
       "brandBoard": "Summary"
     }
   },
@@ -54,17 +57,7 @@
     "placeholder": "Your brand name",
     "descriptionLabel": "What do you do?",
     "descriptionPlaceholder": "Briefly describe your business in 1-2 sentences...",
-    "descriptionHint": "This helps us generate better proposals for your brand",
-    "languageLabel": "Brand language",
-    "languages": {
-      "es": "Spanish",
-      "en": "English",
-      "fr": "French",
-      "de": "German",
-      "pt": "Portuguese",
-      "it": "Italian",
-      "ca": "Catalan"
-    }
+    "descriptionHint": "This helps us generate better proposals for your brand"
   },
   "loading": {
     "title": "Analyzing your brand",
@@ -111,7 +104,7 @@
     "empty": "No logo detected",
     "variationsTitle": "Variations",
     "variationsSubtitle": "Automatically generated versions from your primary logo",
-    "addToKit": "Add to kit",
+    "addToKit": "Add to brand kit",
     "download": "Download"
   },
   "palette": {
@@ -123,11 +116,36 @@
     "subtitle": "Select the font pairing that defines your brand voice",
     "headingLabel": "Headings",
     "bodyLabel": "Body text",
+    "headingCard": {
+      "title": "Heading font",
+      "subtitle": "For headlines, titles, and featured text",
+      "placeholder": "Search heading font...",
+      "current": "Current heading"
+    },
+    "bodyCard": {
+      "title": "Body font",
+      "subtitle": "For body text, descriptions, and general content",
+      "placeholder": "Search body font...",
+      "current": "Current body"
+    },
     "sampleHeading": "Your brand identity",
     "sampleBody": "Good typography makes content easy to read and strengthens your visual identity.",
     "noProposals": "No proposals available",
     "regenerate": "Generate new proposals",
     "orChooseCombo": "or choose a quick combo"
+  },
+  "language": {
+    "title": "What language does your brand speak?",
+    "subtitle": "Text content (taglines, values, context) will be generated in this language",
+    "languages": {
+      "es": "Spanish",
+      "en": "English",
+      "fr": "French",
+      "de": "German",
+      "pt": "Portuguese",
+      "it": "Italian",
+      "ca": "Catalan"
+    }
   },
   "personality": {
     "title": "Define your brand personality",
@@ -152,6 +170,38 @@
     "newOptions": "New options",
     "regenerating": "Generating..."
   },
+  "brandContext": {
+    "title": "Brand vision & context",
+    "subtitle": "Define your brand's strategic narrative. This text will guide content generation",
+    "textareaPlaceholder": "Write or edit your brand context...",
+    "generateBtn": "Generate context",
+    "regenerateBtn": "Generate new options",
+    "generating": "Generating...",
+    "suggestionsLabel": "Suggestions",
+    "useSuggestion": "Use this option"
+  },
+  "contact": {
+    "title": "Channels & contact",
+    "subtitle": "Add your brand's contact information and social media profiles",
+    "emailPlaceholder": "hello@yourbrand.com",
+    "phonePlaceholder": "+1 555 000 0000",
+    "addressPlaceholder": "Physical address",
+    "addEmail": "Add email",
+    "addPhone": "Add phone",
+    "addAddress": "Add address",
+    "socialLabel": "Social media",
+    "addSocial": "Add social network",
+    "socialPlaceholder": "URL or username...",
+    "platforms": {
+      "instagram": "Instagram",
+      "twitter": "X (Twitter)",
+      "linkedin": "LinkedIn",
+      "facebook": "Facebook",
+      "youtube": "YouTube",
+      "tiktok": "TikTok",
+      "pinterest": "Pinterest"
+    }
+  },
   "preview": {
     "title": "Preview",
     "brandName": "Your brand",
@@ -173,14 +223,18 @@
       "colors": "Colors",
       "typography": "Typography",
       "personality": "Personality",
-      "voice": "Voice & tagline"
+      "voice": "Voice & tagline",
+      "brandContext": "Brand context",
+      "contact": "Contact"
     },
     "empty": {
       "logo": "No logo configured",
       "colors": "No color palette",
       "typography": "No typography selected",
       "personality": "No personality defined",
-      "voice": "No tagline defined"
+      "voice": "No tagline defined",
+      "brandContext": "No context defined",
+      "contact": "No contact info"
     },
     "brandContext": {
       "label": "Brand vision & context",

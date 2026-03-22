@@ -13,8 +13,9 @@ import {
     BRAND_KIT_PANEL_CLASS,
     BRAND_KIT_PANEL_DESCRIPTION_CLASS,
     BRAND_KIT_PANEL_HEADER_CLASS,
-    BRAND_KIT_REMOVE_BUTTON_CLASS,
     BRAND_KIT_PANEL_TITLE_CLASS,
+    BRAND_KIT_REMOVE_BUTTON_CLASS,
+    BRAND_KIT_SECTION_LABEL_CLASS,
 } from './brandKitStyles';
 
 import { IconInfo, IconPalette, IconRotate, IconClose, IconColorPicker, IconCheck, IconPlus, IconCopy } from '@/components/ui/icons';
@@ -169,7 +170,7 @@ export function ColorPalette({
                         <CardHeader className={cn(BRAND_KIT_PANEL_HEADER_CLASS, "flex-row items-start justify-between pb-4")}>
                             <div className="space-y-1.5">
                             <CardTitle className={BRAND_KIT_PANEL_TITLE_CLASS}>
-                                <IconPalette className="w-5 h-5 text-primary" />
+                                <IconPalette className="w-[1.125rem] h-[1.125rem] text-primary" />
                                 {t('palette.title', { defaultValue: 'Color palette' })}
                             </CardTitle>
                                 <p className={BRAND_KIT_PANEL_DESCRIPTION_CLASS}>
@@ -247,8 +248,8 @@ export function ColorPalette({
                                                     className={cn(
                                                         "aspect-square rounded-2xl cursor-grab active:cursor-grabbing transition-all duration-300",
                                                         "hover:scale-110 hover:shadow-xl border-2",
-                                                        "relative overflow-visible flex items-center justify-center w-20 h-20",
-                                                        addLeftSpacingForAccents && "ml-2",
+                                                        "relative overflow-visible flex items-center justify-center w-14 h-14",
+                                                        addLeftSpacingForAccents && "ml-1.5",
                                                         colorPickerOpen === idx ? 'border-primary ring-2 ring-primary/20' : 'shadow-[inset_0_1px_0_rgba(255,255,255,0.55)]',
                                                         draggedColorIndex !== null && draggedColorIndex !== idx && 'ring-2 ring-primary/20',
                                                         selectedColorIds.includes(`color-${idx}`)
@@ -296,7 +297,7 @@ export function ColorPalette({
                                                 </div>
 
                                                 <div className="space-y-2">
-                                                    <p className="text-[10px] uppercase font-bold text-muted-foreground/60 px-1">{t('palette.colorRole', { defaultValue: 'Color role' })}</p>
+                                                    <p className={BRAND_KIT_SECTION_LABEL_CLASS}>{t('palette.colorRole', { defaultValue: 'Color role' })}</p>
                                                     <div className="flex gap-1 rounded-xl border border-border/70 bg-[hsl(var(--surface-alt))]/70 p-1">
                                                         {(['Texto', 'Fondo', 'Acento'] as const).map(role => (
                                                             <Button
@@ -340,16 +341,16 @@ export function ColorPalette({
                                     </TooltipContent>
                                 </Tooltip>
                                 <div className={cn("mt-2 text-center", addLeftSpacingForAccents && "ml-2")}>
-                                    <span className="text-xs text-muted-foreground">{t(`palette.roles.${role}`, { defaultValue: role })}</span>
+                                    <span className={BRAND_KIT_SECTION_LABEL_CLASS}>{t(`palette.roles.${role}`, { defaultValue: role })}</span>
                                 </div>
                             </div>
                         )})}
                         {colors.length < maxColors && (
                             <div
                                 onClick={onAddColor}
-                                className="h-20 w-20 cursor-pointer rounded-2xl border-2 border-dashed border-border bg-[hsl(var(--surface-alt))]/55 flex items-center justify-center transition-colors group hover:border-primary/25 hover:bg-[hsl(var(--surface))]"
+                                className="h-14 w-14 cursor-pointer rounded-2xl border-2 border-dashed border-border bg-[hsl(var(--surface-alt))]/55 flex items-center justify-center transition-colors group hover:border-primary/25 hover:bg-[hsl(var(--surface))]"
                             >
-                                <IconPlus className="w-6 h-6 text-muted-foreground group-hover:text-primary transition-colors" />
+                                <IconPlus className="w-5 h-5 text-muted-foreground group-hover:text-primary transition-colors" />
                             </div>
                         )}
                     </div>

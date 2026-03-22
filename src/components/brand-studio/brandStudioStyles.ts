@@ -6,13 +6,13 @@
 // ─── Step Layout ─────────────────────────────────────────────
 
 export const WIZARD_STEP_CONTAINER =
-  'flex min-h-dvh flex-col items-center justify-center px-[clamp(1rem,4vw,3rem)] py-[clamp(4rem,8vh,6rem)]'
+  'flex min-h-dvh flex-col items-center justify-center px-[clamp(1rem,4vw,3rem)] pt-[clamp(4rem,8vh,6rem)] pb-[clamp(12rem,24vh,20rem)]'
 
 export const WIZARD_STEP_CONTENT =
   'w-full max-w-[min(92vw,56rem)] space-y-[clamp(1.5rem,4vh,2.5rem)]'
 
-export const WIZARD_STEP_CONTENT_NARROW =
-  'w-full max-w-[min(88vw,38rem)] space-y-[clamp(1.5rem,4vh,2.5rem)]'
+export const WIZARD_STEP_CONTENT_WIDE =
+  'w-full max-w-[min(96vw,82rem)] space-y-[clamp(1.5rem,4vh,2.5rem)]'
 
 // ─── Typography ──────────────────────────────────────────────
 

@@ -1,4 +1,4 @@
-﻿'use client'
+'use client'
 
 import { Loader2 } from '@/components/ui/spinner'
 ;
@@ -831,16 +831,14 @@ function BrandKitPageContent() {
         }
     };
 
-    // Pantalla de carga inicial
     if (!isLoaded || contextLoading) {
         return (
             <DashboardLayout
                 brands={brandKits}
                 currentBrand={activeBrandKit}
                 onBrandChange={setActiveBrandKit}
-                onBrandDelete={handleBrandDelete}
+                onBrandDelete={deleteBrandKitById}
                 onNewBrandKit={handleNewProfile}
-                headerAfterBrandActions={assistantHeaderAction}
             >
                 <div className="flex items-center justify-center min-h-[60vh]">
                     <div className="text-center animate-in fade-in zoom-in duration-500">
@@ -857,12 +855,13 @@ function BrandKitPageContent() {
             brands={brandKits}
             currentBrand={activeBrandKit}
             onBrandChange={setActiveBrandKit}
-            onBrandDelete={handleBrandDelete}
+            onBrandDelete={deleteBrandKitById}
             onNewBrandKit={handleNewProfile}
-            headerAfterBrandActions={assistantHeaderAction}
+            isFixed={false}
             contentContainerVariant="plain"
+            headerVariant="bar"
         >
-            <main className="p-6 md:p-12 max-w-7xl mx-auto">
+            <main className="w-full max-w-[1400px] mx-auto relative pt-0 sm:pt-4 md:pt-[24px] px-4 sm:px-6 lg:px-10 pb-32">
 
                 {creatingAssistantKit && (
                     <div className="max-w-2xl mx-auto py-20 text-center">
@@ -1296,7 +1295,7 @@ function BrandKitPageContent() {
                 {!loading && activeBrandKit && !showNewKitForm && (
                     <div className="animate-in fade-in slide-in-from-bottom-4 duration-700 space-y-6">
                         {/* Brand Kit Progress */}
-                        <BrandKitProgress brandKit={activeBrandKit} />
+                        <BrandKitProgress brandKit={activeBrandKit} subtle className="mb-8" />
 
                         <BrandDNABoard
                             key={activeBrandKit.id || 'new'}

@@ -1,4 +1,4 @@
-﻿'use client'
+'use client'
 
 import { Loader2 } from '@/components/ui/spinner'
 ;
@@ -8,7 +8,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
-import { IconTextFont, IconSearch, IconPlus, IconClose, IconInfo, IconCheckSimple, IconEdit } from '@/components/ui/icons';
+import { IconTextFont, IconPlus, IconClose, IconEdit } from '@/components/ui/icons';
+import { GoogleFontSelector } from './GoogleFontSelector';
 import { cn } from '@/lib/utils';
 import { useTranslation } from 'react-i18next';
 import {
@@ -90,14 +91,8 @@ export function TypographySection({
   onSelectFontForRole,
 }: TypographySectionProps) {
   const { t } = useTranslation('brandKit');
-  const [fontSearch, setFontSearch] = useState('');
-  const [allFonts, setAllFonts] = useState<string[]>([]);
-  const [loadingFonts, setLoadingFonts] = useState(false);
-  const [hasFetched, setHasFetched] = useState(false);
-  const [visibleCount, setVisibleCount] = useState(24);
   const [guidedRole, setGuidedRole] = useState<'heading' | 'body'>('heading');
   const [editingRole, setEditingRole] = useState<'heading' | 'body' | null>(null);
-  const [autoFeelingMix] = useState<string[]>(buildAutoFeelingMix);
 
   const headingIndex = fonts.findIndex((f) => f.role === 'heading');
   const bodyIndex = fonts.findIndex((f) => f.role === 'body');
@@ -109,47 +104,6 @@ export function TypographySection({
   const showExplorer = !guidedMode || !bothRolesDefined || Boolean(editingRole);
   const currentRoleFamily = roleToChoose === 'heading' ? headingFont?.family : bodyFont?.family;
 
-  const fetchGoogleFonts = async () => {
-    if (hasFetched || loadingFonts) return;
-    const apiKey = process.env.NEXT_PUBLIC_GOOGLE_FONTS_API_KEY;
-    if (!apiKey) return;
-
-    setLoadingFonts(true);
-    try {
-      const res = await fetch(`https://www.googleapis.com/webfonts/v1/webfonts?key=${apiKey}&sort=popularity`);
-      const data = await res.json();
-      const fontNames = data.items?.map((f: { family: string }) => f.family) || [];
-      setAllFonts(fontNames);
-      setHasFetched(true);
-    } catch (error) {
-      console.error('Failed to load Google Fonts:', error);
-    } finally {
-      setLoadingFonts(false);
-    }
-  };
-
-  const canAddFamily = (family: string) => fonts.filter((f) => f.family === family).length < 2;
-
-  const filteredFonts = useMemo(() => {
-    const query = fontSearch.trim().toLowerCase();
-    const base = allFonts.filter((family) => canAddFamily(family));
-    if (query) return base.filter((family) => family.toLowerCase().includes(query));
-
-    const selectedFeelingFamilies = FONT_FEELINGS
-      .filter((item) => autoFeelingMix.includes(item.id))
-      .flatMap((item) => item.families);
-    const feelingSet = new Set(selectedFeelingFamilies.map((family) => family.toLowerCase()));
-    const prioritized = base.filter((family) => feelingSet.has(family.toLowerCase()));
-    const rest = base.filter((family) => !feelingSet.has(family.toLowerCase()));
-    return [...shuffleArray(prioritized), ...shuffleArray(rest)];
-  }, [allFonts, fontSearch, autoFeelingMix, fonts]);
-
-  const visibleFonts = useMemo(() => filteredFonts.slice(0, visibleCount), [filteredFonts, visibleCount]);
-
-  useEffect(() => {
-    setVisibleCount(24);
-  }, [fontSearch]);
-
   useEffect(() => {
     if (!guidedMode) return;
     if (!headingFont) {
@@ -158,11 +112,6 @@ export function TypographySection({
     }
     if (!bodyFont) setGuidedRole('body');
   }, [guidedMode, headingFont, bodyFont]);
-
-  useEffect(() => {
-    if (!guidedMode) return;
-    if (!bothRolesDefined) setEditingRole(null);
-  }, [guidedMode, bothRolesDefined]);
 
   const loadGoogleFont = (fontName: string) => {
     if (!fontName) return;
@@ -180,10 +129,6 @@ export function TypographySection({
     fonts.forEach((f) => loadGoogleFont(f.family));
   }, [fonts]);
 
-  useEffect(() => {
-    visibleFonts.forEach(loadGoogleFont);
-  }, [visibleFonts]);
-
   const handleToggleRole = (index: number) => {
     const currentRole = fonts[index]?.role;
     let nextRole: 'heading' | 'body' | undefined;
@@ -193,108 +138,13 @@ export function TypographySection({
     onUpdateRole(index, nextRole);
   };
 
-  const renderExplorer = () => (
-    <div className={cn(BRAND_KIT_CALLOUT_CLASS, "flex flex-col gap-3 p-4 transition-colors focus-within:border-primary/50")}>
-      {guidedMode && (
-        <div className={cn(BRAND_KIT_CALLOUT_CLASS, "space-y-2 p-3")}>
-          <p className="text-xs font-medium text-foreground">
-            {roleToChoose === 'heading'
-              ? t('typography.chooseHeadings', { defaultValue: 'Choose typography for headings' })
-              : t('typography.chooseBody', { defaultValue: 'Choose typography for paragraphs' })}
-          </p>
-          {editingRole && (
-            <Button type="button" size="sm" variant="ghost" className="h-7 text-xs" onClick={() => setEditingRole(null)}>
-              {t('typography.cancelChange', { defaultValue: 'Cancel change' })}
-            </Button>
-          )}
-        </div>
-      )}
-
-          <div className={cn(BRAND_KIT_CALLOUT_CLASS, "p-3.5")}>
-        <p className="text-xs font-medium text-foreground">{t('typography.exploreTitle', { defaultValue: 'Browse fonts with live preview' })}</p>
-        <p className="text-xs text-muted-foreground mt-1">{t('typography.exploreDescription', { defaultValue: 'You do not need to know font names. Browse examples and pick the one you like.' })}</p>
-      </div>
-
-      <div className="relative">
-        <IconSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-secondary)] w-4 h-4" />
-        <Input
-          placeholder={t('typography.filterPlaceholder', { defaultValue: 'Filter fonts (optional)...' })}
-          className={cn(BRAND_KIT_FIELD_CLASS, "pl-10")}
-          value={fontSearch}
-          onFocus={() => fetchGoogleFonts()}
-          onChange={(e) => setFontSearch(e.target.value)}
-        />
-        {loadingFonts && (
-          <div className="absolute right-3 top-1/2 -translate-y-1/2">
-            <Loader2 className="w-4 h-4 text-[var(--accent)]" />
-          </div>
-        )}
-      </div>
-
-      {visibleFonts.length > 0 && (
-          <ScrollArea className={cn("h-[260px] p-2 shadow-inner", BRAND_KIT_CALLOUT_CLASS)}>
-          <div className="space-y-1">
-            {visibleFonts.map((font) => (
-              <button
-                key={font}
-                type="button"
-                onClick={() => {
-                  if (guidedMode && onSelectFontForRole) {
-                    onSelectFontForRole(font, roleToChoose);
-                    if (editingRole) setEditingRole(null);
-                    else if (roleToChoose === 'heading') setGuidedRole('body');
-                  } else {
-                    onAddFont(font);
-                  }
-                }}
-                className={cn(
-                  'group flex w-full items-center justify-between rounded-[1rem] border p-2 px-3 text-left text-sm transition-all',
-                  guidedMode && currentRoleFamily === font
-                    ? 'bg-primary/10 border-primary/40'
-                    : 'border-transparent hover:border-border/70 hover:bg-[hsl(var(--surface-alt))]/68'
-                )}
-              >
-                <div className="flex flex-col">
-                  <span className="text-xs text-[var(--text-secondary)]">{font}</span>
-                  <span className="text-lg leading-tight" style={{ fontFamily: font }}>
-                    {t('typography.sampleLine', { defaultValue: 'Your brand, your visual style' })}
-                  </span>
-                </div>
-                {guidedMode && currentRoleFamily === font ? (
-                  <IconCheckSimple className="w-4 h-4 text-primary" />
-                ) : (
-                  <IconPlus className="w-4 h-4 opacity-0 group-hover:opacity-100 text-[var(--accent)]" />
-                )}
-              </button>
-            ))}
-            {visibleCount < filteredFonts.length && (
-              <Button type="button" variant="outline" className={cn(BRAND_KIT_OUTLINE_DASHED_BUTTON_CLASS, "mt-1")} onClick={() => setVisibleCount((prev) => prev + 24)}>
-                {t('typography.loadMore', { defaultValue: 'Load more fonts' })}
-              </Button>
-            )}
-          </div>
-        </ScrollArea>
-      )}
-
-      {fontSearch && visibleFonts.length === 0 && !loadingFonts && (
-        <div className="text-center py-4 text-[var(--text-secondary)] text-xs italic">{t('typography.noResults', { defaultValue: 'No fonts found for "{{query}}"', query: fontSearch })}</div>
-      )}
-
-      {!fontSearch && visibleFonts.length > 0 && (
-        <div className="flex items-center gap-2 justify-center py-2 text-[var(--text-secondary)]">
-          <IconInfo className="w-3.5 h-3.5 opacity-50" />
-          <span className="text-[10px]">{t('typography.showingPopular', { defaultValue: 'Showing popular fonts with preview' })}</span>
-        </div>
-      )}
-    </div>
-  );
 
   return (
     <Card className={cn(BRAND_KIT_PANEL_CLASS, "overflow-hidden", hideHeader && "bg-transparent backdrop-blur-0 border-none shadow-none")}>
       {!hideHeader && (
         <CardHeader className={cn(BRAND_KIT_PANEL_HEADER_CLASS, "pb-4")}>
           <CardTitle className={BRAND_KIT_PANEL_TITLE_CLASS}>
-            <IconTextFont className="w-5 h-5 text-primary" />
+            <IconTextFont className="w-[1.125rem] h-[1.125rem] text-primary" />
             {t('typography.title', { defaultValue: 'Typography' })}
           </CardTitle>
           <p className={BRAND_KIT_PANEL_DESCRIPTION_CLASS}>
@@ -351,7 +201,7 @@ export function TypographySection({
                         const targetRole = fontObj.role as 'heading' | 'body';
                         setEditingRole(targetRole);
                         setGuidedRole(targetRole);
-                        void fetchGoogleFonts();
+                        void (async () => {})(); // Removed unused fetchGoogleFonts
                       }}
                     >
                       <IconEdit className="w-3.5 h-3.5 mr-1" />
@@ -387,11 +237,41 @@ export function TypographySection({
                   </span>
                 </div>
               </div>
-              {guidedMode && editingRole && fontObj.role === editingRole && renderExplorer()}
+              {guidedMode && editingRole && fontObj.role === editingRole && (
+                <GoogleFontSelector
+                  selectedFamily={currentRoleFamily}
+                  role={roleToChoose}
+                  tagline={tagline}
+                  onSelect={(font) => {
+                    if (onSelectFontForRole) {
+                      onSelectFontForRole(font, roleToChoose);
+                      if (editingRole) setEditingRole(null);
+                      else if (roleToChoose === 'heading') setGuidedRole('body');
+                    }
+                  }}
+                  variant="brand-kit"
+                />
+              )}
             </div>
           ))}
 
-          {fonts.length < 5 && showExplorer && !(guidedMode && editingRole) && renderExplorer()}
+          {fonts.length < 5 && showExplorer && !(guidedMode && editingRole) && (
+            <GoogleFontSelector
+              selectedFamily={currentRoleFamily}
+              role={roleToChoose}
+              tagline={tagline}
+              onSelect={(font) => {
+                if (guidedMode && onSelectFontForRole) {
+                  onSelectFontForRole(font, roleToChoose);
+                  if (editingRole) setEditingRole(null);
+                  else if (roleToChoose === 'heading') setGuidedRole('body');
+                } else {
+                  onAddFont(font);
+                }
+              }}
+              variant="brand-kit"
+            />
+          )}
         </div>
       </CardContent>
     </Card>

@@ -1,9 +1,12 @@
 'use client'
 
-import { useCallback, useEffect, useRef } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useTranslation } from 'react-i18next'
 import { AnimatePresence, motion } from 'framer-motion'
+import { useMutation } from 'convex/react'
+import { api } from '@/../convex/_generated/api'
+import { useToast } from '@/hooks/use-toast'
 import { useWizardState, type WizardStep } from './hooks/useWizardState'
 import { StudioProgress } from './StudioProgress'
 import { StudioNav } from './StudioNav'
@@ -13,14 +16,24 @@ import { LoadingStep } from './steps/LoadingStep'
 import { LogoStep } from './steps/LogoStep'
 import { PaletteStep } from './steps/PaletteStep'
 import { TypographyStep } from './steps/TypographyStep'
+import { LanguageStep } from './steps/LanguageStep'
 import { PersonalityStep } from './steps/PersonalityStep'
+import { useUser } from '@clerk/nextjs'
 import { VoiceStep } from './steps/VoiceStep'
+import { BrandContextStep } from './steps/BrandContextStep'
+import { ContactStep } from './steps/ContactStep'
+import { ImagesStep } from './steps/ImagesStep'
 import { BrandBoardStep } from './steps/BrandBoardStep'
 import { BrandPreviewCard } from './BrandPreviewCard'
 import { analyzeBrandDNA } from '@/app/actions/analyze-brand-dna'
 import { analyzeBrandInstagram } from '@/app/actions/analyze-brand-instagram'
 import { generateBrandFromScratch } from '@/app/actions/generate-brand-from-scratch'
 import { generateBrandProposals } from '@/app/actions/generate-brand-proposals'
+import {
+  WIZARD_STEP_CONTENT,
+  WIZARD_STEP_CONTENT_WIDE,
+  WIZARD_TITLE,
+} from './brandStudioStyles'
 
 const slideVariants = {
   enter: (direction: number) => ({
@@ -42,8 +55,10 @@ interface BrandStudioProps {
 }
 
 export function BrandStudio({ userId }: BrandStudioProps) {
+  const { user } = useUser()
   const router = useRouter()
-  const { i18n } = useTranslation()
+  const { i18n, t } = useTranslation('brandStudio')
+  const { toast } = useToast()
   const {
     state,
     dispatch,
@@ -59,6 +74,7 @@ export function BrandStudio({ userId }: BrandStudioProps) {
 
   const abortRef = useRef<AbortController | null>(null)
   const analysisStartedRef = useRef(false)
+  const upsertDNA = useMutation(api.brands.upsertBrandDNA)
 
   // Reset ref guard when leaving loading step
   useEffect(() => {
@@ -81,7 +97,7 @@ export function BrandStudio({ userId }: BrandStudioProps) {
     const controller = new AbortController()
     abortRef.current = controller
 
-    const preferredLang = i18n.language?.split('-')[0] || 'es'
+    const preferredLang = state.brandLanguage || i18n.language?.split('-')[0] || 'es'
 
     const runAnalysis = async () => {
       try {
@@ -213,13 +229,70 @@ export function BrandStudio({ userId }: BrandStudioProps) {
     router.push('/brand-kit')
   }, [router])
 
-  const handleSave = useCallback(() => {
-    // TODO: save draft to Convex and redirect
-    router.push('/brand-kit')
-  }, [router])
+  const [isSaving, setIsSaving] = useState(false)
+
+  const handleSave = useCallback(async () => {
+    if (isSaving) return
+    setIsSaving(true)
+
+    try {
+      const url = state.sourceType === 'scratch' ? `scratch-${Date.now()}` : (state.webUrl || state.draft.url || 'pending')
+      
+      const id = await upsertDNA({
+        url,
+        clerk_user_id: user?.id || 'anonymous',
+        updated_at: new Date().toISOString(),
+        brand_name: state.draft.brand_name || 'My Brand',
+        tagline: state.draft.tagline || '',
+        business_overview: state.draft.business_overview || '',
+        brand_values: state.draft.brand_values || [],
+        tone_of_voice: state.draft.tone_of_voice || [],
+        visual_aesthetic: state.draft.visual_aesthetic || [],
+        colors: state.draft.colors || [],
+        fonts: state.draft.fonts || [],
+        text_assets: state.draft.text_assets || {
+          brand_context: '',
+          marketing_hooks: [],
+          visual_keywords: [],
+          ctas: [],
+          slogans: [],
+          headlines: [],
+        },
+        logo_url: state.draft.logo_url || '',
+        logos: state.draft.logos || [],
+        favicon_url: state.draft.favicon_url || '',
+        screenshot_url: state.draft.screenshot_url || '',
+        images: state.draft.images || [],
+        target_audience: state.draft.target_audience || [],
+        social_links: state.draft.social_links || [],
+        emails: state.draft.emails || [],
+        phones: state.draft.phones || [],
+        addresses: state.draft.addresses || [],
+        preferred_language: state.draft.preferred_language || 'es',
+        debug: state.draft.debug || {},
+      })
+
+      if (id) {
+        toast({
+          title: t('common.success') || '¡Éxito!',
+          description: t('brandBoard.saveSuccess') || 'Marca creada correctamente.',
+        })
+        router.push(`/brand-kit?id=${id}`)
+      }
+    } catch (err) {
+      console.error('Error saving brand DNA:', err)
+      toast({
+        variant: 'destructive',
+        title: t('common.error') || 'Error',
+        description: t('brandBoard.saveError') || 'No se pudo crear el kit de marca.',
+      })
+    } finally {
+      setIsSaving(false)
+    }
+  }, [state, upsertDNA, router, t, toast, isSaving])
 
   const handleRegenerateProposals = useCallback(() => {
-    const preferredLang = i18n.language?.split('-')[0] || 'es'
+    const preferredLang = state.brandLanguage || i18n.language?.split('-')[0] || 'es'
     dispatch({ type: 'SET_PROPOSALS_STATUS', status: 'running' })
     const existingColors = state.draft.colors?.map((c) => c.color).filter(Boolean)
     generateBrandProposals({
@@ -234,7 +307,7 @@ export function BrandStudio({ userId }: BrandStudioProps) {
       .catch(() => {
         dispatch({ type: 'SET_PROPOSALS_STATUS', status: 'error' })
       })
-  }, [state.draft, i18n.language, dispatch])
+  }, [state.draft, state.brandLanguage, i18n.language, dispatch])
 
   const isNextDisabled = (() => {
     switch (state.currentStep) {
@@ -251,6 +324,8 @@ export function BrandStudio({ userId }: BrandStudioProps) {
         return !state.draft.colors || state.draft.colors.length === 0
       case 'typography':
         return !state.draft.fonts || state.draft.fonts.length < 2
+      case 'language':
+        return !state.brandLanguage
       case 'personality':
         return (
           (!state.draft.visual_aesthetic || state.draft.visual_aesthetic.length === 0) &&
@@ -259,6 +334,10 @@ export function BrandStudio({ userId }: BrandStudioProps) {
         )
       case 'voice':
         return !state.draft.tagline || state.draft.tagline.length === 0
+      case 'brandContext':
+        return false // optional step
+      case 'contact':
+        return false // optional step
       default:
         return false
     }
@@ -311,6 +390,14 @@ export function BrandStudio({ userId }: BrandStudioProps) {
             proposals={state.proposals}
             dispatch={dispatch}
             onRegenerate={handleRegenerateProposals}
+            isRegenerating={state.proposalsStatus === 'running'}
+          />
+        )
+      case 'language':
+        return (
+          <LanguageStep
+            brandLanguage={state.brandLanguage}
+            dispatch={dispatch}
           />
         )
       case 'personality':
@@ -333,15 +420,40 @@ export function BrandStudio({ userId }: BrandStudioProps) {
             isRegenerating={state.proposalsStatus === 'running'}
           />
         )
+      case 'brandContext':
+        return (
+          <BrandContextStep
+            draft={state.draft}
+            dispatch={dispatch}
+          />
+        )
+      case 'contact':
+        return (
+          <ContactStep
+            draft={state.draft}
+            dispatch={dispatch}
+          />
+        )
+      case 'images':
+        return (
+          <ImagesStep
+            draft={state.draft}
+            dispatch={dispatch}
+          />
+        )
       case 'brandBoard':
         return (
-          <BrandBoardStep
-            draft={state.draft}
-            proposals={state.proposals}
-            dispatch={dispatch}
-            onSave={handleSave}
-            onEditStep={goToStep}
-          />
+          <div className="flex min-h-dvh flex-col items-center justify-center px-[clamp(1rem,4vw,3rem)] pt-[clamp(4rem,8vh,6rem)] pb-[clamp(12rem,24vh,20rem)]">
+            <div className={WIZARD_STEP_CONTENT_WIDE}>
+              <BrandBoardStep
+                draft={state.draft}
+                proposals={state.proposals}
+                dispatch={dispatch}
+                onSave={handleSave}
+                onEditStep={goToStep}
+              />
+            </div>
+          </div>
         )
       default:
         return (
@@ -354,8 +466,11 @@ export function BrandStudio({ userId }: BrandStudioProps) {
     }
   }
 
-  const showNav = state.currentStep !== 'brandBoard' && state.currentStep !== 'loading'
-  const showSidebar = ['logo', 'palette', 'typography', 'personality', 'voice'].includes(state.currentStep)
+  const showNav = state.currentStep !== 'loading'
+  const showSidebar = [
+    'logo', 'palette', 'typography', 'language',
+    'personality', 'voice', 'brandContext', 'contact', 'images',
+  ].includes(state.currentStep)
 
   return (
     <div className="relative min-h-dvh bg-background overflow-hidden">
@@ -414,11 +529,13 @@ export function BrandStudio({ userId }: BrandStudioProps) {
       {showNav && (
         <StudioNav
           canGoBack={canGoBack}
-          canGoNext={canGoNext}
+          canGoNext={canGoNext || state.currentStep === 'brandBoard'}
           onBack={goBack}
-          onNext={goNext}
+          onNext={state.currentStep === 'brandBoard' ? handleSave : goNext}
           onExit={handleExit}
-          nextDisabled={isNextDisabled}
+          nextDisabled={isNextDisabled || (state.currentStep === 'brandBoard' && isSaving)}
+          nextLabel={state.currentStep === 'brandBoard' ? (t('brandBoard.save') || 'Guardar y empezar a crear') : undefined}
+          showSidebar={showSidebar}
         />
       )}
     </div>

@@ -5,6 +5,8 @@ export interface TextAssets {
     visual_keywords: string[];      // Keywords para generación de imágenes
     ctas: string[];                 // Textos de botones
     brand_context: string;          // Información de contexto
+    slogans?: string[];              // Slogans sugeridos
+    headlines?: string[];            // Titulares de marketing
 }
 
 export interface BrandDNA {

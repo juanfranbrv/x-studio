@@ -72,7 +72,9 @@ export function BrandPreviewCard({ draft, className }: BrandPreviewCardProps) {
   const brandName = draft.brand_name
   const tagline = draft.tagline
   const firstCta = draft.text_assets?.ctas?.[0]
-  const logoUrl = draft.logo_url
+  // Prefer web favicon → logo → letter initial
+  const webIcon = (draft as Record<string, unknown>).web_icon as string | undefined
+  const logoUrl = webIcon || draft.logo_url
   const avatarLetter = brandName?.[0]?.toUpperCase()
 
   // ── Render ──────────────────────────────────────────────────
@@ -149,16 +151,16 @@ export function BrandPreviewCard({ draft, className }: BrandPreviewCardProps) {
           backgroundColor: postBg,
         }}
       >
-        {/* Logo — top left, exaggerated for visibility */}
+        {/* Logo — centered and prominent */}
         <AnimatePresence>
           {logoUrl && (
             <motion.img
               key={logoUrl}
               src={logoUrl}
               alt=""
-              className="absolute top-3 left-3 h-16 w-16 rounded-lg object-contain"
+              className="h-32 w-32 rounded-lg object-contain z-10"
               initial={{ opacity: 0, scale: 0.5 }}
-              animate={{ opacity: 0.85, scale: 1 }}
+              animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.5 }}
               transition={{ duration: 0.35, ease: 'easeOut' }}
             />

@@ -44,7 +44,7 @@ export function OnboardingModal({ isOpen, onClose, onComplete }: OnboardingModal
     const handleCreateBrandKit = () => {
         onComplete?.()
         onClose()
-        router.push('/brand-kit')
+        router.push('/brand-kit/new')
     }
 
     const handleSkip = () => {

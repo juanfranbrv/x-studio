@@ -24,7 +24,7 @@ export function TargetAudienceCard({ audience = [] }: TargetAudienceCardProps) {
         <Card className={cn(BRAND_KIT_PANEL_CLASS, "overflow-hidden")}>
             <CardHeader className={cn(BRAND_KIT_PANEL_HEADER_CLASS, "pb-4")}>
                 <CardTitle className={BRAND_KIT_PANEL_TITLE_CLASS}>
-                    <IconTarget className="h-5 w-5 text-primary" />
+                    <IconTarget className="h-[1.125rem] w-[1.125rem] text-primary" />
                     {t('audience.title', { defaultValue: 'Target audience' })}
                 </CardTitle>
                 <p className={BRAND_KIT_PANEL_DESCRIPTION_CLASS}>

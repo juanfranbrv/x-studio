@@ -3,9 +3,10 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { AnimatePresence, motion } from 'framer-motion'
-import { Check, RotateCcw } from 'lucide-react'
+import { Check, RotateCcw, Plus, X } from 'lucide-react'
 import { Loader2 } from '@/components/ui/spinner'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import type { BrandDNA } from '@/lib/brand-types'
 import type { BrandProposals } from '@/app/actions/generate-brand-proposals'
 import type { WizardAction } from '../hooks/useWizardState'
@@ -54,6 +55,12 @@ export function VoiceStep({ draft, proposals, dispatch, onRegenerate, isRegenera
     return new Set(draft.text_assets?.marketing_hooks ?? [])
   })
 
+  const [customInputs, setCustomInputs] = useState<Record<Section, string>>({
+    taglines: '',
+    ctas: '',
+    hooks: '',
+  })
+
   // Re-init when proposals arrive
   useEffect(() => {
     if (!voice) return
@@ -93,14 +100,39 @@ export function VoiceStep({ draft, proposals, dispatch, onRegenerate, isRegenera
     })
   }
 
-  // Build ordered items: selected first, then up to MAX_SELECTED unselected
+  const addCustomItem = (section: Section, setter: React.Dispatch<React.SetStateAction<Set<string>>>) => {
+    const value = customInputs[section].trim()
+    if (!value) return
+    
+    setter((prev) => {
+      const next = new Set(prev)
+      if (!next.has(value) && next.size < MAX_SELECTED) {
+        next.add(value)
+      }
+      return next
+    })
+    
+    setCustomInputs(prev => ({ ...prev, [section]: '' }))
+  }
+
+  const removeItem = (setter: React.Dispatch<React.SetStateAction<Set<string>>>, item: string) => {
+    setter((prev) => {
+      const next = new Set(prev)
+      next.delete(item)
+      return next
+    })
+  }
+
+  // Build ordered items: always returns exactly MAX_SELECTED items.
+  // Selected first, then fill remaining slots with unselected proposals.
   const getOrderedItems = (allProposals: string[], selected: Set<string>) => {
     const selectedItems = Array.from(selected)
-    const unselected = allProposals.filter((item) => !selected.has(item)).slice(0, MAX_SELECTED)
+    const freeSlots = MAX_SELECTED - selectedItems.length
+    const unselected = allProposals.filter((item) => !selected.has(item)).slice(0, freeSlots)
     return [
       ...selectedItems.map((item) => ({ item, isSelected: true })),
       ...unselected.map((item) => ({ item, isSelected: false })),
-    ]
+    ].slice(0, MAX_SELECTED)
   }
 
   const handleRegenerateSection = useCallback(
@@ -122,7 +154,7 @@ export function VoiceStep({ draft, proposals, dispatch, onRegenerate, isRegenera
             {onRegenerate && (
               <Button variant="outline" onClick={onRegenerate} disabled={isRegenerating}>
                 {isRegenerating ? (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  <Loader2 className="mr-2 h-4 w-4" />
                 ) : (
                   <RotateCcw className="mr-2 h-4 w-4" />
                 )}
@@ -161,7 +193,7 @@ export function VoiceStep({ draft, proposals, dispatch, onRegenerate, isRegenera
           className="h-7 gap-1.5 rounded-lg px-2.5 text-xs text-muted-foreground hover:text-foreground"
         >
           {isRegenerating && regeneratingSection === section ? (
-            <Loader2 className="h-3 w-3 animate-spin" />
+            <Loader2 className="h-3 w-3" />
           ) : (
             <RotateCcw className="h-3 w-3" />
           )}
@@ -203,17 +235,16 @@ export function VoiceStep({ draft, proposals, dispatch, onRegenerate, isRegenera
           <div className="grid gap-3">
             <AnimatePresence mode="popLayout">
               {taglineItems.map(({ item, isSelected }, i) => (
-                <motion.button
+                <motion.div
                   key={item}
                   layout
                   initial={{ opacity: 0, y: 15 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, scale: 0.95 }}
                   transition={{ delay: 0.05 * i, duration: 0.3 }}
-                  onClick={() => toggleItem(setSelectedTaglines, item)}
-                  className={isSelected ? WIZARD_CARD_ACTIVE : WIZARD_CARD}
+                  className={isSelected ? `${WIZARD_CARD_ACTIVE} group relative pr-12` : `${WIZARD_CARD} group relative pr-12`}
                 >
-                  <div className="flex items-center gap-4">
+                  <div className="flex flex-1 items-center gap-4 cursor-pointer py-4 pl-4" onClick={() => toggleItem(setSelectedTaglines, item)}>
                     <div
                       className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-md border transition-all duration-200 ${
                         isSelected
@@ -225,8 +256,41 @@ export function VoiceStep({ draft, proposals, dispatch, onRegenerate, isRegenera
                     </div>
                     <p className="text-lg font-semibold leading-snug xl:text-xl 2xl:text-2xl">{item}</p>
                   </div>
-                </motion.button>
+                  {isSelected && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        removeItem(setSelectedTaglines, item)
+                      }}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 h-8 w-8 text-muted-foreground/40 hover:text-destructive"
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  )}
+                </motion.div>
               ))}
+              {selectedTaglines.size < MAX_SELECTED && (
+                <motion.div layout className="flex gap-2">
+                  <Input
+                    value={customInputs.taglines}
+                    onChange={(e) => setCustomInputs(prev => ({ ...prev, taglines: e.target.value }))}
+                    placeholder={t('voice.placeholder')}
+                    className="h-14 rounded-2xl border-dashed bg-transparent px-6 text-lg focus-visible:ring-primary/30"
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') addCustomItem('taglines', setSelectedTaglines)
+                    }}
+                  />
+                  <Button
+                    variant="outline"
+                    className="h-14 w-14 rounded-2xl border-dashed hover:bg-primary/10 hover:text-primary"
+                    onClick={() => addCustomItem('taglines', setSelectedTaglines)}
+                  >
+                    <Plus className="h-6 w-6" />
+                  </Button>
+                </motion.div>
+              )}
             </AnimatePresence>
           </div>
         </motion.div>
@@ -256,11 +320,43 @@ export function VoiceStep({ draft, proposals, dispatch, onRegenerate, isRegenera
                   transition={{ delay: 0.03 * i, duration: 0.25 }}
                   whileTap={{ scale: 0.96 }}
                   onClick={() => toggleItem(setSelectedCtas, item)}
-                  className={isSelected ? WIZARD_CHIP_ACTIVE : WIZARD_CHIP}
+                  className={`${isSelected ? WIZARD_CHIP_ACTIVE : WIZARD_CHIP} group relative pr-7`}
                 >
                   {item}
+                  {isSelected && (
+                    <span 
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        removeItem(setSelectedCtas, item)
+                      }}
+                      className="absolute right-1 top-1/2 -translate-y-1/2 p-1 text-primary-foreground/40 hover:text-primary-foreground"
+                    >
+                      <X className="h-3 w-3" />
+                    </span>
+                  )}
                 </motion.button>
               ))}
+              {selectedCtas.size < MAX_SELECTED && (
+                <div className="flex items-center gap-2">
+                  <Input
+                    value={customInputs.ctas}
+                    onChange={(e) => setCustomInputs(prev => ({ ...prev, ctas: e.target.value }))}
+                    placeholder={t('voice.addCustom')}
+                    className="h-9 w-[180px] rounded-full border-dashed bg-transparent px-4 text-sm focus-visible:ring-primary/30"
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') addCustomItem('ctas', setSelectedCtas)
+                    }}
+                  />
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => addCustomItem('ctas', setSelectedCtas)}
+                    className="h-8 w-8 rounded-full hover:bg-primary/10 hover:text-primary"
+                  >
+                    <Plus className="h-4 w-4" />
+                  </Button>
+                </div>
+              )}
             </AnimatePresence>
           </div>
         </motion.div>
@@ -290,11 +386,43 @@ export function VoiceStep({ draft, proposals, dispatch, onRegenerate, isRegenera
                   transition={{ delay: 0.03 * i, duration: 0.25 }}
                   whileTap={{ scale: 0.96 }}
                   onClick={() => toggleItem(setSelectedHooks, item)}
-                  className={isSelected ? WIZARD_CHIP_ACTIVE : WIZARD_CHIP}
+                  className={`${isSelected ? WIZARD_CHIP_ACTIVE : WIZARD_CHIP} group relative pr-7`}
                 >
                   {item}
+                  {isSelected && (
+                    <span 
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        removeItem(setSelectedHooks, item)
+                      }}
+                      className="absolute right-1 top-1/2 -translate-y-1/2 p-1 text-primary-foreground/40 hover:text-primary-foreground"
+                    >
+                      <X className="h-3 w-3" />
+                    </span>
+                  )}
                 </motion.button>
               ))}
+              {selectedHooks.size < MAX_SELECTED && (
+                <div className="flex items-center gap-2">
+                  <Input
+                    value={customInputs.hooks}
+                    onChange={(e) => setCustomInputs(prev => ({ ...prev, hooks: e.target.value }))}
+                    placeholder={t('voice.addCustom')}
+                    className="h-9 w-[180px] rounded-full border-dashed bg-transparent px-4 text-sm focus-visible:ring-primary/30"
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') addCustomItem('hooks', setSelectedHooks)
+                    }}
+                  />
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => addCustomItem('hooks', setSelectedHooks)}
+                    className="h-8 w-8 rounded-full hover:bg-primary/10 hover:text-primary"
+                  >
+                    <Plus className="h-4 w-4" />
+                  </Button>
+                </div>
+              )}
             </AnimatePresence>
           </div>
         </motion.div>

@@ -1,12 +1,12 @@
 'use client'
 
-import { useRef } from 'react'
+import { useState, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Upload, ImagePlus, ArrowRight } from 'lucide-react'
+import { Upload, ImagePlus, Loader2 } from 'lucide-react'
 import { IconGlobe, IconInstagram, IconSparkles } from '@/components/ui/icons'
 import { Input } from '@/components/ui/input'
-import { Button } from '@/components/ui/button'
+import { uploadBrandImage } from '@/app/actions/upload-image'
 import { cn } from '@/lib/utils'
 import type { SourceType, WizardAction } from '../hooks/useWizardState'
 import {
@@ -17,7 +17,6 @@ import {
   WIZARD_CARD,
   WIZARD_CARD_ACTIVE,
   WIZARD_INPUT,
-  WIZARD_CTA_BUTTON,
   WIZARD_DIVIDER_WITH_TEXT,
   WIZARD_UPLOAD_ZONE,
   WIZARD_GHOST_BUTTON,
@@ -81,6 +80,10 @@ export function SourceStep({
 }: SourceStepProps) {
   const { t } = useTranslation('brandStudio')
   const fileInputRef = useRef<HTMLInputElement>(null)
+  
+  const [isUploading, setIsUploading] = useState(false)
+  const [isDragging, setIsDragging] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   const webActive =
     sourceType === 'web' || sourceType === 'both'
@@ -132,14 +135,57 @@ export function SourceStep({
     }
   }
 
-  const handleFileClick = () => {
-    fileInputRef.current?.click()
+  const handleUpload = async (files: FileList | File[]) => {
+    if (files.length === 0) return
+    setIsUploading(true)
+    setError(null)
+
+    const newUploadedImages: string[] = []
+    let hasError = false
+
+    try {
+      for (const file of Array.from(files)) {
+        const formData = new FormData()
+        formData.append('file', file)
+        formData.append('assetKind', 'image')
+        
+        const result = await uploadBrandImage(formData)
+        if (result.success && result.url) {
+          newUploadedImages.push(result.url)
+        } else {
+          setError(result.error || t('images.uploadError'))
+          hasError = true
+          break
+        }
+      }
+
+      if (newUploadedImages.length > 0) {
+        dispatch({ type: 'ADD_UPLOADED_IMAGES', urls: newUploadedImages })
+      }
+    } catch (err) {
+      setError(t('images.uploadError'))
+    } finally {
+      setIsUploading(false)
+    }
   }
 
-  // TODO: implement actual upload logic
-  const handleFileChange = (_e: React.ChangeEvent<HTMLInputElement>) => {
-    // const files = Array.from(e.target.files ?? [])
-    // upload files, get URLs, then dispatch ADD_UPLOADED_IMAGES
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) handleUpload(e.target.files)
+  }
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault()
+    setIsDragging(true)
+  }
+
+  const handleDragLeave = () => {
+    setIsDragging(false)
+  }
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault()
+    setIsDragging(false)
+    if (e.dataTransfer.files) handleUpload(e.dataTransfer.files)
   }
 
   return (
@@ -340,27 +386,6 @@ export function SourceStep({
           </div>
         </motion.button>
 
-        {/* ── Inline CTA ─────────────────────────────────── */}
-        <AnimatePresence>
-          {canProceed && (
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 10 }}
-              transition={{ duration: 0.3 }}
-              className="flex justify-center pt-2"
-            >
-              <Button
-                onClick={handleSubmit}
-                className={`${WIZARD_CTA_BUTTON} gap-2`}
-              >
-                <span>{t('nav.next')}</span>
-                <ArrowRight className="h-4 w-4" />
-              </Button>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
         {/* ── Upload Section (subtle) ──────────────────────── */}
         <motion.div
           initial={{ opacity: 0 }}
@@ -375,17 +400,39 @@ export function SourceStep({
             {t('source.upload.subtitle')}
           </p>
 
-          <button
-            type="button"
-            onClick={handleFileClick}
-            className={`${WIZARD_UPLOAD_ZONE} mx-auto flex w-full max-w-sm cursor-pointer flex-col items-center gap-2 py-5`}
+          <div
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+            onDrop={handleDrop}
+            onClick={() => fileInputRef.current?.click()}
+            className={`${WIZARD_UPLOAD_ZONE} mx-auto flex min-h-[140px] w-full max-w-sm cursor-pointer flex-col items-center justify-center gap-2 py-5 transition-all ${
+              isDragging ? 'border-primary bg-primary/5 ring-4 ring-primary/10' : ''
+            }`}
           >
-            <ImagePlus className="h-5 w-5 text-muted-foreground/50" />
-            <span className={`${WIZARD_GHOST_BUTTON} inline-flex items-center gap-1.5`}>
-              <Upload className="h-3.5 w-3.5" />
-              {t('source.upload.button')}
-            </span>
-          </button>
+            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-primary">
+              {isUploading ? (
+                <Loader2 className="h-6 w-6 animate-spin" />
+              ) : (
+                <ImagePlus className="h-6 w-6" />
+              )}
+            </div>
+            
+            <div className="text-center">
+              <span className={`${WIZARD_GHOST_BUTTON} inline-flex items-center gap-1.5`}>
+                <Upload className="h-3.5 w-3.5" />
+                {isUploading ? t('images.uploading') : t('source.upload.button')}
+              </span>
+              {!isUploading && (
+                <p className="mt-1 text-[0.7rem] text-muted-foreground/40">
+                  {t('images.uploadZone')}
+                </p>
+              )}
+            </div>
+
+            {error && (
+              <p className="mt-2 text-[0.7rem] font-medium text-destructive">{error}</p>
+            )}
+          </div>
 
           {/* Uploaded images preview */}
           {uploadedImages.length > 0 && (

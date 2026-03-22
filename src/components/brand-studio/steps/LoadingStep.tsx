@@ -3,7 +3,8 @@
 import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { motion, AnimatePresence } from 'framer-motion'
-import { AlertCircle, ArrowRight, RotateCcw, Square } from 'lucide-react'
+import { AlertCircle, ArrowRight, RotateCcw } from 'lucide-react'
+import { IconHold } from '@/components/ui/icons'
 import { Button } from '@/components/ui/button'
 import type { SourceType, AnalysisStatus } from '../hooks/useWizardState'
 import {
@@ -544,7 +545,7 @@ export function LoadingStep({
             </motion.div>
           ) : (
             <Button variant="ghost" size="sm" onClick={onCancel} className={WIZARD_GHOST_BUTTON}>
-              <Square className="mr-2 h-3 w-3" />
+              <IconHold className="mr-2 h-5 w-5 text-current" />
               {t('loading.stop')}
             </Button>
           )}

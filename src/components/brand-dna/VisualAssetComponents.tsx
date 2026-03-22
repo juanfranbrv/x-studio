@@ -1,4 +1,4 @@
-﻿'use client'
+'use client'
 
 import { Loader2 } from '@/components/ui/spinner'
 ;
@@ -75,7 +75,7 @@ export function LogoCard({ logoUrl, logos = [], onUpload, onRemove, onToggle, on
             <CardHeader className={cn(BRAND_KIT_PANEL_HEADER_CLASS, "pb-4")}>
                 <CardTitle className={cn(BRAND_KIT_PANEL_TITLE_CLASS, "justify-between")}>
                     <div className="flex items-center gap-2">
-                        <IconBuilding className="w-5 h-5 text-primary" />
+                        <IconBuilding className="text-primary" />
                         {t('visualAssets.logoTitle', { defaultValue: 'Brand logo' })}
                     </div>
                     <span className="text-sm font-medium text-muted-foreground">
@@ -91,12 +91,19 @@ export function LogoCard({ logoUrl, logos = [], onUpload, onRemove, onToggle, on
                     <div
                         className={cn(
                             BRAND_KIT_UPLOAD_SURFACE_CLASS,
-                            "flex min-h-[220px] h-full cursor-pointer flex-col items-center justify-center border text-muted-foreground"
+                            "flex min-h-[220px] h-full cursor-pointer flex-col items-center justify-center border text-muted-foreground transition-all",
+                            "hover:border-primary/40 hover:bg-primary/5"
                         )}
                         onClick={handleUploadClick}
+                        onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
+                        onDrop={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            if (e.dataTransfer.files && onUpload) onUpload(e.dataTransfer.files);
+                        }}
                     >
-                        <IconBuilding className="mb-3 h-9 w-9" />
-                        <p className="text-sm font-medium">{t('visualAssets.uploadLogos', { defaultValue: 'Upload logos (max 6)' })}</p>
+                        <IconBuilding className="mb-3 h-9 w-9 opacity-40" />
+                        <p className="text-sm font-medium">{t('visualAssets.uploadLogos', { defaultValue: 'Arrastra tus logos aquí o haz clic' })}</p>
                         <input
                             type="file"
                             className="hidden"
@@ -117,9 +124,7 @@ export function LogoCard({ logoUrl, logos = [], onUpload, onRemove, onToggle, on
                                     "group relative min-h-[176px] min-w-0 max-w-full cursor-pointer overflow-hidden rounded-[1.35rem] border transition-all transparency-grid",
                                     effectiveLogos.length === 1 && !compactGrid
                                         ? "basis-full"
-                                        : compactGrid
-                                            ? "basis-[min(100%,15.5rem)] flex-[0_1_15.5rem]"
-                                            : "basis-[min(100%,15.5rem)] flex-[1_1_15.5rem]",
+                                        : "basis-[min(100%,12rem)] flex-[0_1_12rem]",
                                     logo.selected !== false
                                         ? BRAND_KIT_ACTIVE_TOKEN_CARD_CLASS
                                         : BRAND_KIT_PANEL_SUBTLE_CLASS,
@@ -186,11 +191,17 @@ export function LogoCard({ logoUrl, logos = [], onUpload, onRemove, onToggle, on
                             <div
                                 className={cn(
                                     BRAND_KIT_UPLOAD_SURFACE_CLASS,
-                                    "min-h-[176px] min-w-0 max-w-full flex flex-col items-center justify-center cursor-pointer gap-2 text-muted-foreground hover:text-primary",
+                                    "min-h-[176px] min-w-0 max-w-full flex flex-col items-center justify-center cursor-pointer gap-2 text-muted-foreground hover:text-primary transition-all",
                                     effectiveLogos.length === 0 ? "basis-full" : "basis-[min(100%,15rem)] flex-[1_1_15rem]",
                                     isUploading && "opacity-50 pointer-events-none"
                                 )}
                                 onClick={handleUploadClick}
+                                onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
+                                onDrop={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    if (e.dataTransfer.files && onUpload) onUpload(e.dataTransfer.files);
+                                }}
                             >
                                 <input
                                     type="file"
@@ -203,9 +214,12 @@ export function LogoCard({ logoUrl, logos = [], onUpload, onRemove, onToggle, on
                                     }}
                                 />
                                 {isUploading ? (
-                                    <Loader2 className="h-5 w-5" />
+                                    <Loader2 className="h-5 w-5 animate-spin" />
                                 ) : (
-                                    <IconUpload className="h-5 w-5" />
+                                    <>
+                                        <IconUpload className="h-5 w-5" />
+                                        <span className="text-[10px] font-bold uppercase tracking-wider">{t('visualAssets.addMoreLogos', { defaultValue: 'Añadir' })}</span>
+                                    </>
                                 )}
                             </div>
                         )}
@@ -222,7 +236,7 @@ export function FaviconCard({ faviconUrl }: FaviconCardProps) {
         <Card className={BRAND_KIT_PANEL_CLASS}>
             <CardHeader className={cn(BRAND_KIT_PANEL_HEADER_CLASS, "pb-4")}>
                 <CardTitle className={BRAND_KIT_PANEL_TITLE_CLASS}>
-                    <IconSparkles className="w-5 h-5 text-primary" />
+                    <IconSparkles />
                     {t('visualAssets.faviconTitle', { defaultValue: 'Favicon' })}
                 </CardTitle>
             </CardHeader>
@@ -235,7 +249,7 @@ export function FaviconCard({ faviconUrl }: FaviconCardProps) {
                     />
                 ) : (
                     <div className="text-center text-muted-foreground">
-                        <IconSparkles className="mb-2 h-9 w-9 opacity-35" />
+                        <IconSparkles className="mb-2 h-7 w-7 opacity-35" />
                         <p className="text-sm">{t('visualAssets.noFavicon', { defaultValue: 'No favicon' })}</p>
                     </div>
                 )}
@@ -252,7 +266,7 @@ export function ScreenshotCard({ screenshotUrl, faviconUrl }: ScreenshotCardProp
                 <div className="flex items-start justify-between gap-4">
                     <div className="space-y-1.5">
                         <CardTitle className={BRAND_KIT_PANEL_TITLE_CLASS}>
-                            <IconMonitor className="w-5 h-5 text-primary" />
+                            <IconMonitor />
                             {t('visualAssets.screenshotTitle', { defaultValue: 'Website screenshot' })}
                         </CardTitle>
                         <p className={BRAND_KIT_PANEL_DESCRIPTION_CLASS}>
@@ -268,7 +282,7 @@ export function ScreenshotCard({ screenshotUrl, faviconUrl }: ScreenshotCardProp
                                 <img
                                     src={faviconUrl}
                                     alt="Favicon"
-                                    className="h-6 w-6 object-contain"
+                                    className="h-[14px] w-[14px] object-contain"
                                 />
                             </span>
                         </div>
@@ -324,7 +338,7 @@ export function ImageGallery({
         <Card className={BRAND_KIT_PANEL_CLASS}>
             <CardHeader className={cn(BRAND_KIT_PANEL_HEADER_CLASS, "pb-4")}>
                 <CardTitle className={BRAND_KIT_PANEL_TITLE_CLASS}>
-                    <IconImage className="w-5 h-5 text-primary" />
+                    <IconImage className="w-[1.125rem] h-[1.125rem] text-primary" />
                     {t('visualAssets.analyzedGallery', { defaultValue: 'Analyzed image gallery' })}
                 </CardTitle>
                 <p className={BRAND_KIT_PANEL_DESCRIPTION_CLASS}>
@@ -332,7 +346,7 @@ export function ImageGallery({
                 </p>
             </CardHeader>
             <CardContent className="px-6 pb-6 pt-0">
-                <div className="columns-1 gap-4 sm:columns-2 [column-fill:_balance]">
+                <div className="columns-1 sm:columns-2 lg:columns-4 gap-4 [column-fill:_balance]">
                     {images.map((item, idx) => (
                         <div
                             key={idx}

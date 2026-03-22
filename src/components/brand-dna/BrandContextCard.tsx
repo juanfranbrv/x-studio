@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { Card, CardHeader, CardTitle } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
@@ -24,7 +24,7 @@ export function BrandContextCard({ context, onUpdate, minHeightClassName = 'min-
         <Card className={cn(BRAND_KIT_PANEL_CLASS, "overflow-hidden")}>
             <CardHeader className={cn(BRAND_KIT_PANEL_HEADER_CLASS, "pb-4")}>
                 <CardTitle className={BRAND_KIT_PANEL_TITLE_CLASS}>
-                    <IconTextFont className="w-5 h-5 text-primary" />
+                    <IconTextFont className="w-[1.125rem] h-[1.125rem] text-primary" />
                     {t('context.title', { defaultValue: 'Visión y contexto de marca' })}
                 </CardTitle>
                 <p className={BRAND_KIT_PANEL_DESCRIPTION_CLASS}>

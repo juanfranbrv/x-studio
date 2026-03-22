@@ -1,6 +1,7 @@
 'use client'
 
 import { useTranslation } from 'react-i18next'
+import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { ArrowLeft, ArrowRight, X } from 'lucide-react'
 import {
@@ -24,6 +25,7 @@ interface StudioNavProps {
   onExit: () => void
   nextDisabled?: boolean
   nextLabel?: string
+  showSidebar?: boolean
 }
 
 export function StudioNav({
@@ -34,12 +36,20 @@ export function StudioNav({
   onExit,
   nextDisabled = false,
   nextLabel,
+  showSidebar = false,
 }: StudioNavProps) {
   const { t } = useTranslation('brandStudio')
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-border/30 bg-background/80 backdrop-blur-sm">
-      <div className="mx-auto flex w-full max-w-[min(92vw,56rem)] items-center justify-between px-[clamp(1rem,3vw,2rem)] py-[clamp(0.75rem,1.5vh,1.25rem)]">
+    <div className={cn(
+      "fixed bottom-0 right-0 z-50 border-t border-border/30 bg-background/80 backdrop-blur-sm",
+      showSidebar ? "left-0 lg:left-[340px] xl:left-[380px]" : "left-0"
+    )}>
+      <div className={cn(
+        "mx-auto flex w-full items-center justify-between px-[clamp(1rem,3vw,2rem)] py-[clamp(0.75rem,1.5vh,1.25rem)]",
+        !showSidebar && "max-w-7xl px-[clamp(1rem,4vw,3rem)]",
+        showSidebar && "lg:px-[clamp(1rem,4vw,3rem)]"
+      )}>
       <div>
         {canGoBack ? (
           <Button variant="ghost" onClick={onBack} className={`${WIZARD_GHOST_BUTTON} gap-2`}>

@@ -11,8 +11,12 @@
       "logo": "Logo",
       "palette": "Colores",
       "typography": "Tipografia",
+      "language": "Idioma",
       "personality": "Personalidad",
       "voice": "Voz",
+      "brandContext": "Contexto",
+      "contact": "Contacto",
+      "images": "Imágenes",
       "brandBoard": "Resumen"
     }
   },
@@ -54,17 +58,7 @@
     "placeholder": "Nombre de tu marca",
     "descriptionLabel": "A que te dedicas?",
     "descriptionPlaceholder": "Describe brevemente tu negocio en 1-2 frases...",
-    "descriptionHint": "Esto nos ayuda a generar mejores propuestas para tu marca",
-    "languageLabel": "Idioma de la marca",
-    "languages": {
-      "es": "Espanol",
-      "en": "Ingles",
-      "fr": "Frances",
-      "de": "Aleman",
-      "pt": "Portugues",
-      "it": "Italiano",
-      "ca": "Catalan"
-    }
+    "descriptionHint": "Esto nos ayuda a generar mejores propuestas para tu marca"
   },
   "loading": {
     "title": "Analizando tu marca",
@@ -111,7 +105,7 @@
     "empty": "No se ha detectado ningun logo",
     "variationsTitle": "Variaciones",
     "variationsSubtitle": "Versiones generadas automaticamente a partir de tu logo principal",
-    "addToKit": "Anadir al kit",
+    "addToKit": "Añadir al kit de marca",
     "download": "Descargar"
   },
   "palette": {
@@ -123,11 +117,36 @@
     "subtitle": "Selecciona la combinacion que define la voz de tu marca",
     "headingLabel": "Titulares",
     "bodyLabel": "Texto de cuerpo",
+    "headingCard": {
+      "title": "Fuente de titulares",
+      "subtitle": "Para encabezados, titulos y textos destacados",
+      "placeholder": "Buscar fuente de titular...",
+      "current": "Titular actual"
+    },
+    "bodyCard": {
+      "title": "Fuente de parrafos",
+      "subtitle": "Para cuerpo de texto, descripciones y contenido general",
+      "placeholder": "Buscar fuente de parrafo...",
+      "current": "Parrafo actual"
+    },
     "sampleHeading": "Tu identidad de marca",
     "sampleBody": "Una buena tipografia hace que el contenido sea facil de leer y refuerza tu identidad visual.",
     "noProposals": "No hay propuestas disponibles",
     "regenerate": "Generar nuevas propuestas",
     "orChooseCombo": "o elige una combinacion rapida"
+  },
+  "language": {
+    "title": "En que idioma habla tu marca?",
+    "subtitle": "El contenido textual (eslogans, valores, contexto) se generara en este idioma",
+    "languages": {
+      "es": "Espanol",
+      "en": "Ingles",
+      "fr": "Frances",
+      "de": "Aleman",
+      "pt": "Portugues",
+      "it": "Italiano",
+      "ca": "Catalan"
+    }
   },
   "personality": {
     "title": "Define la personalidad de tu marca",
@@ -138,7 +157,9 @@
     "noProposals": "No hay propuestas disponibles",
     "regenerate": "Generar nuevas propuestas",
     "regenerating": "Generando...",
-    "newOptions": "Nuevas opciones"
+    "newOptions": "Nuevas opciones",
+    "addCustom": "Añadir propio...",
+    "placeholder": "Escribe un valor o tono..."
   },
   "voice": {
     "title": "Elige la voz de tu marca",
@@ -150,7 +171,41 @@
     "noProposals": "No hay propuestas disponibles",
     "regenerate": "Generar nuevas propuestas",
     "newOptions": "Nuevas opciones",
-    "regenerating": "Generando..."
+    "regenerating": "Generando...",
+    "addCustom": "Escribir el mío...",
+    "placeholder": "Escribe tu texto aquí..."
+  },
+  "brandContext": {
+    "title": "Vision y contexto de marca",
+    "subtitle": "Define el relato estrategico de tu marca. Este texto guiara la generacion de contenido",
+    "textareaPlaceholder": "Escribe o edita el contexto de tu marca...",
+    "generateBtn": "Generar contexto",
+    "regenerateBtn": "Generar nuevas opciones",
+    "generating": "Generando...",
+    "suggestionsLabel": "Sugerencias",
+    "useSuggestion": "Usar esta opcion"
+  },
+  "contact": {
+    "title": "Canales y contacto",
+    "subtitle": "Anade la informacion de contacto y redes sociales de tu marca",
+    "emailPlaceholder": "correo@tumarca.com",
+    "phonePlaceholder": "+34 600 000 000",
+    "addressPlaceholder": "Direccion fisica",
+    "addEmail": "Anadir email",
+    "addPhone": "Anadir telefono",
+    "addAddress": "Anadir direccion",
+    "socialLabel": "Redes sociales",
+    "addSocial": "Anadir red social",
+    "socialPlaceholder": "URL o usuario...",
+    "platforms": {
+      "instagram": "Instagram",
+      "twitter": "X (Twitter)",
+      "linkedin": "LinkedIn",
+      "facebook": "Facebook",
+      "youtube": "YouTube",
+      "tiktok": "TikTok",
+      "pinterest": "Pinterest"
+    }
   },
   "preview": {
     "title": "Preview",
@@ -173,14 +228,32 @@
       "colors": "Colores",
       "typography": "Tipografia",
       "personality": "Personalidad",
-      "voice": "Voz y eslogan"
+      "voice": "Voz y eslogan",
+      "brandContext": "Contexto de marca",
+      "contact": "Contacto",
+      "images": "Imágenes",
+      "marketing": "Activos de Marketing",
+      "logoVariations": "Otras variaciones de logo",
+      "brandValues": "Valores de Marca",
+      "toneOfVoice": "Tono de Voz"
+    },
+    "marketing": {
+      "slogans": "Slogans y Hooks",
+      "ctas": "Llamadas a la acción (CTAs)",
+      "headlines": "Titulares y Palabras clave"
+    },
+    "footer": {
+      "ready": "Listo para despegar"
     },
     "empty": {
       "logo": "Sin logo configurado",
       "colors": "Sin paleta de colores",
       "typography": "Sin tipografia seleccionada",
       "personality": "Sin personalidad definida",
-      "voice": "Sin eslogan definido"
+      "voice": "Sin eslogan definido",
+      "brandContext": "Sin contexto definido",
+      "contact": "Sin datos de contacto",
+      "images": "Sin imágenes"
     },
     "brandContext": {
       "label": "Vision y contexto de marca",
@@ -189,6 +262,10 @@
     },
     "contact": {
       "label": "Canales y contacto",
+      "email": "Email",
+      "phone": "Teléfono",
+      "address": "Dirección",
+      "social": "Social",
       "emailPlaceholder": "correo@tumarca.com",
       "phonePlaceholder": "+34 600 000 000",
       "addressPlaceholder": "Direccion fisica",
@@ -207,5 +284,16 @@
         "pinterest": "Pinterest"
       }
     }
+  },
+  "images": {
+    "title": "Imágenes de marca",
+    "subtitle": "Selecciona las imágenes que mejor representen tu marca o sube las tuyas propias",
+    "empty": "No hay imágenes añadidas",
+    "uploadZone": "Arrastra tus imágenes aquí o haz clic para subir",
+    "uploading": "Subiendo...",
+    "maxReached": "Límite de imágenes alcanzado",
+    "addCustom": "Añadir más imágenes",
+    "upload": "Subir desde mi equipo",
+    "confirmAdd": "Añadir"
   }
 }

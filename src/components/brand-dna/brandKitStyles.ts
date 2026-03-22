@@ -12,16 +12,19 @@ export const BRAND_KIT_PANEL_SUBTLE_CLASS =
 export const BRAND_KIT_PANEL_HEADER_CLASS = 'flex flex-col gap-2 px-6 pb-0 pt-[1.15rem]'
 
 export const BRAND_KIT_PANEL_TITLE_CLASS =
-  'flex items-center gap-2.5 text-[0.94rem] font-semibold uppercase tracking-[0.14em] leading-none text-foreground/90 [&>svg]:h-4 [&>svg]:w-4 [&>svg]:shrink-0 [&>svg]:self-center'
+  'flex items-center gap-3 text-[11px] font-bold uppercase tracking-[0.16em] text-foreground/92 [&>svg]:h-[14px] [&>svg]:w-[14px] [&>svg]:shrink-0 [&>svg]:self-center'
 
 export const BRAND_KIT_PANEL_DESCRIPTION_CLASS =
-  'text-[0.98rem] leading-[1.6] text-muted-foreground'
+  'text-[0.84rem] leading-relaxed text-muted-foreground/80'
+
+export const BRAND_KIT_SECTION_LABEL_CLASS =
+  'text-[0.78rem] font-semibold text-foreground/90 uppercase tracking-[0.08em] mb-1.5'
 
 export const BRAND_KIT_CALLOUT_CLASS =
   'rounded-[1.35rem] border border-border/65 bg-[linear-gradient(180deg,hsl(var(--surface-alt))/0.6,white)] px-4 py-3.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.78)]'
 
 export const BRAND_KIT_FIELD_CLASS =
-  'h-11 rounded-2xl border border-input/80 bg-background px-3.5 text-[14px] shadow-[inset_0_1px_0_rgba(255,255,255,0.68)] transition-all hover:border-primary/20 focus-visible:ring-0 focus-visible:border-primary'
+  'h-10 rounded-2xl border border-input/80 bg-background px-3.5 text-[0.9rem] shadow-[inset_0_1px_0_rgba(255,255,255,0.68)] transition-all hover:border-primary/20 focus-visible:ring-0 focus-visible:border-primary'
 
 export const BRAND_KIT_TEXTAREA_CLASS =
   'w-full rounded-[1.2rem] border border-input/80 bg-background px-4 py-3 text-[14px] leading-relaxed shadow-[inset_0_1px_0_rgba(255,255,255,0.68)] transition-all hover:border-primary/20 focus:outline-none focus:ring-0 focus:border-primary'

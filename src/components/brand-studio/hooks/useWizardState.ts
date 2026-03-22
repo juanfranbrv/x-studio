@@ -9,8 +9,12 @@ export const WIZARD_STEPS = [
   'logo',
   'palette',
   'typography',
+  'language',
   'personality',
   'voice',
+  'brandContext',
+  'contact',
+  'images',
   'brandBoard',
 ] as const
 
@@ -31,6 +35,7 @@ export interface BrandStudioState {
   analysisError: string | null
   proposals: BrandProposals | null
   proposalsStatus: 'idle' | 'running' | 'success' | 'error'
+  brandLanguage: string
 }
 
 export type WizardAction =
@@ -49,6 +54,7 @@ export type WizardAction =
   | { type: 'CANCEL_ANALYSIS' }
   | { type: 'SET_PROPOSALS'; proposals: BrandProposals }
   | { type: 'SET_PROPOSALS_STATUS'; status: 'idle' | 'running' | 'success' | 'error' }
+  | { type: 'SET_BRAND_LANGUAGE'; language: string }
 
 function getNextStep(current: WizardStep, state: BrandStudioState): WizardStep | null {
   switch (current) {
@@ -63,10 +69,18 @@ function getNextStep(current: WizardStep, state: BrandStudioState): WizardStep |
     case 'palette':
       return 'typography'
     case 'typography':
+      return 'language'
+    case 'language':
       return 'personality'
     case 'personality':
       return 'voice'
     case 'voice':
+      return 'brandContext'
+    case 'brandContext':
+      return 'contact'
+    case 'contact':
+      return 'images'
+    case 'images':
       return 'brandBoard'
     case 'brandBoard':
       return null
@@ -95,6 +109,7 @@ export const initialState: BrandStudioState = {
   analysisError: null,
   proposals: null,
   proposalsStatus: 'idle',
+  brandLanguage: 'es',
 }
 
 function wizardReducer(state: BrandStudioState, action: WizardAction): BrandStudioState {
@@ -140,11 +155,22 @@ function wizardReducer(state: BrandStudioState, action: WizardAction): BrandStud
         instagramHandle: action.handle,
       }
 
-    case 'ADD_UPLOADED_IMAGES':
+    case 'ADD_UPLOADED_IMAGES': {
+      const newUrls = action.urls
+      const currentDraftImages = state.draft.images || []
+      const newDraftImages = [
+        ...currentDraftImages,
+        ...newUrls.map(url => ({ url, selected: true }))
+      ]
       return {
         ...state,
-        uploadedImages: [...state.uploadedImages, ...action.urls],
+        uploadedImages: [...state.uploadedImages, ...newUrls],
+        draft: {
+          ...state.draft,
+          images: newDraftImages
+        }
       }
+    }
 
     case 'REMOVE_UPLOADED_IMAGE':
       return {
@@ -236,6 +262,13 @@ function wizardReducer(state: BrandStudioState, action: WizardAction): BrandStud
         proposalsStatus: action.status,
       }
 
+    case 'SET_BRAND_LANGUAGE':
+      return {
+        ...state,
+        brandLanguage: action.language,
+        draft: { ...state.draft, preferred_language: action.language },
+      }
+
     default:
       return state
   }
@@ -249,7 +282,7 @@ export function useWizardState() {
 
   const visibleSteps = WIZARD_STEPS.filter((s) => {
     if (s === 'loading') return false
-    // logo step is visible in the stepper
+    // name step only visible for scratch flow
     if (s === 'name' && state.sourceType !== 'scratch') return false
     return true
   })

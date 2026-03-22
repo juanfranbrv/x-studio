@@ -3,9 +3,10 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { AnimatePresence, motion } from 'framer-motion'
-import { RotateCcw } from 'lucide-react'
+import { RotateCcw, Plus, X } from 'lucide-react'
 import { Loader2 } from '@/components/ui/spinner'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import type { BrandDNA } from '@/lib/brand-types'
 import type { BrandProposals } from '@/app/actions/generate-brand-proposals'
 import type { WizardAction } from '../hooks/useWizardState'
@@ -60,6 +61,11 @@ export function PersonalityStep({ draft, proposals, dispatch, onRegenerate, isRe
     return initial
   })
 
+  const [customInputs, setCustomInputs] = useState<Record<Category, string>>({
+    toneOfVoice: '',
+    values: '',
+  })
+
   // Re-init if proposals arrive after mount
   useEffect(() => {
     if (!personality) return
@@ -94,19 +100,44 @@ export function PersonalityStep({ draft, proposals, dispatch, onRegenerate, isRe
     })
   }
 
-  // Build ordered chips: selected first, then up to MAX_CHIPS unselected proposals
+  const addCustomChip = (category: Category) => {
+    const value = customInputs[category].trim()
+    if (!value) return
+    
+    setSelected((prev) => {
+      const next = new Set(prev[category])
+      if (!next.has(value) && next.size < MAX_CHIPS) {
+        next.add(value)
+      }
+      return { ...prev, [category]: next }
+    })
+    
+    setCustomInputs(prev => ({ ...prev, [category]: '' }))
+  }
+
+  const removeChip = (category: Category, chip: string) => {
+    setSelected((prev) => {
+      const next = new Set(prev[category])
+      next.delete(chip)
+      return { ...prev, [category]: next }
+    })
+  }
+
+  // Build ordered chips: always returns exactly MAX_CHIPS items.
+  // Selected chips first, then fill remaining slots with unselected proposals.
   const getOrderedChips = (category: Category): { chip: string; isSelected: boolean }[] => {
     if (!personality) return []
     const allProposals = personality[category] ?? []
     const sel = selected[category]
     const selectedChips = Array.from(sel)
+    const freeSlots = MAX_CHIPS - selectedChips.length
     const unselectedChips = allProposals
       .filter((c) => !sel.has(c))
-      .slice(0, MAX_CHIPS)
+      .slice(0, freeSlots)
     return [
       ...selectedChips.map((chip) => ({ chip, isSelected: true })),
       ...unselectedChips.map((chip) => ({ chip, isSelected: false })),
-    ]
+    ].slice(0, MAX_CHIPS)
   }
 
   const handleRegenerateCategory = useCallback((category: Category) => {
@@ -125,7 +156,7 @@ export function PersonalityStep({ draft, proposals, dispatch, onRegenerate, isRe
             {onRegenerate && (
               <Button variant="outline" onClick={onRegenerate} disabled={isRegenerating}>
                 {isRegenerating ? (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  <Loader2 className="mr-2 h-4 w-4" />
                 ) : (
                   <RotateCcw className="mr-2 h-4 w-4" />
                 )}
@@ -184,7 +215,7 @@ export function PersonalityStep({ draft, proposals, dispatch, onRegenerate, isRe
                       className="h-7 gap-1.5 rounded-lg px-2.5 text-xs text-muted-foreground hover:text-foreground"
                     >
                       {isCatRegenerating ? (
-                        <Loader2 className="h-3 w-3 animate-spin" />
+                        <Loader2 className="h-3 w-3" />
                       ) : (
                         <RotateCcw className="h-3 w-3" />
                       )}
@@ -204,11 +235,47 @@ export function PersonalityStep({ draft, proposals, dispatch, onRegenerate, isRe
                         transition={{ delay: 0.03 * i, duration: 0.25 }}
                         whileTap={{ scale: 0.96 }}
                         onClick={() => toggleChip(key, chip)}
-                        className={isSelected ? WIZARD_CHIP_ACTIVE : WIZARD_CHIP}
+                        className={`${isSelected ? WIZARD_CHIP_ACTIVE : WIZARD_CHIP} group relative pr-7`}
                       >
                         {chip}
+                        {isSelected && (
+                          <span 
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              removeChip(key, chip)
+                            }}
+                            className="absolute right-1 top-1/2 -translate-y-1/2 p-1 text-primary-foreground/40 hover:text-primary-foreground"
+                          >
+                            <X className="h-3 w-3" />
+                          </span>
+                        )}
                       </motion.button>
                     ))}
+                    {!allSlotsFilled && (
+                      <motion.div 
+                        initial={{ opacity: 0, scale: 0.92 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        className="flex items-center gap-2"
+                      >
+                        <Input
+                          value={customInputs[key]}
+                          onChange={(e) => setCustomInputs(prev => ({ ...prev, [key]: e.target.value }))}
+                          placeholder={t('personality.placeholder')}
+                          className="h-9 w-[180px] rounded-full border-dashed bg-transparent px-4 text-sm focus-visible:ring-primary/30"
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') addCustomChip(key)
+                          }}
+                        />
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => addCustomChip(key)}
+                          className="h-8 w-8 rounded-full hover:bg-primary/10 hover:text-primary"
+                        >
+                          <Plus className="h-4 w-4" />
+                        </Button>
+                      </motion.div>
+                    )}
                   </AnimatePresence>
                 </div>
               </motion.div>

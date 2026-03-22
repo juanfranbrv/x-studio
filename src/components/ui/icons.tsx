@@ -146,6 +146,7 @@ import {
     AiChat02Icon,
     CircleArrowLeft01Icon,
     CircleArrowRight01Icon,
+    Hold03Icon,
 } from '@hugeicons/core-free-icons'
 import { ComponentProps } from 'react'
 
@@ -285,6 +286,7 @@ export const IconMinus = createIcon(MinusSignIcon)
 export const IconClose = createIcon(Cancel01Icon)
 export const IconBookmarkAdd = createIcon(BookmarkAdd01Icon)
 export const IconHistory = createIcon(WorkHistoryIcon)
+export const IconHold = createIcon(Hold03Icon)
 
 // ─── Admin / Auth / Legal / Onboarding / Landing / Brand-Kit ───
 export const IconGripVertical = createIcon(DragDropVerticalIcon)

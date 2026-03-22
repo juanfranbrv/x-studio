@@ -1,4 +1,4 @@
-﻿'use client'
+'use client'
 
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
@@ -1469,7 +1469,7 @@ export default function ImagePage() {
     }
 
     const handleNewBrandKit = () => {
-        router.push('/brand-kit?action=new')
+        router.push('/brand-kit/new')
     }
 
     const isAbortError = useCallback((error: unknown) => {

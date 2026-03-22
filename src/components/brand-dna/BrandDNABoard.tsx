@@ -1,20 +1,21 @@
-﻿'use client';
+'use client';
 
 import { Loader2 } from '@/components/ui/spinner'
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useUser } from '@clerk/nextjs';
+import { useRouter } from 'next/navigation';
 import { BrandDNA } from '@/lib/brand-types';
 import { cn } from '@/lib/utils';
 import { TextAssetsSection } from './TextAssetsSection';
 import { ColorPalette } from './ColorPalette';
 import { LogoCard, ScreenshotCard, ImageGallery } from './VisualAssetComponents';
-import { BrandAssets } from './BrandAssets';
+import { TaglineCard, LanguageCard, BrandValuesCard, VisualAestheticCard, ToneOfVoiceCard } from './BrandAssets';
 import { TypographySection } from './TypographySection';
 import { BrandContextCard } from './BrandContextCard';
 import { TechnicalAudit } from './TechnicalAudit';
 import { ContactSocialCard } from './ContactSocialCard';
 import { TargetAudienceCard } from './TargetAudienceCard';
-import { BrandKitAssistantWizard } from './BrandKitAssistantWizard';
+import { BrandKitFloatingPalette } from './BrandKitFloatingPalette';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -26,7 +27,7 @@ import { hexToRgb } from '@/lib/color-utils';
 import { calculateBrandKitCompleteness } from '@/lib/brand-kit-utils';
 import { useTranslation } from 'react-i18next';
 
-import { IconGlobe, IconSave, IconCheck, IconRotate, IconAlertCircle, IconClose, IconBug } from '@/components/ui/icons';
+import { IconGlobe, IconSave, IconCheck, IconRotate, IconAlertCircle, IconClose, IconBug, IconUpload, IconDownload, IconDelete } from '@/components/ui/icons';
 import {
     BRAND_KIT_CALLOUT_CLASS,
     BRAND_KIT_FIELD_CLASS,
@@ -41,6 +42,7 @@ import {
     BRAND_KIT_PANEL_HEADER_CLASS,
     BRAND_KIT_PANEL_TITLE_CLASS,
     BRAND_KIT_SECONDARY_BUTTON_CLASS,
+    BRAND_KIT_SECTION_LABEL_CLASS,
 } from './brandKitStyles';
 
 interface BrandDNABoardProps {
@@ -69,6 +71,10 @@ interface BrandDNABoardProps {
     }>;
     onNewBrandKit?: () => void;
     onSaveSuccess?: () => void;
+    onOpenAssistant?: () => void;
+    onDuplicateCurrent?: () => void;
+    onDeleteCurrent?: () => void;
+    isDuplicatingCurrent?: boolean;
 }
 
 interface PortableEmbeddedAsset {
@@ -155,7 +161,11 @@ export function BrandDNABoard({
     onStopAnalyzeUrlFromAssistant,
     onPreviewUrlFromAssistant,
     onNewBrandKit,
-    onSaveSuccess
+    onSaveSuccess,
+    onOpenAssistant,
+    onDuplicateCurrent,
+    onDeleteCurrent,
+    isDuplicatingCurrent = false
 }: BrandDNABoardProps) {
     const ASSISTANT_LOCK_KEY = 'brand-kit-assistant-lock';
     const { t } = useTranslation('brandKit');
@@ -189,8 +199,7 @@ export function BrandDNABoard({
         message: ''
     });
     const [showDebug, setShowDebug] = useState(isDebug);
-    const [showAssistantWizard, setShowAssistantWizard] = useState(false);
-    const [assistantFlowLocked, setAssistantFlowLocked] = useState(false);
+    const router = useRouter();
     const canUseDebugAudit = isDebug;
     const rawBrandUrl = (data.url || '').trim();
     const isManualPlaceholderUrl = rawBrandUrl.toLowerCase().startsWith('manual-');
@@ -209,72 +218,10 @@ export function BrandDNABoard({
     const assistantPriorityMode = completeness.percentage < 70;
     const isDraftAssistantKit = assistantCreationMode && isManualPlaceholderUrl;
     const shouldLockAssistant = assistantPriorityMode && !allowAssistantExit;
-    const mustForceAssistant = shouldLockAssistant || (assistantFlowLocked && !allowAssistantExit);
 
     useEffect(() => {
         setData(normalizeStudioColorRoles(initialData));
     }, [initialData]);
-
-    useEffect(() => {
-        if (typeof window === 'undefined') return;
-        const locked = window.sessionStorage.getItem(ASSISTANT_LOCK_KEY) === '1';
-        if (locked) {
-            setAssistantFlowLocked(true);
-            setShowAssistantWizard(true);
-        }
-    }, []);
-
-    useEffect(() => {
-        if (typeof window === 'undefined') return;
-        if (!data?.id) return;
-
-        if (!assistantPriorityMode) {
-            window.sessionStorage.removeItem(ASSISTANT_LOCK_KEY);
-            setAssistantFlowLocked(false);
-            if (!isDraftAssistantKit) {
-                setShowAssistantWizard(false);
-            }
-        }
-    }, [data?.id, assistantPriorityMode, isDraftAssistantKit]);
-
-    useEffect(() => {
-        if (!data?.id) return;
-        if (shouldLockAssistant) {
-            setAssistantFlowLocked(true);
-            if (typeof window !== 'undefined') {
-                window.sessionStorage.setItem(ASSISTANT_LOCK_KEY, '1');
-            }
-            setShowAssistantWizard(true);
-            return;
-        }
-        if (assistantFlowLocked && !allowAssistantExit) {
-            setShowAssistantWizard(true);
-            return;
-        }
-        const key = `brand-kit-wizard-dismissed:${data.id}`;
-        const dismissed = typeof window !== 'undefined' ? window.sessionStorage.getItem(key) : '1';
-        const shouldSuggestWizard = isDraftAssistantKit;
-        if (shouldSuggestWizard && !dismissed) {
-            setShowAssistantWizard(true);
-        }
-    }, [data?.id, isDraftAssistantKit, shouldLockAssistant, assistantFlowLocked, allowAssistantExit]);
-
-    useEffect(() => {
-        if (assistantLaunchNonce <= 0) return;
-        setShowAssistantWizard(true);
-    }, [assistantLaunchNonce]);
-
-    const handleWizardOpenChange = (open: boolean) => {
-        if (!open && mustForceAssistant) return;
-        if (!open && assistantCreationMode) {
-            void onAbortAssistantCreation?.();
-            return;
-        }
-        setShowAssistantWizard(open);
-        if (!open && data?.id && typeof window !== 'undefined') {
-            window.sessionStorage.setItem(`brand-kit-wizard-dismissed:${data.id}`, '1');
-        }
-    };
 
 
     const handleSave = async (isAuto = false) => {
@@ -1028,7 +975,7 @@ export function BrandDNABoard({
 
                             <div className="flex-1 space-y-3">
                                 <div>
-                                    <p className="text-[11px] font-medium text-muted-foreground mb-1">{t('board.stepName', { defaultValue: 'Step 1 · Kit name' })}</p>
+                                    <p className={BRAND_KIT_SECTION_LABEL_CLASS}>{t('board.stepName', { defaultValue: 'Step 1 · Kit name' })}</p>
                                     <Input
                                         value={data.brand_name || ''}
                                         onChange={(e) => {
@@ -1041,8 +988,8 @@ export function BrandDNABoard({
                                 </div>
 
                                 <div>
-                                    <p className="text-[11px] font-medium text-muted-foreground mb-1 flex items-center gap-1.5">
-                                        <IconGlobe className="w-3.5 h-3.5" />
+                                    <p className={cn(BRAND_KIT_SECTION_LABEL_CLASS, "flex items-center gap-1.5")}>
+                                        <IconGlobe className="w-[1.125rem] h-[1.125rem]" />
                                         {t('board.stepUrl', { defaultValue: 'Step 2 (optional) · Website URL to analyze' })}
                                     </p>
                                     <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
@@ -1082,155 +1029,163 @@ export function BrandDNABoard({
                     <div className="flex items-center gap-3 lg:pt-1">
                         {isSaving ? (
                             <div className={cn(BRAND_KIT_CALLOUT_CLASS, "flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-muted-foreground animate-pulse")}>
-                                <Loader2 className="w-4 h-4 mr-2" />
+                                <Loader2 className="w-[1.125rem] h-[1.125rem] mr-2" />
                                 {t('board.saving', { defaultValue: 'Saving...' })}
                             </div>
                         ) : hasUnsavedChanges ? (
                             <div className={cn(BRAND_KIT_CALLOUT_CLASS, "flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-muted-foreground")}>
-                                <IconSave className="w-4 h-4 mr-2" />
+                                <IconSave className="w-[1.125rem] h-[1.125rem] mr-2" />
                                 {t('board.pendingChanges', { defaultValue: 'Pending changes' })}
                             </div>
                         ) : (
                             <div className={cn(BRAND_KIT_CALLOUT_CLASS, "flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-muted-foreground")}>
-                                <IconCheck className="w-4 h-4 mr-2" />
+                                <IconCheck className="w-[1.125rem] h-[1.125rem] mr-2" />
                                 {t('board.synced', { defaultValue: 'Synced' })}
                             </div>
                         )}
                     </div>
                 </div>
 
-                <div className="mt-4 flex flex-wrap items-center justify-end gap-3 border-t border-border/50 pt-4">
-                    <input
-                        ref={importFileInputRef}
-                        type="file"
-                        accept="application/json,.json"
-                        className="hidden"
-                        onChange={handleImportKitFile}
-                    />
-                    {canUseDebugAudit && (
-    <Button
-        variant="ghost"
-        size="sm"
-        className={cn(
-            BRAND_KIT_SECONDARY_BUTTON_CLASS,
-            "text-muted-foreground hover:text-emerald-500 hover:bg-emerald-500/10 transition-all gap-2",
-            showDebug && "text-emerald-500 bg-emerald-500/10"
-        )}
-        onClick={() => setShowDebug(!showDebug)}
-    >
-        <IconBug className="w-4 h-4" />
-        {t('board.audit', { defaultValue: 'Audit' })}
-    </Button>
-)}
-                    <Button
-                        size="sm"
-                        onClick={() => handleSave(false)}
-                        disabled={!hasUnsavedChanges || isSaving}
-                        className={cn(BRAND_KIT_SECONDARY_BUTTON_CLASS, "gap-2 bg-primary hover:bg-primary/90 text-primary-foreground border-0")}
-                    >
-                        {isSaving ? <Loader2 className="w-4 h-4" /> : <IconSave className="w-4 h-4" />}
-                        {t('board.saveNow', { defaultValue: 'Save now' })}
-                    </Button>
-                </div>
-            </div>
-            )}
+                <div className="mt-4 flex flex-wrap items-center justify-between gap-4 border-t border-border/50 pt-4">
+                    <div className="flex flex-wrap items-center gap-2.5">
+                        <input
+                            ref={importFileInputRef}
+                            type="file"
+                            accept="application/json,.json"
+                            className="hidden"
+                            onChange={handleImportKitFile}
+                        />
 
-            {assistantPriorityMode && !allowAssistantExit ? (
-                !showAssistantWizard && (
-                    <div className={cn(BRAND_KIT_CALLOUT_CLASS, "p-6")}>
-                        <p className="text-base font-medium text-foreground mb-1">{t('board.completeAssistantTitle', { defaultValue: 'Complete the guided assistant first' })}</p>
-                        <p className="text-sm text-muted-foreground mb-4">
-                            {t('board.completeAssistantDescription', { defaultValue: 'When you finish these steps, the full editor will unlock.' })}
-                        </p>
-                        <Button onClick={() => setShowAssistantWizard(true)}>{t('board.openAssistant', { defaultValue: 'Open assistant' })}</Button>
+
+
+                        </div>
                     </div>
-                )
+                </div>
+            )}
+            {assistantPriorityMode && !allowAssistantExit ? (
+                <div className={cn(BRAND_KIT_CALLOUT_CLASS, "p-6")}>
+                    <p className="text-base font-medium text-foreground mb-1">{t('board.completeAssistantTitle', { defaultValue: 'Complete the guided assistant first' })}</p>
+                    <p className="text-sm text-muted-foreground mb-4">
+                        {t('board.completeAssistantDescription', { defaultValue: 'When you finish these steps, the full editor will unlock.' })}
+                    </p>
+                    <Button onClick={() => router.push(`/brand-kit/new?id=${data.id}`)}>{t('board.openAssistant', { defaultValue: 'Open assistant' })}</Button>
+                </div>
             ) : (
                 <>
                     {/* NEW LAYOUT IMPLEMENTATION */}
 
                     {/* Main content layout: editable content on the left, visual references on the right */}
-                    <div className="grid grid-cols-1 items-start gap-10 xl:grid-cols-[minmax(0,1.02fr)_minmax(22rem,0.98fr)]">
-                        <div className="space-y-10">
-                            <LogoCard
-                                logoUrl={data.logo_url}
-                                logos={data.logos}
-                                onUpload={handleUploadLogos}
-                                onRemove={handleRemoveLogo}
-                                onToggle={handleToggleLogoSelection}
-                                onReorder={handleReorderLogos}
-                                isUploading={isUploading}
-                            />
-                            <ColorPalette
-                                colors={data.colors || []}
-                                isEdited={JSON.stringify(data.colors) !== JSON.stringify(initialData.colors)}
-                                onUpdateColor={handleUpdateColor}
-                                onUpdateRole={handleUpdateColorRole}
-                                onSwapPositions={handleSwapColorPositions}
-                                onRemoveColor={handleRemoveColor}
-                                onAddColor={handleAddColor}
-                                onReset={handleResetColors}
-                            />
-                            <BrandContextCard
-                                context={data.business_overview || ''}
-                                minHeightClassName="min-h-[180px]"
-                                onUpdate={(val) => updateData(prev => ({
-                                    ...prev,
-                                    business_overview: val,
-                                    text_assets: prev.text_assets ? { ...prev.text_assets, brand_context: val } : {
-                                        marketing_hooks: [],
-                                        visual_keywords: [],
-                                        ctas: [],
-                                        brand_context: val
-                                    }
-                                }))}
-                            />
-                            <TargetAudienceCard audience={data.target_audience} />
-                            <ContactSocialCard
-                                socialLinks={data.social_links}
-                                emails={data.emails}
-                                phones={data.phones}
-                                addresses={data.addresses}
-                                onUpdate={handleUpdateContact}
-                            />
-
-                            <TypographySection
-                                fonts={(data.fonts || []).map(f => typeof f === 'string' ? { family: f } : f)}
-                                tagline={data.tagline || ''}
-                                onAddFont={handleAddFont}
-                                onSelectFontForRole={handleSelectFontForRole}
-                                onRemoveFont={handleRemoveFont}
-                                onUpdateRole={handleUpdateFontRole}
-                            />
-
-                            <BrandAssets
-                                tagline={data.tagline || ''}
-                                values={data.brand_values || []}
-                                aesthetic={data.visual_aesthetic || []}
-                                tone={data.tone_of_voice || []}
-                                preferredLanguage={data.preferred_language}
-                                onUpdateTagline={handleUpdateTagline}
-                                onUpdateValue={handleUpdateBrandValue}
-                                onAddValue={handleAddBrandValue}
-                                onRemoveValue={handleRemoveBrandValue}
-                                onUpdateAesthetic={handleUpdateAesthetic}
-                                onAddAesthetic={handleAddAesthetic}
-                                onRemoveAesthetic={handleRemoveAesthetic}
-                                onUpdateTone={handleUpdateTone}
-                                onAddTone={handleAddTone}
-                                onRemoveTone={handleRemoveTone}
-                                onUpdateLanguage={handleUpdatePreferredLanguage}
-                            />
-
-                            <TextAssetsSection
-                                data={data.text_assets}
-                                onChange={handleTextAssetsChange}
-                                onAppendData={handleAppendExtractedData}
-                            />
+                    {/* REFINED THREE-COLUMN LAYOUT */}
+                    <div className="space-y-8">
+                        {/* ROW 1: Brand Context & Website Reference */}
+                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                            <div className="lg:col-span-2">
+                                <BrandContextCard
+                                    context={data.business_overview || ''}
+                                    minHeightClassName="min-h-[160px]"
+                                    onUpdate={(val) => updateData(prev => ({
+                                        ...prev,
+                                        business_overview: val,
+                                        text_assets: prev.text_assets ? { ...prev.text_assets, brand_context: val } : {
+                                            marketing_hooks: [],
+                                            visual_keywords: [],
+                                            ctas: [],
+                                            brand_context: val
+                                        }
+                                    }))}
+                                />
+                            </div>
+                            <div className="lg:col-span-1">
+                                <ScreenshotCard 
+                                    screenshotUrl={data.screenshot_url} 
+                                    faviconUrl={data.favicon_url} 
+                                />
+                            </div>
                         </div>
 
-                        <div className="space-y-10">
-                            <ScreenshotCard screenshotUrl={data.screenshot_url} faviconUrl={data.favicon_url} />
+                        {/* ROW 2: Main Brand Components (3 Columns) */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 items-start gap-8">
+                            {/* Column 1: Identity */}
+                            <div className="space-y-8">
+                                <LogoCard
+                                    logoUrl={data.logo_url}
+                                    logos={data.logos}
+                                    onUpload={handleUploadLogos}
+                                    onRemove={handleRemoveLogo}
+                                    onToggle={handleToggleLogoSelection}
+                                    onReorder={handleReorderLogos}
+                                    isUploading={isUploading}
+                                />
+                                <TaglineCard
+                                    tagline={data.tagline || ''}
+                                    onUpdateTagline={handleUpdateTagline}
+                                />
+                                <LanguageCard
+                                    preferredLanguage={data.preferred_language}
+                                    onUpdateLanguage={handleUpdatePreferredLanguage}
+                                />
+                                <TargetAudienceCard audience={data.target_audience} />
+                            </div>
+
+                            {/* Column 2: Visual System */}
+                            <div className="space-y-8">
+                                <ColorPalette
+                                    colors={data.colors || []}
+                                    isEdited={JSON.stringify(data.colors) !== JSON.stringify(initialData.colors)}
+                                    onUpdateColor={handleUpdateColor}
+                                    onUpdateRole={handleUpdateColorRole}
+                                    onSwapPositions={handleSwapColorPositions}
+                                    onRemoveColor={handleRemoveColor}
+                                    onAddColor={handleAddColor}
+                                    onReset={handleResetColors}
+                                />
+                                <TypographySection
+                                    fonts={(data.fonts || []).map(f => typeof f === 'string' ? { family: f } : f)}
+                                    tagline={data.tagline || ''}
+                                    onAddFont={handleAddFont}
+                                    onSelectFontForRole={handleSelectFontForRole}
+                                    onRemoveFont={handleRemoveFont}
+                                    onUpdateRole={handleUpdateFontRole}
+                                />
+                                <VisualAestheticCard
+                                    aesthetic={data.visual_aesthetic || []}
+                                    onUpdateAesthetic={handleUpdateAesthetic}
+                                    onAddAesthetic={handleAddAesthetic}
+                                    onRemoveAesthetic={handleRemoveAesthetic}
+                                />
+                            </div>
+
+                            {/* Column 3: Narrative & Contact */}
+                            <div className="space-y-8">
+                                <BrandValuesCard
+                                    values={data.brand_values || []}
+                                    onUpdateValue={handleUpdateBrandValue}
+                                    onAddValue={handleAddBrandValue}
+                                    onRemoveValue={handleRemoveBrandValue}
+                                />
+                                <ContactSocialCard
+                                    socialLinks={data.social_links}
+                                    emails={data.emails}
+                                    phones={data.phones}
+                                    addresses={data.addresses}
+                                    onUpdate={handleUpdateContact}
+                                />
+                                <ToneOfVoiceCard
+                                    tone={data.tone_of_voice || []}
+                                    onUpdateTone={handleUpdateTone}
+                                    onAddTone={handleAddTone}
+                                    onRemoveTone={handleRemoveTone}
+                                />
+                                <TextAssetsSection
+                                    data={data.text_assets}
+                                    onChange={handleTextAssetsChange}
+                                    onAppendData={handleAppendExtractedData}
+                                />
+                            </div>
+                        </div>
+
+                        {/* ROW 3: Secondary Visual Assets (Full Width) */}
+                        <div className="w-full">
                             <ImageGallery
                                 images={data.images || []}
                                 isUploading={isUploading}
@@ -1329,62 +1284,17 @@ export function BrandDNABoard({
                 </DialogContent>
             </Dialog>
 
-            <BrandKitAssistantWizard
-                open={showAssistantWizard}
-                onOpenChange={handleWizardOpenChange}
-                brand={data}
-                forceMode={mustForceAssistant}
-                onUpdateBrandName={(value) => updateData((prev) => ({ ...prev, brand_name: value }))}
-                onUpdateUrl={(value) => updateData((prev) => ({ ...prev, url: value }))}
-                onAnalyzeUrl={(urlOverride) => (onAnalyzeUrlFromAssistant || onRegenerate)?.(urlOverride || data.url || '')}
-                onStopAnalyzeUrl={onStopAnalyzeUrlFromAssistant}
-                onPreviewUrl={async (targetUrl) => {
-                    if (!onPreviewUrlFromAssistant) {
-                        return { success: false, url: targetUrl, error: 'Preview no disponible' };
-                    }
-                    return onPreviewUrlFromAssistant(targetUrl);
-                }}
-                onUploadLogos={handleUploadLogos}
-                onToggleLogo={handleToggleLogoSelection}
-                onRemoveLogo={handleRemoveLogo}
-                onAddColor={handleAddColor}
-                onUpdateColor={handleUpdateColor}
-                onUpdateColorRole={handleUpdateColorRole}
-                onRemoveColor={handleRemoveColor}
-                onUpdateBrandContext={handleUpdateBrandContext}
-                onUpdateContact={handleUpdateContact}
-                onAddFont={handleAddFont}
-                onSelectFontForRole={handleSelectFontForRole}
-                onRemoveFont={handleRemoveFont}
-                onUpdateFontRole={handleUpdateFontRole}
-                onUpdateTagline={handleUpdateTagline}
-                onUpdateValue={handleUpdateBrandValue}
-                onAddValue={handleAddBrandValue}
-                onRemoveValue={handleRemoveBrandValue}
-                onUpdateAesthetic={handleUpdateAesthetic}
-                onAddAesthetic={handleAddAesthetic}
-                onRemoveAesthetic={handleRemoveAesthetic}
-                onUpdateTone={handleUpdateTone}
-                onAddTone={handleAddTone}
-                onRemoveTone={handleRemoveTone}
-                onChangeTextAssets={handleTextAssetsChange}
-                onAppendExtractedData={handleAppendExtractedData}
-                onUploadImages={handleUploadFiles}
-                onRemoveImage={handleRemoveImage}
-                onOpenLightbox={setLightboxImage}
-                isUploadingImages={isUploading}
-                completionPercentage={completeness.percentage}
-                minimumCompletionToFinish={70}
-                onFinish={() => {
-                    setShowAssistantWizard(false);
-                    setAssistantFlowLocked(false);
-                    if (typeof window !== 'undefined') {
-                        window.sessionStorage.removeItem(ASSISTANT_LOCK_KEY);
-                    }
-                    onCompleteAssistantCreation?.();
-                }}
+            <BrandKitFloatingPalette
+                onSave={() => handleSave(false)}
+                onImport={handleImportKitClick}
+                onExport={handleExportJSON}
+                onDelete={onDeleteCurrent}
+                onOpenAssistant={onOpenAssistant}
+                isSaving={isSaving}
+                isExporting={isExportingPortable}
+                hasUnsavedChanges={hasUnsavedChanges}
             />
-        </div >
+        </div>
     );
 }
 

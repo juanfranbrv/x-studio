@@ -4,7 +4,7 @@
  */
 
 export interface LogoVariation {
-  type: 'transparent' | 'grayscale' | 'mono' | 'inverted'
+  type: 'whiteBg' | 'transparent' | 'grayscale' | 'mono' | 'inverted'
   label: string
   dataUrl: string
 }
@@ -73,6 +73,17 @@ export async function generateLogoVariations(logoUrl: string): Promise<LogoVaria
     const img = await loadImage(logoUrl)
     const { width, height } = img
     const variations: LogoVariation[] = []
+
+    // White background — original logo on solid white canvas
+    const { canvas: wCanvas, ctx: wCtx } = createCanvas(width, height)
+    wCtx.fillStyle = '#FFFFFF'
+    wCtx.fillRect(0, 0, width, height)
+    wCtx.drawImage(img, 0, 0)
+    variations.push({
+      type: 'whiteBg',
+      label: 'Fondo blanco',
+      dataUrl: wCanvas.toDataURL('image/png'),
+    })
 
     // Transparent — original logo drawn on transparent canvas (strip any bg)
     const { canvas: tCanvas, ctx: tCtx } = createCanvas(width, height)
