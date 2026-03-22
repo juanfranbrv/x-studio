@@ -20,6 +20,8 @@ interface LoadingStepProps {
   error: string | null
   targetUrl?: string
   screenshotUrl?: string
+  profilePicUrl?: string
+  extractedColors?: string[]
   onCancel: () => void
   onRetry: () => void
   onNext: () => void
@@ -222,7 +224,15 @@ function BrowserScanVisual({
 }
 
 // ── Instagram visual variant ────────────────────────────────
-function InstagramScanVisual({ isSuccess }: { isSuccess: boolean }) {
+function InstagramScanVisual({
+  isSuccess,
+  profilePicUrl,
+  extractedColors,
+}: {
+  isSuccess: boolean
+  profilePicUrl?: string
+  extractedColors?: string[]
+}) {
   return (
     <motion.div
       className="relative mx-auto w-full max-w-[280px]"
@@ -231,42 +241,69 @@ function InstagramScanVisual({ isSuccess }: { isSuccess: boolean }) {
       transition={{ duration: 0.6 }}
     >
       <div className="overflow-hidden rounded-2xl border border-border/50 bg-background shadow-[0_20px_60px_-20px_rgba(0,0,0,0.15)] p-4">
-        {/* Profile header skeleton */}
+        {/* Profile header */}
         <div className="flex items-center gap-3 mb-4">
-          <motion.div
-            className="h-12 w-12 rounded-full bg-muted/50"
-            animate={{ opacity: [0.3, 0.6, 0.3] }}
-            transition={{ duration: 1.5, repeat: Infinity }}
-          />
+          {isSuccess && profilePicUrl ? (
+            <motion.img
+              src={profilePicUrl}
+              alt=""
+              className="h-12 w-12 rounded-full object-cover flex-shrink-0"
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.5 }}
+            />
+          ) : (
+            <motion.div
+              className="h-12 w-12 rounded-full bg-muted/50 flex-shrink-0"
+              animate={isSuccess ? {} : { opacity: [0.3, 0.6, 0.3] }}
+              transition={{ duration: 1.5, repeat: Infinity }}
+            />
+          )}
           <div className="flex-1 space-y-1.5">
             <motion.div
               className="h-3 w-24 rounded bg-muted/50"
-              animate={{ opacity: [0.3, 0.6, 0.3] }}
+              animate={isSuccess ? { opacity: 1 } : { opacity: [0.3, 0.6, 0.3] }}
               transition={{ duration: 1.5, repeat: Infinity, delay: 0.1 }}
             />
             <motion.div
               className="h-2 w-16 rounded bg-muted/40"
-              animate={{ opacity: [0.2, 0.5, 0.2] }}
+              animate={isSuccess ? { opacity: 1 } : { opacity: [0.2, 0.5, 0.2] }}
               transition={{ duration: 1.5, repeat: Infinity, delay: 0.2 }}
             />
           </div>
         </div>
 
-        {/* Grid skeleton */}
-        <div className="grid grid-cols-3 gap-1.5">
-          {Array.from({ length: 9 }).map((_, i) => (
-            <motion.div
-              key={i}
-              className="aspect-square rounded-md bg-muted/40"
-              animate={{ opacity: [0.15, 0.45, 0.15] }}
-              transition={{
-                duration: 1.8,
-                repeat: Infinity,
-                delay: i * 0.15,
-              }}
-            />
-          ))}
-        </div>
+        {/* Color swatches on success, grid skeleton while loading */}
+        {isSuccess && extractedColors && extractedColors.length > 0 ? (
+          <motion.div
+            className="flex gap-2 mt-2"
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.2 }}
+          >
+            {extractedColors.map((color, i) => (
+              <motion.div
+                key={i}
+                className="h-8 flex-1 rounded-lg"
+                style={{ backgroundColor: color }}
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 0.3, delay: 0.3 + i * 0.07 }}
+              />
+            ))}
+          </motion.div>
+        ) : (
+          <div className="grid grid-cols-3 gap-1.5">
+            {Array.from({ length: 9 }).map((_, i) => (
+              <motion.div
+                key={i}
+                className="aspect-square rounded-md bg-muted/40"
+                animate={isSuccess ? { opacity: 0.3 } : { opacity: [0.15, 0.45, 0.15] }}
+                transition={{ duration: 1.8, repeat: isSuccess ? 0 : Infinity, delay: i * 0.15 }}
+              />
+            ))}
+          </div>
+        )}
 
         {/* Scan line */}
         {!isSuccess && <ScanLine />}
@@ -371,6 +408,8 @@ export function LoadingStep({
   error,
   targetUrl,
   screenshotUrl,
+  profilePicUrl,
+  extractedColors,
   onCancel,
   onRetry,
   onNext,
@@ -440,7 +479,7 @@ export function LoadingStep({
             isSuccess={isSuccess}
           />
         ) : isInsta ? (
-          <InstagramScanVisual isSuccess={isSuccess} />
+          <InstagramScanVisual isSuccess={isSuccess} profilePicUrl={profilePicUrl} extractedColors={extractedColors} />
         ) : (
           <ScratchScanVisual isSuccess={isSuccess} />
         )}

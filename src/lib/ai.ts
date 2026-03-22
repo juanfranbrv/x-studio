@@ -15,4 +15,4 @@ const groq = createGroq({
 export const model = google('gemini-flash-latest');
 
 // Export the Groq model (Fallback)
-export const groqModel = groq('llama-3.3-70b-versatile');
+export const groqModel = groq('llama-3.1-8b-instant');

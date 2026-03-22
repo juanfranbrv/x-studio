@@ -476,8 +476,7 @@ function BrandKitPageContent() {
 
     // Handler para crear nuevo kit
     const handleNewProfile = () => {
-        setUrl('');
-        void createAssistantKitAndOpen({ draft: true });
+        router.push('/brand-kit/new');
     };
 
     const assistantCreationMode = searchParams.get('creation') === 'draft';

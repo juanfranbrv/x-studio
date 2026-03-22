@@ -33,6 +33,7 @@ const nextConfig: NextConfig = {
   logging: {
     incomingRequests: false,
   },
+  serverExternalPackages: ['node-vibrant', 'apify-client'],
   experimental: {
     serverActions: {
       bodySizeLimit: '10mb',

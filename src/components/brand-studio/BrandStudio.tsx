@@ -368,6 +368,8 @@ export function BrandStudio({ userId }: BrandStudioProps) {
             error={state.analysisError}
             targetUrl={state.webUrl}
             screenshotUrl={state.draft.screenshot_url}
+            profilePicUrl={state.draft.favicon_url || state.draft.logo_url}
+            extractedColors={state.draft.colors?.slice(0, 5).map(c => c.color).filter(Boolean) as string[] | undefined}
             onCancel={handleCancel}
             onRetry={handleRetry}
             onNext={goNext}
