@@ -20,13 +20,13 @@ const ProposalsSchema = z.object({
     description: z.string().describe('Brief description of the pairing feel'),
   })).length(4),
   personality: z.object({
-    toneOfVoice: z.array(z.string()).length(5).describe('Tone of voice chips like Friendly, Professional, Direct, Inspiring, Playful'),
-    values: z.array(z.string()).length(5).describe('Brand values chips like Innovation, Trust, Sustainability, Creativity, Quality'),
+    toneOfVoice: z.array(z.string()).length(15).describe('15 varied tone-of-voice chips like Friendly, Professional, Direct, Inspiring, Playful, Empathetic, Bold, Witty, Warm, Confident…'),
+    values: z.array(z.string()).length(15).describe('15 varied brand-value chips like Innovation, Trust, Sustainability, Creativity, Quality, Integrity, Community, Passion, Excellence, Transparency…'),
   }),
   voice: z.object({
     taglines: z.array(z.string()).length(5).describe('5 brand tagline/slogan options'),
-    ctas: z.array(z.string()).length(5).describe('5 CTA text options like Discover more, Book now, Start free'),
-    marketingHooks: z.array(z.string()).length(5).describe('5 marketing headline options for banners and ads'),
+    ctas: z.array(z.string()).length(15).describe('15 varied CTA text options like Discover more, Book now, Start free — generate a wide variety so the user can rotate without repeating'),
+    marketingHooks: z.array(z.string()).length(15).describe('15 varied marketing headline options for banners and ads — generate a wide variety so the user can rotate without repeating'),
   }),
   brandContext: z.string().describe('A 2-3 sentence strategic brand summary describing its vision, positioning, and value proposition'),
 })
@@ -58,7 +58,7 @@ export async function generateBrandProposals({
   const langLabel = preferredLanguage === 'es' ? 'Spanish' : preferredLanguage === 'en' ? 'English' : preferredLanguage
 
   const colorContext = existingColors?.length
-    ? `\nExisting brand colors to consider as inspiration (but you can propose alternatives): ${existingColors.join(', ')}`
+    ? `\nDetected brand colors (MUST anchor each palette proposal to these exact colors — you may adjust lightness/saturation by at most 15% or add 1 complementary color per palette, but the core hues must remain): ${existingColors.join(', ')}`
     : ''
 
   const prompt = `You are a world-class brand designer. Generate palette and typography proposals for a brand.
@@ -79,14 +79,14 @@ Generate:
    - Pairings should range from classic to modern
    - Use only widely available Google Fonts
 
-3. PERSONALITY chips in 2 categories (5 chips each):
-   - Tone of voice: communication style (e.g., Friendly, Professional, Direct, Inspiring, Bold)
-   - Values: brand values (e.g., Innovation, Trust, Sustainability, Creativity, Excellence)
+3. PERSONALITY chips in 2 categories (exactly 15 chips each — generate a wide variety so the user can rotate through options without repeating):
+   - Tone of voice: communication style adjectives (e.g., Friendly, Professional, Direct, Inspiring, Bold, Empathetic, Confident, Witty, Warm, Authoritative…)
+   - Values: brand value nouns (e.g., Innovation, Trust, Sustainability, Creativity, Excellence, Integrity, Community, Passion, Transparency, Quality…)
 
 4. VOICE proposals:
    - 5 tagline/slogan options that capture the brand essence
-   - 5 CTA texts appropriate for the business (e.g., Discover more, Book now, Start free)
-   - 5 marketing headlines for banners and ads (catchy, impactful, short)
+   - 15 CTA texts appropriate for the business (varied: short, long, formal, casual…)
+   - 15 marketing headlines for banners and ads (varied tone and length)
 
 5. BRAND CONTEXT:
    - A 2-3 sentence strategic summary of the brand's vision, positioning, and value proposition`

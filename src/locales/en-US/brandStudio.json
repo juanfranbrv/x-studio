@@ -24,6 +24,7 @@
     "next": "Next",
     "exit": "Exit",
     "exitConfirm": "Are you sure you want to exit? Your progress will be lost.",
+    "exitConfirmFirstKit": "Without a brand kit you cannot access the Lab. If you exit now, your progress will be lost.",
     "exitYes": "Yes, exit",
     "exitNo": "Continue"
   },
@@ -65,8 +66,11 @@
     "retry": "Retry",
     "done": "Analysis complete",
     "doneSubtitle": "We've extracted your brand elements. Continue when you're ready",
+    "fallbackNotice": "We couldn't access the profile directly — we've generated a base proposal from the name and description. You can edit it in the next steps.",
     "error": "Something went wrong during analysis",
     "errorCheckUrl": "Check that the address is spelled correctly and try again",
+    "errorHandleNotFound": "We couldn't find that Instagram account. Check that the username is spelled correctly and try again.",
+    "errorCheckHandle": "We couldn't access that Instagram profile. Please try again or use a different username.",
     "messages": {
       "web": {
         "1": "Accessing your website...",
@@ -109,7 +113,8 @@
   },
   "palette": {
     "title": "Your color palette",
-    "subtitle": "These are the colors detected from your brand. You can edit them, change roles, or remove them"
+    "subtitle": "These are the colors detected from your brand. You can edit them, change roles, or remove them",
+    "proposals": "Palette proposals"
   },
   "typography": {
     "title": "Choose your typography",
@@ -156,7 +161,9 @@
     "noProposals": "No proposals available",
     "regenerate": "Generate new proposals",
     "regenerating": "Generating...",
-    "newOptions": "New options"
+    "newOptions": "New options",
+    "generating": "Creating your brand personality",
+    "generatingHint": "AI is selecting the best adjectives in your brand's language"
   },
   "voice": {
     "title": "Choose your brand voice",
@@ -168,7 +175,9 @@
     "noProposals": "No proposals available",
     "regenerate": "Generate new proposals",
     "newOptions": "New options",
-    "regenerating": "Generating..."
+    "regenerating": "Generating...",
+    "generating": "Creating your brand voice",
+    "generatingHint": "AI is writing taglines and copy in your brand's language"
   },
   "brandContext": {
     "title": "Brand vision & context",

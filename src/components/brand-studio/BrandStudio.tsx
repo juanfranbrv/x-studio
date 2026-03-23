@@ -19,6 +19,7 @@ import { TypographyStep } from './steps/TypographyStep'
 import { LanguageStep } from './steps/LanguageStep'
 import { PersonalityStep } from './steps/PersonalityStep'
 import { useUser } from '@clerk/nextjs'
+import { useBrandKit } from '@/contexts/BrandKitContext'
 import { VoiceStep } from './steps/VoiceStep'
 import { BrandContextStep } from './steps/BrandContextStep'
 import { ContactStep } from './steps/ContactStep'
@@ -59,6 +60,8 @@ export function BrandStudio({ userId }: BrandStudioProps) {
   const router = useRouter()
   const { i18n, t } = useTranslation('brandStudio')
   const { toast } = useToast()
+  const { brandKits } = useBrandKit()
+  const hasExistingKits = brandKits.length > 0
   const {
     state,
     dispatch,
@@ -82,6 +85,15 @@ export function BrandStudio({ userId }: BrandStudioProps) {
       analysisStartedRef.current = false
     }
   }, [state.currentStep])
+
+  // Switch UI language when brand language changes (only for supported locales)
+  useEffect(() => {
+    const localeMap: Record<string, string> = { en: 'en-US', es: 'es-ES' }
+    const locale = localeMap[state.brandLanguage]
+    if (locale && i18n.language !== locale) {
+      i18n.changeLanguage(locale)
+    }
+  }, [state.brandLanguage, i18n])
 
   // Run analysis when entering loading step
   useEffect(() => {
@@ -222,12 +234,16 @@ export function BrandStudio({ userId }: BrandStudioProps) {
   }, [dispatch])
 
   const handleRetry = useCallback(() => {
+    abortRef.current = new AbortController()
+    analysisStartedRef.current = false
     dispatch({ type: 'SET_ANALYSIS_STATUS', status: 'idle' })
   }, [dispatch])
 
   const handleExit = useCallback(() => {
-    router.push('/brand-kit')
-  }, [router])
+    abortRef.current?.abort()
+    // If this is the user's first kit they're abandoning, go home (brand-kit would be empty)
+    router.push(hasExistingKits ? '/brand-kit' : '/')
+  }, [router, hasExistingKits])
 
   const [isSaving, setIsSaving] = useState(false)
 
@@ -291,8 +307,8 @@ export function BrandStudio({ userId }: BrandStudioProps) {
     }
   }, [state, upsertDNA, router, t, toast, isSaving])
 
-  const handleRegenerateProposals = useCallback(() => {
-    const preferredLang = state.brandLanguage || i18n.language?.split('-')[0] || 'es'
+  const handleRegenerateProposals = useCallback((langOverride?: string) => {
+    const preferredLang = langOverride || state.brandLanguage || i18n.language?.split('-')[0] || 'es'
     dispatch({ type: 'SET_PROPOSALS_STATUS', status: 'running' })
     const existingColors = state.draft.colors?.map((c) => c.color).filter(Boolean)
     generateBrandProposals({
@@ -308,6 +324,12 @@ export function BrandStudio({ userId }: BrandStudioProps) {
         dispatch({ type: 'SET_PROPOSALS_STATUS', status: 'error' })
       })
   }, [state.draft, state.brandLanguage, i18n.language, dispatch])
+
+  // When leaving the language step, regenerate text proposals in the chosen language
+  const handleLanguageNext = useCallback(() => {
+    goNext()
+    handleRegenerateProposals(state.brandLanguage)
+  }, [goNext, handleRegenerateProposals, state.brandLanguage])
 
   const isNextDisabled = (() => {
     switch (state.currentStep) {
@@ -367,13 +389,16 @@ export function BrandStudio({ userId }: BrandStudioProps) {
             status={state.analysisStatus}
             error={state.analysisError}
             targetUrl={state.webUrl}
+            instagramHandle={state.instagramHandle}
             screenshotUrl={state.draft.screenshot_url}
             profilePicUrl={state.draft.favicon_url || state.draft.logo_url}
             extractedColors={state.draft.colors?.slice(0, 5).map(c => c.color).filter(Boolean) as string[] | undefined}
+            usedFallback={!!state.draft.debug?.fallback}
             onCancel={handleCancel}
             onRetry={handleRetry}
             onNext={goNext}
             onUrlChange={(url) => dispatch({ type: 'SET_WEB_URL', url })}
+            onHandleChange={(handle) => dispatch({ type: 'SET_INSTAGRAM_HANDLE', handle })}
           />
         )
       case 'logo':
@@ -383,6 +408,8 @@ export function BrandStudio({ userId }: BrandStudioProps) {
           <PaletteStep
             draft={state.draft}
             dispatch={dispatch}
+            proposals={state.proposals}
+            isRegenerating={state.proposalsStatus === 'running'}
           />
         )
       case 'typography':
@@ -533,11 +560,12 @@ export function BrandStudio({ userId }: BrandStudioProps) {
           canGoBack={canGoBack}
           canGoNext={canGoNext || state.currentStep === 'brandBoard'}
           onBack={goBack}
-          onNext={state.currentStep === 'brandBoard' ? handleSave : goNext}
+          onNext={state.currentStep === 'brandBoard' ? handleSave : state.currentStep === 'language' ? handleLanguageNext : goNext}
           onExit={handleExit}
           nextDisabled={isNextDisabled || (state.currentStep === 'brandBoard' && isSaving)}
           nextLabel={state.currentStep === 'brandBoard' ? (t('brandBoard.save') || 'Guardar y empezar a crear') : undefined}
           showSidebar={showSidebar}
+          hasExistingKits={hasExistingKits}
         />
       )}
     </div>

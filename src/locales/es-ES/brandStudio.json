@@ -25,6 +25,7 @@
     "next": "Siguiente",
     "exit": "Salir",
     "exitConfirm": "Seguro que quieres salir? Tu progreso se perdera.",
+    "exitConfirmFirstKit": "Sin un kit de marca no podras acceder al Laboratorio. Si sales ahora, tu progreso se perdera.",
     "exitYes": "Si, salir",
     "exitNo": "Continuar"
   },
@@ -66,8 +67,11 @@
     "retry": "Reintentar",
     "done": "Analisis completado",
     "doneSubtitle": "Hemos extraido los elementos de tu marca. Continua cuando estes listo",
+    "fallbackNotice": "No pudimos acceder al perfil directamente — hemos generado una propuesta base a partir del nombre y descripcion. Puedes editarlo en los pasos siguientes.",
     "error": "Algo ha fallado durante el analisis",
     "errorCheckUrl": "Comprueba que la direccion esta bien escrita e intentalo de nuevo",
+    "errorHandleNotFound": "No hemos encontrado esa cuenta de Instagram. Comprueba que el usuario esta bien escrito e intentalo de nuevo.",
+    "errorCheckHandle": "No hemos podido acceder a ese perfil de Instagram. Intentalo de nuevo o prueba con otro usuario.",
     "messages": {
       "web": {
         "1": "Accediendo a tu sitio web...",
@@ -110,7 +114,8 @@
   },
   "palette": {
     "title": "Tu paleta de colores",
-    "subtitle": "Estos son los colores detectados de tu marca. Puedes editarlos, cambiar roles o eliminarlos"
+    "subtitle": "Estos son los colores detectados de tu marca. Puedes editarlos, cambiar roles o eliminarlos",
+    "proposals": "Propuestas de paleta"
   },
   "typography": {
     "title": "Elige tu tipografia",
@@ -159,7 +164,9 @@
     "regenerating": "Generando...",
     "newOptions": "Nuevas opciones",
     "addCustom": "Añadir propio...",
-    "placeholder": "Escribe un valor o tono..."
+    "placeholder": "Escribe un valor o tono...",
+    "generating": "Creando la personalidad de tu marca",
+    "generatingHint": "La IA está eligiendo los mejores adjetivos en el idioma de tu marca"
   },
   "voice": {
     "title": "Elige la voz de tu marca",
@@ -173,7 +180,9 @@
     "newOptions": "Nuevas opciones",
     "regenerating": "Generando...",
     "addCustom": "Escribir el mío...",
-    "placeholder": "Escribe tu texto aquí..."
+    "placeholder": "Escribe tu texto aquí...",
+    "generating": "Creando la voz de tu marca",
+    "generatingHint": "La IA está redactando eslogans y textos en el idioma de tu marca"
   },
   "brandContext": {
     "title": "Vision y contexto de marca",

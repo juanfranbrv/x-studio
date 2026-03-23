@@ -18,7 +18,6 @@ import {
   WIZARD_SECTION_LABEL,
   WIZARD_CHIP,
   WIZARD_CHIP_ACTIVE,
-  WIZARD_GHOST_BUTTON,
 } from '../brandStudioStyles'
 
 interface PersonalityStepProps {
@@ -45,125 +44,105 @@ export function PersonalityStep({ draft, proposals, dispatch, onRegenerate, isRe
   const { t } = useTranslation('brandStudio')
   const personality = proposals?.personality
 
-  // Track which categories are currently regenerating individually
-  const [regeneratingCats, setRegeneratingCats] = useState<Set<Category>>(new Set())
-
-  // Initialize selected state from draft or pre-select all AI suggestions
-  const [selected, setSelected] = useState<Record<Category, Set<string>>>(() => {
-    const initial: Record<Category, Set<string>> = {
-      toneOfVoice: new Set(draft.tone_of_voice ?? []),
-      values: new Set(draft.brand_values ?? []),
-    }
-    if (personality) {
-      if (initial.toneOfVoice.size === 0) initial.toneOfVoice = new Set(personality.toneOfVoice)
-      if (initial.values.size === 0) initial.values = new Set(personality.values)
-    }
-    return initial
-  })
+  const [selected, setSelected] = useState<Record<Category, string[]>>(() => ({
+    toneOfVoice: draft.tone_of_voice ?? [],
+    values: draft.brand_values ?? [],
+  }))
 
   const [customInputs, setCustomInputs] = useState<Record<Category, string>>({
     toneOfVoice: '',
     values: '',
   })
 
-  // Re-init if proposals arrive after mount
+  // Items explicitly removed by user — skipped on "Nuevas opciones" until pool exhausts
+  const [dismissed, setDismissed] = useState<Record<Category, string[]>>({
+    toneOfVoice: [],
+    values: [],
+  })
+
+  // Replace selections whenever proposals change (covers initial load + language change regeneration)
   useEffect(() => {
     if (!personality) return
-    setSelected((prev) => ({
-      toneOfVoice: prev.toneOfVoice.size > 0 ? prev.toneOfVoice : new Set(personality.toneOfVoice),
-      values: prev.values.size > 0 ? prev.values : new Set(personality.values),
-    }))
-    // Clear regenerating state when new proposals arrive
-    setRegeneratingCats(new Set())
+    setSelected({
+      toneOfVoice: personality.toneOfVoice.slice(0, MAX_CHIPS),
+      values: personality.values.slice(0, MAX_CHIPS),
+    })
+    setDismissed({ toneOfVoice: [], values: [] })
   }, [personality])
 
-  // Sync to draft on selection change
+  // Sync to draft
   useEffect(() => {
     dispatch({
       type: 'UPDATE_DRAFT',
       data: {
-        tone_of_voice: Array.from(selected.toneOfVoice),
-        brand_values: Array.from(selected.values),
+        tone_of_voice: selected.toneOfVoice,
+        brand_values: selected.values,
       },
     })
   }, [selected, dispatch])
 
-  const toggleChip = (category: Category, chip: string) => {
-    setSelected((prev) => {
-      const next = new Set(prev[category])
-      if (next.has(chip)) {
-        next.delete(chip)
-      } else if (next.size < MAX_CHIPS) {
-        next.add(chip)
-      }
-      return { ...prev, [category]: next }
-    })
-  }
+  const removeChip = useCallback((category: Category, chip: string) => {
+    setSelected((prev) => ({ ...prev, [category]: prev[category].filter((c) => c !== chip) }))
+    setDismissed((prev) => ({ ...prev, [category]: [...prev[category], chip] }))
+  }, [])
 
-  const addCustomChip = (category: Category) => {
+  const addCustomChip = useCallback((category: Category) => {
     const value = customInputs[category].trim()
     if (!value) return
-    
     setSelected((prev) => {
-      const next = new Set(prev[category])
-      if (!next.has(value) && next.size < MAX_CHIPS) {
-        next.add(value)
-      }
-      return { ...prev, [category]: next }
+      if (prev[category].includes(value) || prev[category].length >= MAX_CHIPS) return prev
+      return { ...prev, [category]: [...prev[category], value] }
     })
-    
-    setCustomInputs(prev => ({ ...prev, [category]: '' }))
-  }
+    setCustomInputs((prev) => ({ ...prev, [category]: '' }))
+  }, [customInputs])
 
-  const removeChip = (category: Category, chip: string) => {
-    setSelected((prev) => {
-      const next = new Set(prev[category])
-      next.delete(chip)
-      return { ...prev, [category]: next }
-    })
-  }
+  /** Fill empty slots skipping dismissed items — never calls AI */
+  const handleFillCategory = useCallback((category: Category) => {
+    if (!personality) return
+    const pool = category === 'toneOfVoice' ? personality.toneOfVoice : personality.values
+    if (pool.length === 0) return
+    const current = selected[category]
+    const dis = dismissed[category]
+    const emptySlots = MAX_CHIPS - current.length
+    if (emptySlots <= 0) return
 
-  // Build ordered chips: always returns exactly MAX_CHIPS items.
-  // Selected chips first, then fill remaining slots with unselected proposals.
-  const getOrderedChips = (category: Category): { chip: string; isSelected: boolean }[] => {
-    if (!personality) return []
-    const allProposals = personality[category] ?? []
-    const sel = selected[category]
-    const selectedChips = Array.from(sel)
-    const freeSlots = MAX_CHIPS - selectedChips.length
-    const unselectedChips = allProposals
-      .filter((c) => !sel.has(c))
-      .slice(0, freeSlots)
-    return [
-      ...selectedChips.map((chip) => ({ chip, isSelected: true })),
-      ...unselectedChips.map((chip) => ({ chip, isSelected: false })),
-    ].slice(0, MAX_CHIPS)
-  }
+    let available = pool.filter((item) => !current.includes(item) && !dis.includes(item))
 
-  const handleRegenerateCategory = useCallback((category: Category) => {
-    if (!onRegenerate) return
-    setRegeneratingCats((prev) => new Set(prev).add(category))
-    onRegenerate()
-  }, [onRegenerate])
+    if (available.length < emptySlots) {
+      // Pool exhausted — reset dismissed and retry
+      setDismissed((prev) => ({ ...prev, [category]: [] }))
+      available = pool.filter((item) => !current.includes(item))
+    }
 
-  // Empty state when no proposals at all
-  if (!personality) {
+    const toAdd = available.slice(0, emptySlots)
+    if (toAdd.length > 0) {
+      setSelected((prev) => ({ ...prev, [category]: [...prev[category], ...toAdd] }))
+    }
+  }, [personality, selected, dismissed])
+
+  // Loading / empty state — show skeleton while regenerating so stale-language chips never flash
+  if (!personality || isRegenerating) {
     return (
       <div className={WIZARD_STEP_CONTAINER}>
         <div className={WIZARD_STEP_CONTENT}>
-          <div className="space-y-4 text-center">
-            <p className={WIZARD_SUBTITLE}>{t('personality.noProposals')}</p>
-            {onRegenerate && (
-              <Button variant="outline" onClick={onRegenerate} disabled={isRegenerating}>
-                {isRegenerating ? (
-                  <Loader2 className="mr-2 h-4 w-4" />
-                ) : (
-                  <RotateCcw className="mr-2 h-4 w-4" />
-                )}
-                {t('personality.regenerate')}
-              </Button>
-            )}
+          <div className="space-y-1">
+            <p className="text-sm font-medium text-foreground/70">{t('personality.generating')}</p>
+            <p className="text-xs text-muted-foreground">{t('personality.generatingHint')}</p>
           </div>
+          <div className="space-y-2">
+            <div className="h-9 w-64 rounded-xl bg-foreground/10 animate-pulse" />
+            <div className="h-5 w-48 rounded-lg bg-foreground/7 animate-pulse" />
+          </div>
+          {[0, 1].map((i) => (
+            <div key={i} className="space-y-3">
+              <div className="h-4 w-32 rounded bg-foreground/7 animate-pulse" />
+              <div className="flex flex-wrap gap-2">
+                {Array.from({ length: MAX_CHIPS }).map((_, j) => (
+                  <div key={j} className="h-9 w-24 rounded-full bg-foreground/10 animate-pulse" style={{ animationDelay: `${j * 80}ms` }} />
+                ))}
+              </div>
+            </div>
+          ))}
         </div>
       </div>
     )
@@ -186,11 +165,9 @@ export function PersonalityStep({ draft, proposals, dispatch, onRegenerate, isRe
         {/* Categories */}
         <div className="space-y-[clamp(1.25rem,3vh,2rem)]">
           {CATEGORIES.map(({ key }, catIdx) => {
-            const chips = getOrderedChips(key)
-            const selectedCount = selected[key].size
-            const allSlotsFilled = selectedCount >= MAX_CHIPS
-            const isCatRegenerating = isRegenerating && regeneratingCats.has(key)
-
+            const chips = selected[key]
+            const emptySlots = MAX_CHIPS - chips.length
+            const allFilled = emptySlots === 0
             return (
               <motion.div
                 key={key}
@@ -199,85 +176,85 @@ export function PersonalityStep({ draft, proposals, dispatch, onRegenerate, isRe
                 transition={{ delay: 0.1 * (catIdx + 1), duration: 0.4 }}
                 className="space-y-3"
               >
+                {/* Row header */}
                 <div className="flex items-center justify-between">
                   <h2 className={WIZARD_SECTION_LABEL}>
                     {t(`personality.${key}`)}
                     <span className="ml-2 text-xs font-normal normal-case tracking-normal text-muted-foreground/60">
-                      {selectedCount}/{MAX_CHIPS}
+                      {chips.length}/{MAX_CHIPS}
                     </span>
                   </h2>
-                  {onRegenerate && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleRegenerateCategory(key)}
-                      disabled={allSlotsFilled || isRegenerating}
-                      className="h-7 gap-1.5 rounded-lg px-2.5 text-xs text-muted-foreground hover:text-foreground"
-                    >
-                      {isCatRegenerating ? (
-                        <Loader2 className="h-3 w-3" />
-                      ) : (
-                        <RotateCcw className="h-3 w-3" />
-                      )}
-                      {isCatRegenerating ? t('personality.regenerating') : t('personality.newOptions')}
-                    </Button>
-                  )}
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleFillCategory(key)}
+                    disabled={allFilled}
+                    className="h-7 gap-1.5 rounded-lg px-2.5 text-xs text-muted-foreground hover:text-foreground disabled:opacity-40"
+                  >
+                    <RotateCcw className="h-3 w-3" />
+                    {t('personality.newOptions')}
+                  </Button>
                 </div>
+
+                {/* Chips row */}
                 <div className="flex flex-wrap gap-2">
                   <AnimatePresence mode="popLayout">
-                    {chips.map(({ chip, isSelected }, i) => (
-                      <motion.button
+                    {/* Selected chips — X to remove, no click-toggle */}
+                    {chips.map((chip, i) => (
+                      <motion.div
                         key={chip}
                         layout
-                        initial={{ opacity: 0, scale: 0.92 }}
+                        initial={{ opacity: 0, scale: 0.88 }}
                         animate={{ opacity: 1, scale: 1 }}
-                        exit={{ opacity: 0, scale: 0.85 }}
-                        transition={{ delay: 0.03 * i, duration: 0.25 }}
-                        whileTap={{ scale: 0.96 }}
-                        onClick={() => toggleChip(key, chip)}
-                        className={`${isSelected ? WIZARD_CHIP_ACTIVE : WIZARD_CHIP} group relative pr-7`}
+                        exit={{ opacity: 0, scale: 0.82 }}
+                        transition={{ delay: 0.03 * i, duration: 0.22 }}
+                        className="group flex items-center gap-1.5 rounded-full border border-primary/40 bg-[linear-gradient(180deg,hsl(var(--primary)/0.1),hsl(var(--primary)/0.04))] pl-5 pr-2 py-2 text-base font-medium text-primary shadow-[0_8px_24px_-16px_rgba(15,23,42,0.14),inset_0_1px_0_rgba(255,255,255,0.6)] transition-all duration-200"
                       >
-                        {chip}
-                        {isSelected && (
-                          <span 
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              removeChip(key, chip)
-                            }}
-                            className="absolute right-1 top-1/2 -translate-y-1/2 p-1 text-primary-foreground/40 hover:text-primary-foreground"
-                          >
-                            <X className="h-3 w-3" />
-                          </span>
-                        )}
-                      </motion.button>
-                    ))}
-                    {!allSlotsFilled && (
-                      <motion.div 
-                        initial={{ opacity: 0, scale: 0.92 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        className="flex items-center gap-2"
-                      >
-                        <Input
-                          value={customInputs[key]}
-                          onChange={(e) => setCustomInputs(prev => ({ ...prev, [key]: e.target.value }))}
-                          placeholder={t('personality.placeholder')}
-                          className="h-9 w-[180px] rounded-full border-dashed bg-transparent px-4 text-sm focus-visible:ring-primary/30"
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter') addCustomChip(key)
-                          }}
-                        />
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => addCustomChip(key)}
-                          className="h-8 w-8 rounded-full hover:bg-primary/10 hover:text-primary"
+                        <span>{chip}</span>
+                        <button
+                          type="button"
+                          onClick={() => removeChip(key, chip)}
+                          className="flex h-5 w-5 items-center justify-center rounded-full text-primary/40 transition-colors hover:bg-primary/10 hover:text-primary"
                         >
-                          <Plus className="h-4 w-4" />
-                        </Button>
+                          <X className="h-3 w-3" />
+                        </button>
                       </motion.div>
-                    )}
+                    ))}
+
+                    {/* Empty slot placeholders */}
+                    {Array.from({ length: emptySlots }).map((_, i) => (
+                      <motion.div
+                        key={`slot-${i}`}
+                        layout
+                        initial={{ opacity: 0, scale: 0.88 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        transition={{ delay: 0.03 * (chips.length + i), duration: 0.22 }}
+                        className="h-9 w-20 rounded-full border-2 border-dashed border-border/40 bg-transparent"
+                      />
+                    ))}
                   </AnimatePresence>
                 </div>
+
+                {/* Custom input — always below, not in the chip row */}
+                {!allFilled && (
+                  <div className="flex items-center gap-2">
+                    <Input
+                      value={customInputs[key]}
+                      onChange={(e) => setCustomInputs((prev) => ({ ...prev, [key]: e.target.value }))}
+                      placeholder={t('personality.placeholder')}
+                      className="h-9 w-[180px] rounded-full border-dashed bg-transparent px-4 text-sm focus-visible:ring-primary/30"
+                      onKeyDown={(e) => { if (e.key === 'Enter') addCustomChip(key) }}
+                    />
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => addCustomChip(key)}
+                      className="h-8 w-8 rounded-full hover:bg-primary/10 hover:text-primary"
+                    >
+                      <Plus className="h-4 w-4" />
+                    </Button>
+                  </div>
+                )}
               </motion.div>
             )
           })}
