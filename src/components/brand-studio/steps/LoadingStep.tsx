@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { motion, AnimatePresence } from 'framer-motion'
-import { AlertCircle, ArrowRight, RotateCcw } from 'lucide-react'
+import { AlertCircle, ArrowLeft, ArrowRight, RotateCcw } from 'lucide-react'
 import { IconHold } from '@/components/ui/icons'
 import { Button } from '@/components/ui/button'
 import type { SourceType, AnalysisStatus } from '../hooks/useWizardState'
@@ -19,13 +19,16 @@ interface LoadingStepProps {
   status: AnalysisStatus
   error: string | null
   targetUrl?: string
+  instagramHandle?: string
   screenshotUrl?: string
   profilePicUrl?: string
   extractedColors?: string[]
+  usedFallback?: boolean
   onCancel: () => void
   onRetry: () => void
   onNext: () => void
   onUrlChange?: (url: string) => void
+  onHandleChange?: (handle: string) => void
 }
 
 // ── Scan line that sweeps over the browser mockup ───────────
@@ -235,71 +238,75 @@ function InstagramScanVisual({
 }) {
   return (
     <motion.div
-      className="relative mx-auto w-full max-w-[280px]"
+      className="relative mx-auto w-full max-w-[460px]"
       initial={{ opacity: 0, y: 20, scale: 0.95 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
       transition={{ duration: 0.6 }}
     >
-      <div className="overflow-hidden rounded-2xl border border-border/50 bg-background shadow-[0_20px_60px_-20px_rgba(0,0,0,0.15)] p-4">
+      <div className="overflow-hidden rounded-2xl border border-border/50 bg-background shadow-[0_20px_60px_-20px_rgba(0,0,0,0.15)] p-6">
         {/* Profile header */}
-        <div className="flex items-center gap-3 mb-4">
+        <div className="flex items-center gap-4 mb-6">
           {isSuccess && profilePicUrl ? (
             <motion.img
               src={profilePicUrl}
               alt=""
-              className="h-12 w-12 rounded-full object-cover flex-shrink-0"
+              className="h-24 w-24 rounded-full object-cover flex-shrink-0 ring-2 ring-border/40"
               initial={{ opacity: 0, scale: 0.8 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ duration: 0.5 }}
             />
           ) : (
-            <motion.div
-              className="h-12 w-12 rounded-full bg-muted/50 flex-shrink-0"
-              animate={isSuccess ? {} : { opacity: [0.3, 0.6, 0.3] }}
-              transition={{ duration: 1.5, repeat: Infinity }}
-            />
+            <div className="h-24 w-24 rounded-full bg-muted/50 flex-shrink-0" />
           )}
-          <div className="flex-1 space-y-1.5">
+          <div className="flex-1 space-y-2">
             <motion.div
-              className="h-3 w-24 rounded bg-muted/50"
-              animate={isSuccess ? { opacity: 1 } : { opacity: [0.3, 0.6, 0.3] }}
-              transition={{ duration: 1.5, repeat: Infinity, delay: 0.1 }}
+              className="h-3.5 w-32 rounded bg-muted/50"
+              animate={{ opacity: isSuccess ? 1 : [0.3, 0.6, 0.3] }}
+              transition={{ duration: 1.5, repeat: isSuccess ? 0 : Infinity, delay: 0.1 }}
             />
             <motion.div
-              className="h-2 w-16 rounded bg-muted/40"
-              animate={isSuccess ? { opacity: 1 } : { opacity: [0.2, 0.5, 0.2] }}
-              transition={{ duration: 1.5, repeat: Infinity, delay: 0.2 }}
+              className="h-2.5 w-20 rounded bg-muted/40"
+              animate={{ opacity: isSuccess ? 1 : [0.2, 0.5, 0.2] }}
+              transition={{ duration: 1.5, repeat: isSuccess ? 0 : Infinity, delay: 0.2 }}
             />
           </div>
         </div>
 
         {/* Color swatches on success, grid skeleton while loading */}
-        {isSuccess && extractedColors && extractedColors.length > 0 ? (
-          <motion.div
-            className="flex gap-2 mt-2"
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.2 }}
-          >
-            {extractedColors.map((color, i) => (
-              <motion.div
-                key={i}
-                className="h-8 flex-1 rounded-lg"
-                style={{ backgroundColor: color }}
-                initial={{ opacity: 0, scale: 0.8 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ duration: 0.3, delay: 0.3 + i * 0.07 }}
-              />
-            ))}
-          </motion.div>
+        {isSuccess ? (
+          extractedColors && extractedColors.length > 0 ? (
+            <motion.div
+              className="flex gap-2.5 mt-2"
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.2 }}
+            >
+              {extractedColors.map((color, i) => (
+                <motion.div
+                  key={i}
+                  className="h-16 flex-1 rounded-xl"
+                  style={{ backgroundColor: color }}
+                  initial={{ opacity: 0, scale: 0.8 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ duration: 0.3, delay: 0.3 + i * 0.07 }}
+                />
+              ))}
+            </motion.div>
+          ) : (
+            <div className="flex gap-2.5 mt-2">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <div key={i} className="h-16 flex-1 rounded-xl bg-muted/30 border border-border/30" />
+              ))}
+            </div>
+          )
         ) : (
-          <div className="grid grid-cols-3 gap-1.5">
+          <div className="grid grid-cols-3 gap-2">
             {Array.from({ length: 9 }).map((_, i) => (
               <motion.div
                 key={i}
-                className="aspect-square rounded-md bg-muted/40"
-                animate={isSuccess ? { opacity: 0.3 } : { opacity: [0.15, 0.45, 0.15] }}
-                transition={{ duration: 1.8, repeat: isSuccess ? 0 : Infinity, delay: i * 0.15 }}
+                className="aspect-square rounded-md bg-muted/60"
+                animate={{ opacity: [0.3, 0.7, 0.3] }}
+                transition={{ duration: 1.8, repeat: Infinity, delay: i * 0.15 }}
               />
             ))}
           </div>
@@ -407,13 +414,16 @@ export function LoadingStep({
   status,
   error,
   targetUrl,
+  instagramHandle,
   screenshotUrl,
   profilePicUrl,
   extractedColors,
+  usedFallback,
   onCancel,
   onRetry,
   onNext,
   onUrlChange,
+  onHandleChange,
 }: LoadingStepProps) {
   const { t } = useTranslation('brandStudio')
   const [messageIndex, setMessageIndex] = useState(0)
@@ -512,28 +522,55 @@ export function LoadingStep({
           )}
 
           {isSuccess && (
-            <motion.p
+            <motion.div
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.4 }}
-              className="text-base text-muted-foreground"
+              className="space-y-2"
             >
-              {t('loading.doneSubtitle')}
-            </motion.p>
+              <p className="text-base text-muted-foreground">
+                {t('loading.doneSubtitle')}
+              </p>
+              {usedFallback && (
+                <p className="text-xs text-muted-foreground/60">
+                  {t('loading.fallbackNotice')}
+                </p>
+              )}
+            </motion.div>
           )}
 
           {isError && (
             <div className="space-y-2">
-              {targetUrl !== undefined && onUrlChange && (
-                <input
-                  value={targetUrl}
-                  onChange={(e) => onUrlChange(e.target.value)}
-                  className={`${WIZARD_INPUT} text-center`}
-                />
+              {isInsta ? (
+                <>
+                  {instagramHandle !== undefined && onHandleChange && (
+                    <input
+                      value={instagramHandle}
+                      onChange={(e) => onHandleChange(e.target.value)}
+                      placeholder="@tu_cuenta"
+                      className={`${WIZARD_INPUT} text-center`}
+                    />
+                  )}
+                  <p className="text-sm text-muted-foreground">
+                    {error === 'INSTAGRAM_ACCOUNT_NOT_FOUND'
+                      ? t('loading.errorHandleNotFound')
+                      : t('loading.errorCheckHandle')}
+                  </p>
+                </>
+              ) : (
+                <>
+                  {targetUrl !== undefined && onUrlChange && (
+                    <input
+                      value={targetUrl}
+                      onChange={(e) => onUrlChange(e.target.value)}
+                      className={`${WIZARD_INPUT} text-center`}
+                    />
+                  )}
+                  <p className="text-sm text-muted-foreground">
+                    {t('loading.errorCheckUrl')}
+                  </p>
+                </>
               )}
-              <p className="text-sm text-muted-foreground">
-                {t('loading.errorCheckUrl')}
-              </p>
             </div>
           )}
         </div>
@@ -573,10 +610,15 @@ export function LoadingStep({
             </>
           ) : isSuccess ? (
             <motion.div
+              className="flex gap-3"
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.2, duration: 0.4 }}
             >
+              <Button variant="outline" onClick={onCancel} className={WIZARD_SECONDARY_BUTTON}>
+                <ArrowLeft className="mr-2 h-4 w-4" />
+                {t('nav.back')}
+              </Button>
               <Button onClick={onNext} className={WIZARD_SECONDARY_BUTTON}>
                 {t('nav.next')}
                 <ArrowRight className="ml-2 h-4 w-4" />

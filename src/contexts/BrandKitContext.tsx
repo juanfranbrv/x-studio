@@ -13,6 +13,10 @@ interface BrandKitContextType {
     activeBrandKit: BrandDNA | null
     brandKits: BrandKitSummary[]
     loading: boolean
+    /** True while background recovery retries are still pending after initial load found no kits */
+    isRecovering: boolean
+    /** True when load failed due to a server error (as opposed to success but empty kits) */
+    loadError: boolean
     setActiveBrandKit: (id: string, shouldPersist?: boolean, allowFallback?: boolean) => Promise<boolean>
     reloadBrandKits: (isSilent?: boolean) => Promise<void>
     deleteBrandKitById: (id: string) => Promise<void>
@@ -30,6 +34,9 @@ export function BrandKitProvider({ children }: { children: ReactNode }) {
     const [activeBrandKit, setActiveBrandKitState] = useState<BrandDNA | null>(null)
     const [brandKits, setBrandKits] = useState<BrandKitSummary[]>([])
     const [loading, setLoading] = useState(true)
+    const [isRecovering, setIsRecovering] = useState(false)
+    /** True when the last load attempt failed with a server error (vs. success but no kits) */
+    const [loadError, setLoadError] = useState(false)
 
     const userRecord = useQuery(api.users.getUser, user?.id ? { clerk_id: user.id } : 'skip')
     const updateLastBrand = useMutation(api.users.setCurrentBrand)
@@ -51,6 +58,7 @@ export function BrandKitProvider({ children }: { children: ReactNode }) {
             clearTimeout(backgroundRetryTimeoutRef.current)
             backgroundRetryTimeoutRef.current = null
         }
+        setIsRecovering(false)
     }, [])
 
     const scheduleBackgroundRecovery = useCallback(() => {
@@ -59,8 +67,14 @@ export function BrandKitProvider({ children }: { children: ReactNode }) {
 
         const attemptIndex = emptyRecoveryAttemptRef.current
         const delay = EMPTY_BRANDKIT_RECOVERY_DELAYS_MS[attemptIndex]
-        if (typeof delay !== 'number') return
+        if (typeof delay !== 'number') {
+            console.warn('%c[BrandKitCtx:recovery]', 'color:#f59e0b;font-weight:bold', 'all background retries exhausted — giving up')
+            setIsRecovering(false)
+            return
+        }
 
+        console.log('%c[BrandKitCtx:recovery]', 'color:#f59e0b;font-weight:bold', `scheduling attempt ${attemptIndex + 1} in ${delay}ms`)
+        setIsRecovering(true)
         backgroundRetryTimeoutRef.current = setTimeout(() => {
             backgroundRetryTimeoutRef.current = null
             emptyRecoveryAttemptRef.current += 1
@@ -119,12 +133,19 @@ export function BrandKitProvider({ children }: { children: ReactNode }) {
     }, [ensureConvexUser, updateLastBrand, user?.id, userRecord])
 
     const loadBrandKits = useCallback(async (isSilent = false) => {
+        const tag = isSilent ? '[BrandKitCtx:bgLoad]' : '[BrandKitCtx:load]'
+        const style = 'color:#0ea5e9;font-weight:bold'
+
         if (!user?.id) {
+            console.log(`%c${tag}`, style, 'skip — no user')
             if (!isSilent) setLoading(false)
             return
         }
 
-        if (loadInFlightRef.current) return
+        if (loadInFlightRef.current) {
+            console.log(`%c${tag}`, style, 'skip — already in flight')
+            return
+        }
         loadInFlightRef.current = true
         const requestId = ++loadRequestIdRef.current
 
@@ -137,7 +158,9 @@ export function BrandKitProvider({ children }: { children: ReactNode }) {
                     await wait(retryDelaysMs[i])
                 }
 
+                console.log(`%c${tag}`, style, `attempt ${i + 1}/${retryDelaysMs.length} userId=${user.id}`)
                 result = await getAllUserBrandKits(user.id)
+                console.log(`%c${tag}`, style, `attempt ${i + 1} result:`, { success: result.success, count: Array.isArray(result.data) ? result.data.length : 'n/a', error: (result as any).error })
 
                 if (result.success && Array.isArray(result.data) && result.data.length > 0) {
                     break
@@ -148,15 +171,21 @@ export function BrandKitProvider({ children }: { children: ReactNode }) {
                 }
             }
 
-            if (requestId !== loadRequestIdRef.current) return
+            if (requestId !== loadRequestIdRef.current) {
+                console.log(`%c${tag}`, style, 'stale request, bailing out')
+                return
+            }
 
             if (result.success && result.data) {
+                setLoadError(false)
                 setBrandKits(result.data)
+                console.log(`%c${tag}`, style, `✓ loaded ${result.data.length} kits`)
 
                 if (result.data.length > 0) {
                     emptyRecoveryAttemptRef.current = 0
                     clearBackgroundRetry()
                 } else {
+                    console.warn(`%c${tag}`, style, 'success but 0 kits — scheduling background recovery')
                     scheduleBackgroundRecovery()
                 }
 
@@ -177,10 +206,13 @@ export function BrandKitProvider({ children }: { children: ReactNode }) {
                     }
                 }
             } else {
+                console.error(`%c${tag}`, style, '✗ server error — scheduling background recovery', (result as any).error)
+                setLoadError(true)
                 scheduleBackgroundRecovery()
             }
         } catch (error) {
-            console.error('Error loading brand kits:', error)
+            console.error(`%c${tag}`, style, '✗ exception thrown:', error)
+            setLoadError(true)
             scheduleBackgroundRecovery()
         } finally {
             loadInFlightRef.current = false
@@ -371,6 +403,8 @@ export function BrandKitProvider({ children }: { children: ReactNode }) {
         activeBrandKit,
         brandKits,
         loading,
+        isRecovering,
+        loadError,
         setActiveBrandKit,
         reloadBrandKits,
         deleteBrandKitById,

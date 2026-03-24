@@ -10,6 +10,7 @@ interface CopywriterPromptParams {
    fieldLabel: string
    fieldDescription?: string
    rawMessage?: string
+   languageOverride?: string
 }
 
 const LANGUAGE_NAMES: Record<string, string> = {
@@ -79,9 +80,10 @@ export const buildCopywriterPrompt = ({
    intentDescription,
    fieldLabel,
    fieldDescription,
-   rawMessage
+   rawMessage,
+   languageOverride
 }: CopywriterPromptParams) => {
-   const preferredLanguage = brandDNA.preferred_language || 'es'
+   const preferredLanguage = languageOverride || 'es'
    const languageName = LANGUAGE_NAMES[preferredLanguage] || preferredLanguage.toUpperCase()
 
    const sections = [

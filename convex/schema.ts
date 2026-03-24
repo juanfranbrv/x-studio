@@ -290,7 +290,7 @@ export default defineSchema({
   // Persistent workspace sessions (autosave snapshots) per user/module/brand kit.
   work_sessions: defineTable({
     user_id: v.string(),                  // clerk_id
-    module: v.string(),                   // "image" | "carousel"
+    module: v.string(),                   // "image" | "carousel" | "brand-kit"
     brand_id: v.optional(v.id("brand_dna")),
     title: v.optional(v.string()),
     title_customized: v.optional(v.boolean()),

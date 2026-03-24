@@ -11,7 +11,6 @@ export function buildCarouselBrandContext(
     parts.push(`MARCA: ${brand.brand_name}`)
     if (brand.tagline) parts.push(`TAGLINE: ${brand.tagline}`)
     if (brand.business_overview) parts.push(`CONTEXTO: ${brand.business_overview}`)
-    if (brand.preferred_language) parts.push(`IDIOMA_PREFERIDO: ${brand.preferred_language}`)
     if (brand.target_audience?.length) parts.push(`PUBLICO_OBJETIVO: ${brand.target_audience.join(', ')}`)
     if (brand.brand_values?.length) parts.push(`VALORES: ${brand.brand_values.join(', ')}`)
     if (brand.text_assets?.brand_context) parts.push(`VISION_CONTEXTO: ${brand.text_assets.brand_context}`)

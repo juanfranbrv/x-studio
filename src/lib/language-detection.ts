@@ -445,3 +445,20 @@ export async function detectLanguageFromPartsWithApi(
 
     return localLanguage
 }
+
+export async function resolveGenerationLanguage(params: {
+    promptParts: Array<string | null | undefined>
+    fallback?: string
+}): Promise<string> {
+    const normalizedParts = params.promptParts
+        .map((part) => (typeof part === 'string' ? part.trim() : ''))
+        .filter(Boolean)
+
+    const safeFallback = normalizeLanguageCode(params.fallback, 'es')
+
+    if (normalizedParts.length === 0) {
+        return safeFallback
+    }
+
+    return detectLanguageFromPartsWithApi(normalizedParts, safeFallback)
+}

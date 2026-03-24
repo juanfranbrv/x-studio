@@ -3,6 +3,7 @@
 import { z } from 'zod'
 import { fetchQuery } from 'convex/nextjs'
 import { api } from '../../../convex/_generated/api'
+import { assignStudioColorRoles } from '@/lib/color-utils'
 import { generateTextUnified } from '@/lib/gemini'
 import type { AnalyzeBrandDNAResponse, BrandDNA } from '@/lib/brand-types'
 
@@ -98,13 +99,14 @@ Requirements:
         tone_of_voice: object.tone_of_voice,
         visual_aesthetic: object.visual_aesthetic,
         target_audience: object.target_audience,
-        colors: object.colors.map((c) => ({
-          color: c.hex,
-          sources: ['ai-generated'],
-          score: 1,
-          role: c.role,
-          selected: true,
-        })),
+        colors: assignStudioColorRoles(
+          object.colors.map((c, i) => ({
+            color: c.hex,
+            sources: ['ai-generated'],
+            score: object.colors.length - i,
+            selected: true,
+          }))
+        ),
         fonts: object.fonts.map((f) => ({
           family: f.family,
           role: f.role,

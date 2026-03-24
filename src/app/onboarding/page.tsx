@@ -27,7 +27,7 @@ export default function OnboardingPage() {
   const hasResolvedLastSessionRef = useRef(false)
   const onboardingEscapeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [lastVisitedModule, setLastVisitedModule] = useState<{
-    module: 'image' | 'carousel'
+    module: 'image' | 'carousel' | 'brand-kit'
     session_id: string
     brand_id?: string | null
     updated_at: string
@@ -99,7 +99,11 @@ export default function OnboardingPage() {
     const redirectToLastModule = async () => {
       if (!lastVisitedModule?.module) return false
 
-      const targetPath = lastVisitedModule.module === 'carousel' ? '/carousel' : '/image'
+      const targetPath = lastVisitedModule.module === 'brand-kit'
+        ? '/brand-kit'
+        : lastVisitedModule.module === 'carousel'
+          ? '/carousel'
+          : '/image'
 
       completeRedirect(targetPath)
       return true
@@ -142,6 +146,7 @@ export default function OnboardingPage() {
     activeBrandKit?.id,
     lastVisitedModule,
     reloadBrandKits,
+    setActiveBrandKit,
     router,
   ])
 

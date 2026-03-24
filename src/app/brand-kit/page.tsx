@@ -14,7 +14,9 @@ import { useBrandKit } from '@/contexts/BrandKitContext';
 import type { BrandDNA } from '@/lib/brand-types';
 import { cn } from '@/lib/utils';
 import { fetchQuery } from 'convex/nextjs';
+import { useMutation } from 'convex/react';
 import { api } from '../../../convex/_generated/api';
+import type { Id } from '../../../convex/_generated/dataModel';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { IconGlobe, IconSparkles, IconArrowRight, IconPackage, IconRefresh, IconPlus, IconTriangleAlert, IconCheckSimple, IconClose, IconEdit, IconListChecks, IconDelete, IconCopy, IconUpload, IconDownload } from '@/components/ui/icons';
@@ -71,6 +73,7 @@ function BrandKitPageContent() {
     const { user, isLoaded } = useUser();
     const searchParams = useSearchParams();
     const router = useRouter();
+    const upsertBrandKitSession = useMutation(api.work_sessions.upsertActiveSession)
     const {
         activeBrandKit,
         brandKits,
@@ -117,6 +120,31 @@ function BrandKitPageContent() {
     // Brand name editing
     const [isEditingBrandName, setIsEditingBrandName] = useState(false);
     const [brandNameEdit, setBrandNameEdit] = useState('');
+
+    useEffect(() => {
+        if (!user?.id || contextLoading || !activeBrandKit?.id) return
+
+        void upsertBrandKitSession({
+            user_id: user.id,
+            module: 'brand-kit',
+            brand_id: activeBrandKit.id as Id<'brand_dna'>,
+            title: activeBrandKit.brand_name?.trim() || t('board.namePlaceholder', { defaultValue: 'My Brand' }),
+            snapshot: {
+                module: 'brand-kit',
+                brand_id: activeBrandKit.id,
+                brand_name: activeBrandKit.brand_name || '',
+                url: activeBrandKit.url || '',
+            },
+        })
+    }, [
+        user?.id,
+        contextLoading,
+        activeBrandKit?.id,
+        activeBrandKit?.brand_name,
+        activeBrandKit?.url,
+        upsertBrandKitSession,
+        t,
+    ])
 
     const normalizeUrlForAnalysis = (raw: string): string | null => {
         const value = raw.trim();

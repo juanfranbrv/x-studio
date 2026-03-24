@@ -5,7 +5,7 @@ import { fetchQuery } from 'convex/nextjs'
 import { api } from '../../../convex/_generated/api'
 
 type LastVisitedModuleResult = {
-    module: 'image' | 'carousel'
+    module: 'image' | 'carousel' | 'brand-kit'
     session_id: string
     brand_id: string | null
     updated_at: string
@@ -23,7 +23,7 @@ export async function getLastVisitedModuleAction(clerkUserId: string) {
         })
 
         const normalizedData: LastVisitedModuleResult | null =
-            data && (data.module === 'image' || data.module === 'carousel')
+            data && (data.module === 'image' || data.module === 'carousel' || data.module === 'brand-kit')
                 ? {
                     module: data.module,
                     session_id: String(data.session_id),

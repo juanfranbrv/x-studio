@@ -353,6 +353,89 @@ export const createEmptyBrandKit = mutation({
     },
 });
 
+/**
+ * Migration utility: returns all brand_dna docs with no valid clerk_user_id
+ * (undefined, null, empty string, or the literal 'anonymous' fallback).
+ * Used once to diagnose and then patch orphaned records.
+ */
+export const listOrphanedBrandKits = query({
+    args: {},
+    handler: async (ctx) => {
+        const all = await ctx.db.query("brand_dna").collect();
+        return all
+            .filter((b) => !b.clerk_user_id || b.clerk_user_id === 'anonymous')
+            .map((b) => ({
+                _id: b._id,
+                brand_name: b.brand_name,
+                url: b.url,
+                clerk_user_id: b.clerk_user_id ?? null,
+                updated_at: b.updated_at,
+            }));
+    },
+});
+
+/**
+ * Diagnostic: returns total count + unique clerk_user_ids present in brand_dna.
+ * Use GET /api/admin/migrate-brand-kits to call this.
+ */
+export const debugBrandDNAStats = query({
+    args: {},
+    handler: async (ctx) => {
+        const all = await ctx.db.query("brand_dna").collect();
+        const idMap: Record<string, number> = {};
+        for (const b of all) {
+            const key = b.clerk_user_id ?? '__undefined__';
+            idMap[key] = (idMap[key] ?? 0) + 1;
+        }
+
+        // Resolve emails from users table
+        const uniqueIds = Object.keys(idMap).filter((k) => k !== '__undefined__');
+        const emailMap: Record<string, string> = {};
+        await Promise.all(
+            uniqueIds.map(async (clerkId) => {
+                const user = await ctx.db
+                    .query("users")
+                    .withIndex("by_clerk_id", (q) => q.eq("clerk_id", clerkId))
+                    .first();
+                emailMap[clerkId] = user?.email ?? '(no user record)';
+            })
+        );
+
+        return {
+            total: all.length,
+            users: Object.entries(idMap).map(([clerk_id, count]) => ({
+                clerk_id,
+                email: emailMap[clerk_id] ?? '(no user record)',
+                brand_kits: count,
+            })),
+        };
+    },
+});
+
+/**
+ * Migration mutation: assigns clerk_user_id to all brand_dna docs that currently
+ * have no valid owner (undefined, null, empty, or 'anonymous').
+ * Safe to run once per environment; returns the count of patched documents.
+ */
+export const claimOrphanedBrandKits = mutation({
+    args: { clerk_user_id: v.string() },
+    handler: async (ctx, args) => {
+        if (!args.clerk_user_id || args.clerk_user_id === 'anonymous') {
+            throw new Error('Invalid clerk_user_id');
+        }
+        const all = await ctx.db.query("brand_dna").collect();
+        const orphans = all.filter((b) => !b.clerk_user_id || b.clerk_user_id === 'anonymous');
+
+        await Promise.all(
+            orphans.map((b) =>
+                ctx.db.patch(b._id, { clerk_user_id: args.clerk_user_id })
+            )
+        );
+
+        return { patched: orphans.length };
+    },
+});
+
 export const cloneBrandDNAToUser = mutation({
     args: {
         source_id: v.id("brand_dna"),

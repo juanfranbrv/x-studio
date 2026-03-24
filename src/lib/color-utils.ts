@@ -158,6 +158,46 @@ export function categorizeColorRole(color: string, palette: { color: string, sco
 }
 
 /**
+ * Relative luminance per WCAG 2.1 spec.
+ */
+export function relativeLuminance(hex: string): number {
+  const rgb = hexToRgb(hex)
+  if (!rgb) return 0
+  const normalize = (v: number) => {
+    const c = v / 255
+    return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4)
+  }
+  return 0.2126 * normalize(rgb.r) + 0.7152 * normalize(rgb.g) + 0.0722 * normalize(rgb.b)
+}
+
+/**
+ * Assigns studio-compatible roles to a palette:
+ * - Fondo: the highest-scoring color
+ * - Texto: the darkest remaining color (lowest luminance)
+ * - Acento: everything else
+ */
+export function assignStudioColorRoles<T extends { color: string; score: number }>(
+  colors: T[]
+): (T & { role: 'Fondo' | 'Texto' | 'Acento' })[] {
+  if (!colors.length) return []
+  const ordered = [...colors].sort((a, b) => b.score - a.score)
+  const backgroundIdx = 0
+  let textIdx = ordered.length > 1 ? 1 : 0
+  let lowestLuminance = Number.POSITIVE_INFINITY
+  for (let i = 1; i < ordered.length; i++) {
+    const lum = relativeLuminance(ordered[i].color)
+    if (lum < lowestLuminance) {
+      lowestLuminance = lum
+      textIdx = i
+    }
+  }
+  return ordered.map((item, i) => ({
+    ...item,
+    role: i === backgroundIdx ? 'Fondo' : i === textIdx ? 'Texto' : 'Acento',
+  }))
+}
+
+/**
  * Calculates a harmony bonus score based on color theory relationships in the palette.
  */
 export function getHarmonyBonus(palette: string[]): number {

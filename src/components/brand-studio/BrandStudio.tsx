@@ -60,8 +60,10 @@ export function BrandStudio({ userId }: BrandStudioProps) {
   const router = useRouter()
   const { i18n, t } = useTranslation('brandStudio')
   const { toast } = useToast()
-  const { brandKits } = useBrandKit()
-  const hasExistingKits = brandKits.length > 0
+  const { brandKits, loading: brandKitsLoading } = useBrandKit()
+  // Only set hasExistingKits to false once context has finished loading —
+  // avoids showing the "first kit" notice during the initial loading phase.
+  const hasExistingKits = brandKitsLoading ? true : brandKits.length > 0
   const {
     state,
     dispatch,
@@ -256,7 +258,7 @@ export function BrandStudio({ userId }: BrandStudioProps) {
       
       const id = await upsertDNA({
         url,
-        clerk_user_id: user?.id || 'anonymous',
+        clerk_user_id: userId,
         updated_at: new Date().toISOString(),
         brand_name: state.draft.brand_name || 'My Brand',
         tagline: state.draft.tagline || '',
@@ -532,6 +534,18 @@ export function BrandStudio({ userId }: BrandStudioProps) {
 
         {/* ── Right main area ──────────────────────────────── */}
         <div className={showSidebar ? 'flex-1 overflow-y-auto overflow-x-visible' : ''}>
+          {/* Contextual notice for users with no brand kits who need to create their first one */}
+          {!hasExistingKits && state.currentStep === 'source' && (
+            <motion.div
+              initial={{ opacity: 0, y: -8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4, ease: 'easeOut' }}
+              className="flex items-center justify-center gap-2 px-4 py-2.5 bg-primary/8 border-b border-primary/15 text-sm text-primary/80"
+            >
+              <span className="text-base leading-none">✦</span>
+              <span>{t('source.firstKitNotice') || 'Para usar el laboratorio necesitas crear tu primer kit de marca.'}</span>
+            </motion.div>
+          )}
           <AnimatePresence mode="wait" custom={direction}>
             <motion.div
               key={state.currentStep}

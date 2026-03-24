@@ -3,7 +3,7 @@ import { mutation, query } from "./_generated/server";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
 import type { Id } from "./_generated/dataModel";
 
-const MODULES = new Set(["image", "carousel"]);
+const MODULES = new Set(["image", "carousel", "brand-kit"]);
 const MAX_SESSION_GENERATIONS = 24;
 const MAX_SELECTED_CONTEXT = 16;
 const MAX_CAROUSEL_SLIDES = 12;
@@ -15,10 +15,10 @@ const MAX_REFERENCE_IMAGE_ROLES = 16;
 const MAX_SESSIONS_PER_SCOPE = 40;
 const ADMIN_EMAILS = ["juanfranbrv@gmail.com"];
 
-function ensureModule(module: string): "image" | "carousel" {
+function ensureModule(module: string): "image" | "carousel" | "brand-kit" {
   const normalized = module.trim().toLowerCase();
   if (!MODULES.has(normalized)) throw new Error("Unsupported module");
-  return normalized as "image" | "carousel";
+  return normalized as "image" | "carousel" | "brand-kit";
 }
 
 function normalizePrompt(prompt?: string) {
@@ -624,7 +624,7 @@ function compareSessionsForKeep<
 
 async function getLatestForScope(
   ctx: MutationCtx | QueryCtx,
-  args: { user_id: string; module: "image" | "carousel"; brand_id?: Id<"brand_dna">; activeOnly?: boolean },
+  args: { user_id: string; module: "image" | "carousel" | "brand-kit"; brand_id?: Id<"brand_dna">; activeOnly?: boolean },
 ) {
   const activeOnly = args.activeOnly === true;
 
@@ -675,7 +675,7 @@ async function getLatestForScope(
 
 async function listLatestForScope(
   ctx: MutationCtx | QueryCtx,
-  args: { user_id: string; module: "image" | "carousel"; brand_id?: Id<"brand_dna">; limit: number },
+  args: { user_id: string; module: "image" | "carousel" | "brand-kit"; brand_id?: Id<"brand_dna">; limit: number },
 ) {
   if (args.brand_id) {
     const byBrand = await ctx.db
@@ -706,7 +706,7 @@ async function listLatestForScope(
 
 async function listActiveForScope(
   ctx: MutationCtx | QueryCtx,
-  args: { user_id: string; module: "image" | "carousel"; brand_id?: Id<"brand_dna">; limit?: number },
+  args: { user_id: string; module: "image" | "carousel" | "brand-kit"; brand_id?: Id<"brand_dna">; limit?: number },
 ) {
   const takeLimit = Math.max(1, Math.min(args.limit ?? 40, 200));
   if (args.brand_id) {
@@ -730,7 +730,7 @@ async function listActiveForScope(
 
 async function pruneInactiveSessionsForScope(
   ctx: MutationCtx,
-  args: { user_id: string; module: "image" | "carousel"; brand_id?: Id<"brand_dna"> },
+  args: { user_id: string; module: "image" | "carousel" | "brand-kit"; brand_id?: Id<"brand_dna"> },
 ) {
   const rows = args.brand_id
     ? await ctx.db
@@ -1024,7 +1024,7 @@ export const getLastVisitedModule = query({
     user_id: v.string(),
   },
   handler: async (ctx, args) => {
-    const [imageRows, carouselRows] = await Promise.all([
+    const [imageRows, carouselRows, brandKitRows] = await Promise.all([
       ctx.db
         .query("work_sessions")
         .withIndex("by_user_module_updated", (q) => q.eq("user_id", args.user_id).eq("module", "image"))
@@ -1035,9 +1035,14 @@ export const getLastVisitedModule = query({
         .withIndex("by_user_module_updated", (q) => q.eq("user_id", args.user_id).eq("module", "carousel"))
         .order("desc")
         .take(1),
+      ctx.db
+        .query("work_sessions")
+        .withIndex("by_user_module_updated", (q) => q.eq("user_id", args.user_id).eq("module", "brand-kit"))
+        .order("desc")
+        .take(1),
     ]);
 
-    const latest = [...imageRows, ...carouselRows].sort((a, b) => b.updated_at.localeCompare(a.updated_at))[0];
+    const latest = [...imageRows, ...carouselRows, ...brandKitRows].sort((a, b) => b.updated_at.localeCompare(a.updated_at))[0];
     if (!latest) return null;
 
     return {

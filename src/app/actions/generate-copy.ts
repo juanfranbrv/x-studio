@@ -4,6 +4,7 @@ import { BrandDNA } from '@/lib/brand-types'
 import { VisionAnalysis, IntentCategory, INTENT_CATALOG } from '@/lib/creation-flow-types'
 import { buildCopywriterPrompt } from '@/lib/prompts/actions/copywriter'
 import { getGoogleTextGenerativeModel } from '@/lib/gemini'
+import { resolveGenerationLanguage } from '@/lib/language-detection'
 
 export async function generateFieldCopy(params: {
     brandName: string
@@ -24,6 +25,10 @@ export async function generateFieldCopy(params: {
     console.log('--- generateFieldCopy call ---')
     console.log('Params:', { fieldLabel, rawMessage, intent })
 
+    const detectedLanguage = await resolveGenerationLanguage({
+        promptParts: [rawMessage],
+    })
+
     const systemPrompt = buildCopywriterPrompt({
         brandName,
         brandDNA,
@@ -32,7 +37,8 @@ export async function generateFieldCopy(params: {
         intentDescription: intentMeta?.extendedDescription || intentMeta?.description,
         fieldLabel,
         fieldDescription,
-        rawMessage
+        rawMessage,
+        languageOverride: detectedLanguage,
     })
 
     console.log('Generated System Prompt:', systemPrompt)

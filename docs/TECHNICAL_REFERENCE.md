@@ -79,6 +79,12 @@ El sistema sigue esta prioridad:
 3. si la API es fiable, se acepta su idioma
 4. si falla, no hay clave o la respuesta es dudosa, se conserva el resultado local
 
+### Regla vigente en generacion de image y carousel
+
+- En generacion de `image` y `carousel`, el idioma final se resuelve exclusivamente desde el prompt del usuario.
+- `preferred_language` del Brand Kit no debe participar ni como fallback ni como pista dentro del contexto de generacion.
+- La Detect Language API sigue usandose en servidor cuando esta disponible, y si falla se conserva el fallback heuristico local basado en el prompt.
+
 ### Notas de mantenimiento
 
 - No mover la llamada a la API a cliente.
@@ -125,6 +131,18 @@ Nota operativa:
   - no reutilizar una sola anchura para todos los bloques de texto
   - no volver a introducir `--tl-middle-top` negativos ni gaps negativos para corregir composiciones
   - si una nueva necesidad rompe el sistema, ajustar tokens y anchos maximos por zona antes de parchear por resolucion
+
+## Ultimo modulo visitado y entrada al lab
+
+- La home no debe mandar siempre a una ruta fija al pulsar `Entrar al lab`.
+- Regla vigente:
+  1. si no hay sesion, `Entrar al lab` lleva a `sign-in`
+  2. tras autenticar, `onboarding` resuelve la ultima zona real del usuario
+  3. el destino puede ser `image`, `carousel` o `brand-kit`
+  4. si no existe un ultimo destino valido, el fallback es `/image`
+- Fuente de verdad:
+  - `work_sessions.getLastVisitedModule`
+  - `brand-kit` tambien debe registrarse como modulo valido dentro de `work_sessions` para no quedar fuera de esta resolucion
 
 ### Desarrollo LAN en la misma red
 

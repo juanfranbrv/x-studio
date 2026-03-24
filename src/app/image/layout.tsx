@@ -6,11 +6,13 @@ export const metadata: Metadata = {
   keywords: ["imagen IA", "marketing visual", "branding", "generador de imagenes", "postlaboratory"],
 };
 
+import { BrandKitGuard } from "@/components/brand-kit/BrandKitGuard";
+
 export default function ImageLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  return children;
+  return <BrandKitGuard>{children}</BrandKitGuard>;
 }
 

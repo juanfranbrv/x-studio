@@ -26,6 +26,8 @@ interface StudioNavProps {
   nextDisabled?: boolean
   nextLabel?: string
   showSidebar?: boolean
+  /** True if the user already has at least one saved brand kit */
+  hasExistingKits?: boolean
 }
 
 export function StudioNav({
@@ -37,8 +39,34 @@ export function StudioNav({
   nextDisabled = false,
   nextLabel,
   showSidebar = false,
+  hasExistingKits = true,
 }: StudioNavProps) {
   const { t } = useTranslation('brandStudio')
+
+  const exitConfirmText = hasExistingKits
+    ? t('nav.exitConfirm')
+    : t('nav.exitConfirmFirstKit')
+
+  const ExitButton = (
+    <AlertDialog>
+      <AlertDialogTrigger asChild>
+        <Button variant="ghost" className={`${WIZARD_GHOST_BUTTON} gap-2`}>
+          <X className="h-4 w-4" />
+          <span className="hidden sm:inline">{t('nav.exit')}</span>
+        </Button>
+      </AlertDialogTrigger>
+      <AlertDialogContent className="rounded-[1.6rem] border-border/70">
+        <AlertDialogHeader>
+          <AlertDialogTitle>{t('nav.exit')}</AlertDialogTitle>
+          <AlertDialogDescription>{exitConfirmText}</AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel className={WIZARD_SECONDARY_BUTTON}>{t('nav.exitNo')}</AlertDialogCancel>
+          <AlertDialogAction onClick={onExit} className={WIZARD_SECONDARY_BUTTON}>{t('nav.exitYes')}</AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  )
 
   return (
     <div className={cn(
@@ -50,44 +78,26 @@ export function StudioNav({
         !showSidebar && "max-w-7xl px-[clamp(1rem,4vw,3rem)]",
         showSidebar && "lg:px-[clamp(1rem,4vw,3rem)]"
       )}>
-      <div>
-        {canGoBack ? (
-          <Button variant="ghost" onClick={onBack} className={`${WIZARD_GHOST_BUTTON} gap-2`}>
-            <ArrowLeft className="h-4 w-4" />
-            <span className="hidden sm:inline">{t('nav.back')}</span>
-          </Button>
-        ) : (
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <Button variant="ghost" className={`${WIZARD_GHOST_BUTTON} gap-2`}>
-                <X className="h-4 w-4" />
-                <span className="hidden sm:inline">{t('nav.exit')}</span>
-              </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent className="rounded-[1.6rem] border-border/70">
-              <AlertDialogHeader>
-                <AlertDialogTitle>{t('nav.exit')}</AlertDialogTitle>
-                <AlertDialogDescription>{t('nav.exitConfirm')}</AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel className={WIZARD_SECONDARY_BUTTON}>{t('nav.exitNo')}</AlertDialogCancel>
-                <AlertDialogAction onClick={onExit} className={WIZARD_SECONDARY_BUTTON}>{t('nav.exitYes')}</AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
-        )}
-      </div>
+        <div className="flex items-center gap-1">
+          {canGoBack && (
+            <Button variant="ghost" onClick={onBack} className={`${WIZARD_GHOST_BUTTON} gap-2`}>
+              <ArrowLeft className="h-4 w-4" />
+              <span className="hidden sm:inline">{t('nav.back')}</span>
+            </Button>
+          )}
+          {ExitButton}
+        </div>
 
-      {canGoNext && (
-        <Button
-          onClick={onNext}
-          disabled={nextDisabled}
-          className={`${WIZARD_CTA_BUTTON} gap-2`}
-        >
-          <span>{nextLabel ?? t('nav.next')}</span>
-          <ArrowRight className="h-4 w-4" />
-        </Button>
-      )}
+        {canGoNext && (
+          <Button
+            onClick={onNext}
+            disabled={nextDisabled}
+            className={`${WIZARD_CTA_BUTTON} gap-2`}
+          >
+            <span>{nextLabel ?? t('nav.next')}</span>
+            <ArrowRight className="h-4 w-4" />
+          </Button>
+        )}
       </div>
     </div>
   )

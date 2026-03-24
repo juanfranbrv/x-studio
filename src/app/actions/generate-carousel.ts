@@ -9,7 +9,7 @@ import { buildCarouselPrompt } from '@/lib/prompts/carousel/builder'
 import { buildCarouselBriefInterpreterPrompt } from '@/lib/prompts/carousel-brief-interpreter'
 import { getMoodForSlide } from '@/lib/prompts/carousel/mood'
 import { buildFinalPrompt, generateCarouselSeed, extractLogoPosition } from '@/lib/prompts/carousel/builder/final-prompt'
-import { detectLanguageFromParts, detectLanguageFromPartsWithApi } from '@/lib/language-detection'
+import { detectLanguageFromParts, resolveGenerationLanguage } from '@/lib/language-detection'
 import type { NarrativeStructure, CarouselComposition as NarrativeComposition } from '@/lib/carousel-structures'
 import { fetchMutation, fetchQuery } from 'convex/nextjs'
 import { auth, currentUser } from '@clerk/nextjs/server'
@@ -1166,10 +1166,9 @@ async function decomposeIntoSlides(
     const auditFlowTag = options?.audit?.flowId || 'no-flow'
 
     // Auto-detect language from user prompt (like image module does)
-    const detectedLanguage = await detectLanguageFromPartsWithApi(
-        [prompt],
-        options?.language || brand.preferred_language || 'es'
-    )
+    const detectedLanguage = await resolveGenerationLanguage({
+        promptParts: [prompt],
+    })
     const brandVoiceGuidance = buildBrandVoiceGuidance(brand)
     const interpretedBrief = await interpretCarouselBrief({
         prompt,
@@ -2258,15 +2257,15 @@ async function generateSlideImage(
         ctaUrl: isLastSlide ? finalUrl : undefined,
         contactLines: isLastSlide ? contactLines : undefined,
         visualAnalysis: aiImageDescription,
-        language: await detectLanguageFromPartsWithApi(
-            [
+        language: await resolveGenerationLanguage({
+            promptParts: [
                 sourcePrompt,
                 slideContent.title,
                 slideContent.description,
                 slideContent.visualPrompt
             ],
-            brand.preferred_language || 'es'
-        ),
+            fallback: 'es',
+        }),
         fonts: brand.fonts,
         applyStyleToTypography
     })
@@ -2509,15 +2508,15 @@ export async function generateCarouselAction(
                     ctaUrl: isLastSlide ? finalUrl : undefined,
                     contactLines: isLastSlide ? input.finalContactLines : undefined,
                     visualAnalysis: aiImageDescription,
-                    language: await detectLanguageFromPartsWithApi(
-                        [
+                    language: await resolveGenerationLanguage({
+                        promptParts: [
                             prompt,
                             slideContent.title,
                             slideContent.description,
                             slideContent.visualPrompt
                         ],
-                        input.language || brandDNA.preferred_language || 'es'
-                    ),
+                        fallback: input.language || 'es',
+                    }),
                     fonts: brandDNA.fonts
                 })
 
