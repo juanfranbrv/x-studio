@@ -18,7 +18,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Textarea } from '@/components/ui/textarea'
 import { Switch } from '@/components/ui/switch'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { IconPlus, IconMinus, IconIdea, IconLayout, IconLayers, IconImageAdd, IconFingerprint, IconCarousel, IconRotate, IconHistory, IconSave, IconCheck, IconAlertCircle, IconClose, IconPaintbrush02, IconWand } from '@/components/ui/icons'
+import { IconPlus, IconMinus, IconIdea, IconLayout, IconLayers, IconImageAdd, IconFingerprint, IconCarousel, IconRotate, IconHistory, IconSave, IconCheck, IconAlertCircle, IconClose, IconPaintbrush02, IconWand, IconImage } from '@/components/ui/icons'
 import { cn } from '@/lib/utils'
 import type { BrandDNA } from '@/lib/brand-types'
 import type { CarouselSuggestion, CarouselSlide, SlideContent } from '@/app/actions/generate-carousel'
@@ -387,6 +387,7 @@ interface CarouselControlsPanelProps {
         }>
     }) => void
     getAuditFlowId?: () => string | undefined
+    initialPrompt?: string
 }
 
 type CarouselWorkspaceSnapshot = {
@@ -521,7 +522,8 @@ export function CarouselControlsPanel({
     previewCurrentIndex = 0,
     previewSessionHistory = [],
     onRestorePreviewState,
-    getAuditFlowId
+    getAuditFlowId,
+    initialPrompt
 }: CarouselControlsPanelProps) {
     const { t, i18n } = useTranslation('carousel')
     const router = useRouter()
@@ -644,9 +646,9 @@ export function CarouselControlsPanel({
         }
         return decision === 'discard'
     }, [hasUnsavedChanges, openSessionDecisionModal])
-    const [prompt, setPrompt] = useState('')
+    const [prompt, setPrompt] = useState(initialPrompt ?? '')
     const [isInspiring, setIsInspiring] = useState(false)
-    const [slideCount, setSlideCount] = useState(0)
+    const [slideCount, setSlideCount] = useState(initialPrompt ? 3 : 0)
     const [aspectRatio, setAspectRatio] = useState<'1:1' | '4:5' | '3:4'>('4:5')
     const [style, setStyle] = useState('minimal')
     const [slides, setSlides] = useState<SlideConfig[]>([])
@@ -720,7 +722,7 @@ export function CarouselControlsPanel({
     const [includeLogoOnSlides, setIncludeLogoOnSlides] = useState(false)
     const [draggedBrandColor, setDraggedBrandColor] = useState<DraggedBrandColor>(null)
     const [isAdvancedCompositionOpen, setIsAdvancedCompositionOpen] = useState(false)
-    const [currentStep, setCurrentStep] = useState<1 | 2 | 3 | 4 | 5 | 6 | 7>(1)
+    const [currentStep, setCurrentStep] = useState<1 | 2 | 3 | 4 | 5 | 6 | 7>(initialPrompt ? 2 : 1)
     const [needsReanalysis, setNeedsReanalysis] = useState(false)
     const [lastAnalyzedSignature, setLastAnalyzedSignature] = useState('')
     const hasStructuralAnalysis = Boolean(lastAnalyzedSignature)
@@ -3014,6 +3016,21 @@ export function CarouselControlsPanel({
                                     ) : null}
                                 </div>
                             </div>
+                            {prompt.trim() ? (
+                                <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    onClick={() => {
+                                        sessionStorage.setItem('x-studio:incoming-prompt', prompt.trim())
+                                        sessionStorage.setItem('x-studio:incoming-prompt-flag', '1')
+                                        router.push('/image')
+                                    }}
+                                    title={t('ui.sendToImage', { defaultValue: 'Usar en Imagen' })}
+                                    className="h-[42px] w-[42px] shrink-0 rounded-[1rem] p-0 text-muted-foreground hover:bg-muted/80 hover:text-foreground"
+                                >
+                                    <IconImage className="h-4 w-4" />
+                                </Button>
+                            ) : null}
                             <Button
                                 size="sm"
                                 onClick={handleAnalyze}

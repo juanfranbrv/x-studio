@@ -2,6 +2,9 @@
 
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
+
+const SS_PROMPT = 'x-studio:incoming-prompt'
+const SS_FLAG   = 'x-studio:incoming-prompt-flag'
 import { useUser } from '@clerk/nextjs'
 import { useBrandKit } from '@/contexts/BrandKitContext'
 import { useToast } from '@/hooks/use-toast'
@@ -136,7 +139,15 @@ export default function ImagePage() {
     const [logoInclusion, setLogoInclusion] = useState(true)
     const [compositionMode, setCompositionMode] = useState<'basic' | 'advanced'>('basic')
 
-    const [promptValue, setPromptValue] = useState('')
+    const [promptValue, setPromptValue] = useState<string>(() => {
+        if (typeof window === 'undefined') return ''
+        const p = sessionStorage.getItem(SS_PROMPT) ?? ''
+        if (p) sessionStorage.removeItem(SS_PROMPT)
+        return p
+    })
+    useEffect(() => {
+        if (promptValue) creationFlow.setRawMessage(promptValue)
+    }, []) // eslint-disable-line react-hooks/exhaustive-deps
     const [editPrompt, setEditPrompt] = useState('')
     const [isMobile, setIsMobile] = useState(false)
     const [viewportHeight, setViewportHeight] = useState(1080)
@@ -815,7 +826,9 @@ export default function ImagePage() {
         if (activeWorkSession === undefined) return
         if (hasHydratedScopeRef.current) return
 
-        if (activeWorkSession?.snapshot) {
+        const hasIncoming = typeof window !== 'undefined' && !!sessionStorage.getItem(SS_FLAG)
+        if (hasIncoming) sessionStorage.removeItem(SS_FLAG)
+        if (activeWorkSession?.snapshot && !hasIncoming) {
             pendingBaselineResetRef.current = true
             restoreWorkspaceFromSnapshot(activeWorkSession.snapshot as ImageWorkspaceSnapshot)
             setCurrentSessionId(String(activeWorkSession._id))
@@ -2473,6 +2486,10 @@ export default function ImagePage() {
             canGenerate={Boolean(canGenerate)}
             onUnifiedAction={handleUnifiedAction}
             onAnalyze={() => handleSmartAnalyze()}
+            onSendToCarousel={promptValue.trim() ? () => {
+                sessionStorage.setItem('x-studio:incoming-prompt', promptValue.trim())
+                router.push('/carousel')
+            } : undefined}
             onCancelAnalyze={handleCancelAnalyze}
             isAdmin={isAdmin}
             adminEmail={user?.emailAddresses?.[0]?.emailAddress}

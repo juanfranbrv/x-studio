@@ -184,6 +184,12 @@ export default function CarouselPage() {
     const [scriptSlides, setScriptSlides] = useState<SlideContent[] | null>(null)
     const [scriptPrompt, setScriptPrompt] = useState('')
     const [scriptSlideCount, setScriptSlideCount] = useState<number | null>(null)
+    const [carouselIncomingPrompt] = useState<string | undefined>(() => {
+        if (typeof window === 'undefined') return undefined
+        const p = sessionStorage.getItem('x-studio:incoming-prompt') ?? undefined
+        if (p) sessionStorage.removeItem('x-studio:incoming-prompt')
+        return p
+    })
     const [analysisHook, setAnalysisHook] = useState<string | undefined>()
     const [analysisStructure, setAnalysisStructure] = useState<{ id?: string; name?: string } | undefined>()
     const [analysisIntent, setAnalysisIntent] = useState<string | undefined>()
@@ -1724,6 +1730,7 @@ export default function CarouselPage() {
     const controlsPanel = (
         <CarouselControlsPanel
             className="min-h-0 flex-1 !border-0 !bg-transparent"
+            initialPrompt={carouselIncomingPrompt}
             onAnalyze={handleAnalyze}
             onGenerate={handleGenerate}
             onPreviewCompositionChange={setPreviewCompositionState}

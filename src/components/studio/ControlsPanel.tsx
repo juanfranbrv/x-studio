@@ -9,7 +9,7 @@ import { ContentImageCard } from './creation-flow/ContentImageCard'
 import { StyleImageCard } from './creation-flow/StyleImageCard'
 import { AuxiliaryLogosCard } from './creation-flow/AuxiliaryLogosCard'
 import { useBrandKit } from '@/contexts/BrandKitContext'
-import { IconLayout, IconDashboardSquare, IconImageAdd, IconWand, IconIdea, IconFingerprint, IconRotate, IconHistory, IconPlus, IconSave, IconCheck, IconAlertCircle, IconClose, IconPaintbrush02 } from '@/components/ui/icons'
+import { IconLayout, IconDashboardSquare, IconImageAdd, IconWand, IconIdea, IconFingerprint, IconRotate, IconHistory, IconPlus, IconSave, IconCheck, IconAlertCircle, IconClose, IconPaintbrush02, IconCarousel } from '@/components/ui/icons'
 import { Textarea } from '@/components/ui/textarea'
 import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
@@ -246,6 +246,7 @@ interface ControlsPanelProps {
     sessionSaveError?: string | null
     hasUnsavedChanges?: boolean
     isCancelingAnalyze?: boolean
+    onSendToCarousel?: () => void
     className?: string
 }
 
@@ -281,6 +282,7 @@ export function ControlsPanel({
     sessionSaveError = null,
     hasUnsavedChanges = false,
     isCancelingAnalyze = false,
+    onSendToCarousel,
     className,
 }: ControlsPanelProps) {
     const { t, i18n } = useTranslation('image')
@@ -1006,6 +1008,17 @@ export function ControlsPanel({
                                 <span className="text-[clamp(0.9rem,0.86rem+0.1vw,0.96rem)] font-medium text-muted-foreground">
                                     {t('ui.canceling')}
                                 </span>
+                            ) : null}
+                            {onSendToCarousel && promptValue.trim() ? (
+                                <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    onClick={onSendToCarousel}
+                                    title={t('ui.sendToCarousel', { defaultValue: 'Usar en Carrusel' })}
+                                    className="h-[42px] w-[42px] shrink-0 rounded-[1rem] p-0 text-muted-foreground hover:bg-muted/80 hover:text-foreground"
+                                >
+                                    <IconCarousel className="h-4 w-4" />
+                                </Button>
                             ) : null}
                             <Button
                                 size="sm"
