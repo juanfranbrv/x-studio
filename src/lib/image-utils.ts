@@ -83,3 +83,17 @@ export async function resizeImage(
         }
     });
 }
+
+/**
+ * Returns a proxied URL for images hosted on Instagram/Facebook CDN,
+ * which block direct hotlinking from browser requests.
+ * Pass any URL — non-CDN URLs are returned unchanged.
+ */
+export function proxyCdnImageUrl(url: string): string {
+    if (!url) return url
+    if (url.includes('cdninstagram.com') || url.includes('fbcdn.net')) {
+        return `/api/proxy-image?url=${encodeURIComponent(url)}`
+    }
+    return url
+}
+

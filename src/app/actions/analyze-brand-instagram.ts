@@ -2,11 +2,110 @@
 
 import { z } from 'zod'
 import { ApifyClient } from 'apify-client'
-import { fetchQuery } from 'convex/nextjs'
+import { fetchMutation, fetchQuery } from 'convex/nextjs'
 import { api } from '../../../convex/_generated/api'
 import { generateTextUnified } from '@/lib/gemini'
 import type { AnalyzeBrandDNAResponse, BrandDNA } from '@/lib/brand-types'
-import { analyzeBrandDNA } from './analyze-brand-dna'
+import sharp from 'sharp'
+import { clusterColors } from '@/lib/color-utils'
+import { analyzeBrandDNA, assignStudioColorRolesAction } from './analyze-brand-dna'
+
+/**
+ * Extracts brand colors from a profile picture.
+ * Unlike the web logo extractor, this one preserves white/light colors
+ * (they are valid brand colors in logos, not just backgrounds).
+ * Returns 4-5 clustered, distinct colors with roles.
+ */
+async function extractColorsFromProfilePic(
+  imageUrl: string
+): Promise<{ color: string; sources: string[]; score: number; role: 'Fondo' | 'Texto' | 'Acento' }[]> {
+  try {
+    const res = await fetch(imageUrl, { signal: AbortSignal.timeout(10000) })
+    if (!res.ok) return []
+
+    const buffer = Buffer.from(await res.arrayBuffer())
+    const image = sharp(buffer)
+    const { width, height, channels } = await image.metadata()
+    if (!width || !height) return []
+
+    const raw = await image.raw().toBuffer()
+    const ch = channels ?? 3
+    const colorCounts = new Map<string, number>()
+    const step = width * height > 10000 ? 3 : 1
+
+    for (let i = 0; i < raw.length; i += ch * step) {
+      const r = raw[i], g = raw[i + 1], b = raw[i + 2]
+      const a = ch === 4 ? raw[i + 3] : 255
+      if (a < 50) continue // skip transparent
+
+      // Only skip pure black — keep whites and all brand colors
+      if (r < 8 && g < 8 && b < 8) continue
+
+      const qr = Math.round(r / 12) * 12
+      const qg = Math.round(g / 12) * 12
+      const qb = Math.round(b / 12) * 12
+      const hex = `#${((1 << 24) + (qr << 16) + (qg << 8) + qb).toString(16).slice(1).toUpperCase()}`
+      colorCounts.set(hex, (colorCounts.get(hex) || 0) + 1)
+    }
+
+    const totalPixels = (width * height) / step
+    // Take top candidates by frequency
+    const candidates = Array.from(colorCounts.entries())
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 60)
+      .map(([hex, count]) => ({ hex, weight: count / totalPixels }))
+
+    // Aggressive clustering (threshold 35) — merges near-duplicate browns/shades
+    const clusters = clusterColors(candidates, 35)
+
+    // Keep max 5 distinct colors, sorted by score descending
+    const top5 = clusters
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 5)
+      .map((c) => ({
+        color: c.representative,
+        sources: ['logo'] as string[],
+        score: c.score,
+      }))
+
+    return assignStudioColorRolesAction(top5)
+  } catch {
+    return []
+  }
+}
+
+/** Downloads an external image URL and uploads it to Convex storage.
+ *  Returns the permanent Convex URL, or null on failure. */
+async function uploadExternalImageToConvex(externalUrl: string): Promise<string | null> {
+  try {
+    const res = await fetch(externalUrl, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (compatible; Googlebot/2.1)',
+        Accept: 'image/*,*/*;q=0.8',
+        Referer: 'https://www.instagram.com/',
+      },
+      redirect: 'follow',
+      signal: AbortSignal.timeout(10000),
+    })
+    if (!res.ok) return null
+    const contentType = res.headers.get('content-type') || 'image/jpeg'
+    if (!contentType.startsWith('image/')) return null
+
+    const buffer = await res.arrayBuffer()
+    const uploadUrl = await fetchMutation(api.assets.generateUploadUrl, {})
+    const uploadRes = await fetch(uploadUrl, {
+      method: 'POST',
+      body: buffer,
+      headers: { 'Content-Type': contentType },
+    })
+    if (!uploadRes.ok) return null
+    const { storageId } = await uploadRes.json()
+    const url = await fetchQuery(api.assets.getImageUrl, { storageId })
+    return url ?? null
+  } catch {
+    return null
+  }
+}
 
 const APIFY_TOKEN = process.env.APIFY_API_TOKEN
 const DEFAULT_INTELLIGENCE_MODEL = 'wisdom/gemini-2.5-flash'
@@ -133,6 +232,17 @@ Include 5 brand_values, 3 tone_of_voice adjectives, 3 visual_aesthetic adjective
     // Wait for web analysis
     const webResult = await webPromise
 
+    // Upload profile pic to Convex so it's always accessible (Instagram CDN blocks hotlinking)
+    const profilePicConvexUrl = igData.profilePicUrl
+      ? await uploadExternalImageToConvex(igData.profilePicUrl)
+      : null
+
+    // Extract colors from profile pic (since there's no web to scrape)
+    const logoForColors = profilePicConvexUrl || igData.profilePicUrl
+    const logoColors = logoForColors
+      ? await extractColorsFromProfilePic(logoForColors).catch(() => [])
+      : []
+
     // Build base brand DNA
     const brandData: BrandDNA = {
       url: igData.externalUrl || `https://instagram.com/${igData.username}`,
@@ -143,13 +253,18 @@ Include 5 brand_values, 3 tone_of_voice adjectives, 3 visual_aesthetic adjective
       tone_of_voice: aiResult.tone_of_voice,
       visual_aesthetic: aiResult.visual_aesthetic,
       target_audience: aiResult.target_audience,
-      colors: [],
+      colors: logoColors,
       fonts: [
         { family: 'Inter', role: 'heading' as const },
         { family: 'Inter', role: 'body' as const },
       ],
-      favicon_url: igData.profilePicUrl || undefined,
-      logo_url: igData.profilePicUrl || undefined,
+      favicon_url: profilePicConvexUrl || igData.profilePicUrl || undefined,
+      logo_url: profilePicConvexUrl || igData.profilePicUrl || undefined,
+      logos: profilePicConvexUrl
+        ? [{ url: profilePicConvexUrl, selected: true }]
+        : igData.profilePicUrl
+          ? [{ url: igData.profilePicUrl, selected: true }]
+          : [],
       images: igData.imageUrls.slice(0, 6).map((url) => ({ url, selected: false })),
       preferred_language: preferredLanguage,
       text_assets: aiResult.text_assets,
