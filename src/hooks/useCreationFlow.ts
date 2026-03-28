@@ -276,10 +276,10 @@ export function useCreationFlow(options?: UseCreationFlowOptions) {
                 hasChanges = true
             }
 
-            // Keep image in sync with the brand-kit preference on first init / brand switch.
-            // Persisted sessions can still rehydrate their own CTA URL state later.
+            // Keep the Brand Kit URL disponible para activarla manualmente,
+            // pero en image no mostramos el enlace por defecto al iniciar.
             const kitUrl = activeBrandKit.url?.trim() || ''
-            nextState.ctaUrlEnabled = Boolean(activeBrandKit.cta_url_enabled && kitUrl)
+            nextState.ctaUrlEnabled = false
             nextState.ctaUrlManual = false
             nextState.ctaUrl = kitUrl
             hasChanges = true

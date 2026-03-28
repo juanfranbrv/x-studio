@@ -3,8 +3,6 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 
-const SS_PROMPT = 'x-studio:incoming-prompt'
-const SS_FLAG   = 'x-studio:incoming-prompt-flag'
 import { useUser } from '@clerk/nextjs'
 import { useBrandKit } from '@/contexts/BrandKitContext'
 import { useToast } from '@/hooks/use-toast'
@@ -53,6 +51,12 @@ import { useTranslation } from 'react-i18next'
 import { buildAutomaticSessionTitle, getSessionDisplayTitle, normalizeCustomSessionTitle } from '@/lib/session-titles'
 import { getLastVisitedModuleAction } from '@/app/actions/get-last-visited-module'
 import { shouldApplyLastVisitedImageBrand } from './lastVisitedScope'
+import {
+    INCOMING_PROMPT_FLAG_STORAGE_KEY,
+    initializeIncomingPromptTransfer,
+    resolveDraftPromptAfterBrandReset,
+    resolvePendingIncomingPrompt,
+} from './incomingPromptTransfer'
 
 // Admin email for debug modal access
 const ADMIN_EMAIL = 'juanfranbrv@gmail.com'
@@ -139,12 +143,16 @@ export default function ImagePage() {
     const [logoInclusion, setLogoInclusion] = useState(true)
     const [compositionMode, setCompositionMode] = useState<'basic' | 'advanced'>('basic')
 
-    const [promptValue, setPromptValue] = useState<string>(() => {
-        if (typeof window === 'undefined') return ''
-        const p = sessionStorage.getItem(SS_PROMPT) ?? ''
-        if (p) sessionStorage.removeItem(SS_PROMPT)
-        return p
-    })
+    const incomingPromptRef = useRef<string>('')
+    const initialIncomingTransferRef = useRef<ReturnType<typeof initializeIncomingPromptTransfer> | null>(null)
+    if (initialIncomingTransferRef.current === null) {
+        initialIncomingTransferRef.current = typeof window === 'undefined'
+            ? initializeIncomingPromptTransfer()
+            : initializeIncomingPromptTransfer(sessionStorage)
+        incomingPromptRef.current = initialIncomingTransferRef.current.pendingPrompt
+    }
+    const [pendingIncomingPrompt, setPendingIncomingPrompt] = useState<string>(initialIncomingTransferRef.current.pendingPrompt)
+    const [promptValue, setPromptValue] = useState<string>(initialIncomingTransferRef.current.prompt)
     useEffect(() => {
         if (promptValue) creationFlow.setRawMessage(promptValue)
     }, []) // eslint-disable-line react-hooks/exhaustive-deps
@@ -422,6 +430,16 @@ export default function ImagePage() {
         }
     } as UseCreationFlowOptions)
 
+    const updatePromptDraft = useCallback((nextPrompt: string) => {
+        setPromptValue(nextPrompt)
+        creationFlow.setRawMessage(nextPrompt)
+        setPendingIncomingPrompt((prev) => {
+            const nextPending = resolvePendingIncomingPrompt(prev, nextPrompt)
+            incomingPromptRef.current = nextPending
+            return nextPending
+        })
+    }, [creationFlow])
+
     const normalizePromptForSession = useCallback((value?: string | null) => {
         const cleaned = (value || '')
             .trim()
@@ -615,8 +633,7 @@ export default function ImagePage() {
             if (snapshot.creationFlowState && typeof snapshot.creationFlowState === 'object') {
                 creationFlow.loadPreset(snapshot.creationFlowState)
             }
-            setPromptValue(snapshot.promptValue || '')
-            creationFlow.setRawMessage(snapshot.promptValue || '')
+            updatePromptDraft(snapshot.promptValue || '')
             setEditPrompt(snapshot.editPrompt || '')
             setLogoInclusion(typeof snapshot.logoInclusion === 'boolean' ? snapshot.logoInclusion : true)
             setCompositionMode(snapshot.compositionMode === 'advanced' ? 'advanced' : 'basic')
@@ -634,7 +651,7 @@ export default function ImagePage() {
         } finally {
             window.setTimeout(() => setIsHydratingSession(false), 0)
         }
-    }, [creationFlow, normalizePromptForSession])
+    }, [creationFlow, normalizePromptForSession, updatePromptDraft])
 
     const scheduleBaselineReset = useCallback((signature: string) => {
         if (baselineResetTimeoutRef.current !== null) {
@@ -656,8 +673,7 @@ export default function ImagePage() {
         setEditPrompt('')
         setPendingRetryRequest(null)
         setLastGenerationRequest(null)
-        setPromptValue(initialPrompt)
-        creationFlow.setRawMessage(initialPrompt)
+        updatePromptDraft(initialPrompt)
         setSessionRootPrompt(null)
         setAuditFlowId(null)
         auditFlowIdRef.current = null
@@ -667,7 +683,7 @@ export default function ImagePage() {
         setSessionSaveError(null)
         pendingBaselineResetRef.current = true
         setHasUnsavedChanges(false)
-    }, [creationFlow])
+    }, [creationFlow, updatePromptDraft])
 
     const createNewImageSession = useCallback(async (
         initialPrompt?: string,
@@ -826,8 +842,8 @@ export default function ImagePage() {
         if (activeWorkSession === undefined) return
         if (hasHydratedScopeRef.current) return
 
-        const hasIncoming = typeof window !== 'undefined' && !!sessionStorage.getItem(SS_FLAG)
-        if (hasIncoming) sessionStorage.removeItem(SS_FLAG)
+        const hasIncoming = typeof window !== 'undefined' && !!sessionStorage.getItem(INCOMING_PROMPT_FLAG_STORAGE_KEY)
+        if (hasIncoming) sessionStorage.removeItem(INCOMING_PROMPT_FLAG_STORAGE_KEY)
         if (activeWorkSession?.snapshot && !hasIncoming) {
             pendingBaselineResetRef.current = true
             restoreWorkspaceFromSnapshot(activeWorkSession.snapshot as ImageWorkspaceSnapshot)
@@ -1136,13 +1152,15 @@ export default function ImagePage() {
             setSelectedContext([])
             creationFlow.reset()
             setDebugPromptData(null)
-            setPromptValue('')
+            const restoredPrompt = resolveDraftPromptAfterBrandReset(incomingPromptRef.current || pendingIncomingPrompt)
+            setPromptValue(restoredPrompt)
+            creationFlow.setRawMessage(restoredPrompt)
             setCompositionMode('basic')
             basicLayoutCursorByIntentRef.current = {}
             setPendingRetryRequest(null)
             setLastGenerationRequest(null)
         }
-    }, [activeBrandKit?.id])
+    }, [activeBrandKit?.id]) // eslint-disable-line react-hooks/exhaustive-deps
 
     useEffect(() => {
         const previous = lastCompositionModeRef.current
@@ -1519,8 +1537,7 @@ export default function ImagePage() {
             })
             const data = await res.json()
             if (data.success && data.text) {
-                setPromptValue(data.text)
-                creationFlow.setRawMessage(data.text)
+                updatePromptDraft(data.text)
             }
         } catch (err) {
             console.error('Failed to generate prompt inspiration:', err)
@@ -2477,10 +2494,7 @@ export default function ImagePage() {
             creationFlow={creationFlow}
             highlightedFields={highlightedFields}
             promptValue={promptValue}
-            onPromptChange={(val) => {
-                setPromptValue(val)
-                creationFlow.setRawMessage(val)
-            }}
+            onPromptChange={updatePromptDraft}
             isMagicParsing={isMagicParsing}
             isGenerating={isGenerating}
             canGenerate={Boolean(canGenerate)}
