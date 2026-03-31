@@ -26,6 +26,15 @@ import { uploadBrandImage } from '@/app/actions/upload-image';
 import { updateUserBrandKit } from '@/app/actions/update-user-brand-kit';
 import { hexToRgb } from '@/lib/color-utils';
 import { calculateBrandKitCompleteness } from '@/lib/brand-kit-utils';
+import {
+    applyPortableAssetReplacements,
+    collectPortableAssetEntries,
+    findMissingPortableAssetUrls,
+    sanitizeImportedBrand,
+    type PortableAssetKind,
+    type PortableBrandKitPayload,
+    type PortableEmbeddedAsset,
+} from '@/lib/portable-brand-kit';
 import { useTranslation } from 'react-i18next';
 
 import { IconGlobe, IconAlertCircle, IconClose, IconInstagram, IconPackage, IconEdit } from '@/components/ui/icons';
@@ -72,20 +81,6 @@ interface BrandDNABoardProps {
     onDuplicateCurrent?: () => void;
     onDeleteCurrent?: () => void;
     isDuplicatingCurrent?: boolean;
-}
-
-interface PortableEmbeddedAsset {
-    originalUrl: string;
-    dataUrl: string;
-    fileName: string;
-}
-
-interface PortableBrandKitPayload {
-    format: 'xstudio-brand-kit';
-    version: 1;
-    exportedAt: string;
-    brand: BrandDNA;
-    embeddedAssets: PortableEmbeddedAsset[];
 }
 
 function colorLuminance(hex?: string): number {
@@ -605,24 +600,6 @@ export function BrandDNABoard({
         updateData(prev => ({ ...prev, images: prev.images?.filter((_, i) => i !== idx) }));
     };
 
-    const extractAssetUrls = (kit: BrandDNA): string[] => {
-        const urls = new Set<string>();
-
-        const push = (value?: string) => {
-            const clean = (value || '').trim();
-            if (!clean) return;
-            urls.add(clean);
-        };
-
-        push(kit.logo_url);
-        push(kit.favicon_url);
-        push(kit.screenshot_url);
-        (kit.logos || []).forEach((logo) => push(logo?.url));
-        (kit.images || []).forEach((img) => push(img?.url));
-
-        return Array.from(urls);
-    };
-
     const guessExtensionFromMime = (mimeType: string) => {
         if (mimeType.includes('png')) return 'png';
         if (mimeType.includes('jpeg') || mimeType.includes('jpg')) return 'jpg';
@@ -651,21 +628,34 @@ export function BrandDNABoard({
         };
 
         const embeddedAssets: PortableEmbeddedAsset[] = [];
-        const urls = extractAssetUrls(brandForExport);
+        const assets = collectPortableAssetEntries(brandForExport);
+        const missingAssetUrls: string[] = [];
 
-        for (const url of urls) {
+        for (const asset of assets) {
             try {
-                const response = await fetch(url);
-                if (!response.ok) continue;
+                const response = await fetch(asset.url);
+                if (!response.ok) {
+                    missingAssetUrls.push(asset.url);
+                    continue;
+                }
                 const blob = await response.blob();
                 const dataUrl = await readBlobAsDataUrl(blob);
                 const mimeType = blob.type || 'application/octet-stream';
                 const ext = guessExtensionFromMime(mimeType);
                 const fileName = `asset-${embeddedAssets.length + 1}.${ext}`;
-                embeddedAssets.push({ originalUrl: url, dataUrl, fileName });
+                embeddedAssets.push({ originalUrl: asset.url, dataUrl, fileName, kind: asset.kind });
             } catch {
-                // Si algun asset no se puede leer, el export sigue sin bloquear al usuario.
+                missingAssetUrls.push(asset.url);
             }
+        }
+
+        if (missingAssetUrls.length > 0) {
+            throw new Error(
+                t('board.exportMissingAssetsError', {
+                    defaultValue: 'No se pudo exportar el kit porque faltan {{count}} assets por copiar.',
+                    count: missingAssetUrls.length,
+                })
+            );
         }
 
         return {
@@ -676,31 +666,6 @@ export function BrandDNABoard({
             embeddedAssets,
         };
     };
-
-    const sanitizeImportedBrand = (raw: BrandDNA): BrandDNA => ({
-        ...raw,
-        id: undefined,
-        url: raw.url || '',
-        brand_name: raw.brand_name || 'Mi Marca',
-        tagline: raw.tagline || '',
-        business_overview: raw.business_overview || '',
-        brand_values: Array.isArray(raw.brand_values) ? raw.brand_values : [],
-        tone_of_voice: Array.isArray(raw.tone_of_voice) ? raw.tone_of_voice : [],
-        visual_aesthetic: Array.isArray(raw.visual_aesthetic) ? raw.visual_aesthetic : [],
-        colors: Array.isArray(raw.colors) ? raw.colors : [],
-        fonts: Array.isArray(raw.fonts) ? raw.fonts : [],
-        logos: Array.isArray(raw.logos) ? raw.logos : [],
-        images: Array.isArray(raw.images) ? raw.images : [],
-        social_links: Array.isArray(raw.social_links) ? raw.social_links : [],
-        emails: Array.isArray(raw.emails) ? raw.emails : [],
-        phones: Array.isArray(raw.phones) ? raw.phones : [],
-        addresses: Array.isArray(raw.addresses) ? raw.addresses : [],
-        target_audience: Array.isArray(raw.target_audience) ? raw.target_audience : [],
-        created_at: undefined,
-        updated_at: undefined,
-        api_trace: undefined,
-        debug: undefined,
-    });
 
     const dataUrlToFile = async (dataUrl: string, fileName: string): Promise<File> => {
         const response = await fetch(dataUrl);
@@ -795,6 +760,23 @@ export function BrandDNABoard({
 
             const replacementMap = new Map<string, string>();
             const portableAssets = isPortable ? ((parsed as PortableBrandKitPayload).embeddedAssets || []) : [];
+            const missingPortableAssetUrls = isPortable
+                ? findMissingPortableAssetUrls(importedBrand, portableAssets)
+                : [];
+
+            if (isPortable && missingPortableAssetUrls.length > 0) {
+                throw new Error(
+                    t('board.importMissingAssetsError', {
+                        defaultValue: 'El archivo portable esta incompleto: faltan {{count}} assets embebidos.',
+                        count: missingPortableAssetUrls.length,
+                    })
+                );
+            }
+
+            const resolveAssetKind = (kind?: PortableAssetKind) => {
+                if (kind === 'logo') return 'logo';
+                return 'image';
+            };
 
             for (const asset of portableAssets) {
                 if (!asset?.dataUrl || !asset?.originalUrl) continue;
@@ -802,10 +784,12 @@ export function BrandDNABoard({
                     const uploadFile = await dataUrlToFile(asset.dataUrl, asset.fileName || 'brand-kit-asset.webp');
                     const formData = new FormData();
                     formData.append('file', uploadFile);
-                    formData.append('assetKind', 'image');
+                    formData.append('assetKind', resolveAssetKind(asset.kind));
                     const uploaded = await uploadBrandImage(formData);
                     if (uploaded.success && uploaded.url) {
                         replacementMap.set(asset.originalUrl, uploaded.url);
+                    } else {
+                        throw new Error(uploaded.error || 'Asset upload failed');
                     }
                     const assetProgress = 25 + Math.round((replacementMap.size / Math.max(portableAssets.length, 1)) * 40);
                     setImportProgressModal((prev) => ({
@@ -814,23 +798,18 @@ export function BrandDNABoard({
                         message: 'Subiendo imagenes del kit...',
                     }));
                 } catch {
-                    // No bloqueamos toda la importacion por una imagen concreta.
+                    throw new Error(
+                        t('board.importAssetUploadError', {
+                            defaultValue: 'No se pudo copiar uno de los assets del kit al nuevo usuario.',
+                        })
+                    );
                 }
             }
 
-            const mapUrl = (url?: string) => {
-                const clean = (url || '').trim();
-                if (!clean) return clean;
-                return replacementMap.get(clean) || clean;
-            };
-
-            importedBrand.logo_url = mapUrl(importedBrand.logo_url);
-            importedBrand.favicon_url = mapUrl(importedBrand.favicon_url);
-            importedBrand.screenshot_url = mapUrl(importedBrand.screenshot_url);
-            importedBrand.logos = (importedBrand.logos || []).map((logo) => ({ ...logo, url: mapUrl(logo.url) }));
-            importedBrand.images = (importedBrand.images || []).map((img) => ({ ...img, url: mapUrl(img.url) }));
-
-            const normalized = normalizeStudioColorRoles(importedBrand);
+            const importedWithOwnedAssets = isPortable
+                ? applyPortableAssetReplacements(importedBrand, replacementMap)
+                : importedBrand;
+            const normalized = normalizeStudioColorRoles(importedWithOwnedAssets);
             setImportProgressModal((prev) => ({
                 ...prev,
                 progress: 72,

@@ -57,6 +57,27 @@ export const getAIConfig = query({
     },
 });
 
+function normalizeDuration(value: unknown, fallback: number) {
+    const parsed = typeof value === "number" ? value : Number(value);
+    if (!Number.isFinite(parsed)) return fallback;
+    return Math.max(1000, Math.round(parsed));
+}
+
+export const getCarouselVideoConfig = query({
+    args: {},
+    handler: async (ctx) => {
+        const [slideDuration, lastSlideDuration] = await Promise.all([
+            ctx.db.query("app_settings").withIndex("by_key", (q) => q.eq("key", "carousel_video_slide_duration_ms")).first(),
+            ctx.db.query("app_settings").withIndex("by_key", (q) => q.eq("key", "carousel_video_last_slide_duration_ms")).first(),
+        ]);
+
+        return {
+            slideDurationMs: normalizeDuration(slideDuration?.value, 4000),
+            lastSlideDurationMs: normalizeDuration(lastSlideDuration?.value, 6000),
+        };
+    },
+});
+
 export const saveAppSetting = mutation({
     args: {
         admin_email: v.string(),

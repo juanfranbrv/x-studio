@@ -380,16 +380,6 @@ function BrandKitPageContent() {
         const requestedBrandId = searchParams.get('id');
         if (!isValidBrandId(requestedBrandId)) return;
 
-        // Si llega un id huérfano/ajeno en URL, lo limpiamos para evitar bucles y bloqueos de asistente.
-        const requestedExists = brandKits.some((b) => b.id === requestedBrandId);
-        if (!requestedExists && brandKits.length > 0) {
-            const newParams = new URLSearchParams(searchParams.toString());
-            newParams.delete('id');
-            newParams.delete('creation');
-            router.replace(`/brand-kit${newParams.toString() ? `?${newParams.toString()}` : ''}`);
-            return;
-        }
-
         if (activeBrandKit?.id === requestedBrandId) {
             const newParams = new URLSearchParams(searchParams.toString());
             newParams.delete('id');
@@ -400,15 +390,21 @@ function BrandKitPageContent() {
 
         let cancelled = false;
         const trySelectRequestedBrand = async () => {
-            const attempts = 8;
+            // More attempts + longer window to allow Convex to sync a newly created kit
+            const attempts = 20;
             for (let i = 0; i < attempts; i++) {
                 if (cancelled) return;
-                // Strict mode: never fallback to previously active kit.
                 const ok = await setActiveBrandKit(requestedBrandId, true, false);
                 if (ok) return;
-                await new Promise(resolve => setTimeout(resolve, 300));
+                await new Promise(resolve => setTimeout(resolve, 400));
             }
-            console.error('Could not select newly created kit de marca:', requestedBrandId);
+            // Only after exhausting retries: treat as truly orphaned and clean the URL
+            if (!cancelled) {
+                const newParams = new URLSearchParams(searchParams.toString());
+                newParams.delete('id');
+                newParams.delete('creation');
+                router.replace(`/brand-kit${newParams.toString() ? `?${newParams.toString()}` : ''}`);
+            }
         };
 
         void trySelectRequestedBrand();

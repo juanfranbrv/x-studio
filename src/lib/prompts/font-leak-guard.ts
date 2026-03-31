@@ -43,7 +43,11 @@ export function sanitizeFontLeakText(text: string, fonts?: BrandFont[]): string 
 }
 
 export function buildFontLeakPreventionDirective(fonts?: BrandFont[]): string {
-    const hasExplicitFamilies = normalizeFamilies(fonts).length > 0
+    const families = normalizeFamilies(fonts)
+    const hasExplicitFamilies = families.length > 0
+    const bannedNamesList = hasExplicitFamilies
+        ? `\n- BANNED FONT NAMES (must NEVER appear as visible text): ${families.map((f) => `"${f}"`).join(', ')}.`
+        : ''
 
     return `FONT NAME RENDER BAN (ABSOLUTE):
 - Font family names are internal production instructions only.
@@ -53,7 +57,7 @@ export function buildFontLeakPreventionDirective(fonts?: BrandFont[]): string {
 - If any font family name appears anywhere else in this prompt, treat it as invisible metadata and remove it from the final artwork.
 - Font names, style labels, and typography instructions are not content. They must influence styling only and must never become printed words inside the image.
 - The only allowed visible words are the user-facing copy supplied in the TEXT block and, on the final slide, the approved CTA/URL block.
-- This applies to all Brand Kit font families${hasExplicitFamilies ? ' referenced in the typography contract above' : ''}.`
+- This applies to all Brand Kit font families${hasExplicitFamilies ? ' referenced in the typography contract above' : ''}.${bannedNamesList}`
 }
 
 export function buildInvisibleFontContextLine(tagRef: string, family: string): string {

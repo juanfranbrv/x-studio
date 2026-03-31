@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
+
 import { useUser } from '@clerk/nextjs'
 import { useBrandKit } from '@/contexts/BrandKitContext'
 import { useToast } from '@/hooks/use-toast'
@@ -26,6 +27,7 @@ import { PromptDebugModal } from '@/components/studio/modals/PromptDebugModal'
 import { buildEditPrompt } from '@/lib/prompts/image-edit'
 import { buildImagePrompt } from '@/lib/prompt-builder'
 import { parseLazyIntentAction } from '@/app/actions/parse-intent'
+import { shouldRefreshAiImageDescription } from '@/lib/prompts/intents/legacy-visual-brief'
 import { IntentCategory, TextAsset } from '@/lib/creation-flow-types'
 import { useUI } from '@/contexts/UIContext'
 import { hexToHslString } from '@/lib/color-utils'
@@ -50,6 +52,12 @@ import { useTranslation } from 'react-i18next'
 import { buildAutomaticSessionTitle, getSessionDisplayTitle, normalizeCustomSessionTitle } from '@/lib/session-titles'
 import { getLastVisitedModuleAction } from '@/app/actions/get-last-visited-module'
 import { shouldApplyLastVisitedImageBrand } from './lastVisitedScope'
+import {
+    INCOMING_PROMPT_FLAG_STORAGE_KEY,
+    initializeIncomingPromptTransfer,
+    resolveDraftPromptAfterBrandReset,
+    resolvePendingIncomingPrompt,
+} from './incomingPromptTransfer'
 
 // Admin email for debug modal access
 const ADMIN_EMAIL = 'juanfranbrv@gmail.com'
@@ -136,7 +144,19 @@ export default function ImagePage() {
     const [logoInclusion, setLogoInclusion] = useState(true)
     const [compositionMode, setCompositionMode] = useState<'basic' | 'advanced'>('basic')
 
-    const [promptValue, setPromptValue] = useState('')
+    const incomingPromptRef = useRef<string>('')
+    const initialIncomingTransferRef = useRef<ReturnType<typeof initializeIncomingPromptTransfer> | null>(null)
+    if (initialIncomingTransferRef.current === null) {
+        initialIncomingTransferRef.current = typeof window === 'undefined'
+            ? initializeIncomingPromptTransfer()
+            : initializeIncomingPromptTransfer(sessionStorage)
+        incomingPromptRef.current = initialIncomingTransferRef.current.pendingPrompt
+    }
+    const [pendingIncomingPrompt, setPendingIncomingPrompt] = useState<string>(initialIncomingTransferRef.current.pendingPrompt)
+    const [promptValue, setPromptValue] = useState<string>(initialIncomingTransferRef.current.prompt)
+    useEffect(() => {
+        if (promptValue) creationFlow.setRawMessage(promptValue)
+    }, []) // eslint-disable-line react-hooks/exhaustive-deps
     const [editPrompt, setEditPrompt] = useState('')
     const [isMobile, setIsMobile] = useState(false)
     const [viewportHeight, setViewportHeight] = useState(1080)
@@ -411,6 +431,16 @@ export default function ImagePage() {
         }
     } as UseCreationFlowOptions)
 
+    const updatePromptDraft = useCallback((nextPrompt: string) => {
+        setPromptValue(nextPrompt)
+        creationFlow.setRawMessage(nextPrompt)
+        setPendingIncomingPrompt((prev) => {
+            const nextPending = resolvePendingIncomingPrompt(prev, nextPrompt)
+            incomingPromptRef.current = nextPending
+            return nextPending
+        })
+    }, [creationFlow])
+
     const normalizePromptForSession = useCallback((value?: string | null) => {
         const cleaned = (value || '')
             .trim()
@@ -604,8 +634,7 @@ export default function ImagePage() {
             if (snapshot.creationFlowState && typeof snapshot.creationFlowState === 'object') {
                 creationFlow.loadPreset(snapshot.creationFlowState)
             }
-            setPromptValue(snapshot.promptValue || '')
-            creationFlow.setRawMessage(snapshot.promptValue || '')
+            updatePromptDraft(snapshot.promptValue || '')
             setEditPrompt(snapshot.editPrompt || '')
             setLogoInclusion(typeof snapshot.logoInclusion === 'boolean' ? snapshot.logoInclusion : true)
             setCompositionMode(snapshot.compositionMode === 'advanced' ? 'advanced' : 'basic')
@@ -623,7 +652,7 @@ export default function ImagePage() {
         } finally {
             window.setTimeout(() => setIsHydratingSession(false), 0)
         }
-    }, [creationFlow, normalizePromptForSession])
+    }, [creationFlow, normalizePromptForSession, updatePromptDraft])
 
     const scheduleBaselineReset = useCallback((signature: string) => {
         if (baselineResetTimeoutRef.current !== null) {
@@ -645,8 +674,7 @@ export default function ImagePage() {
         setEditPrompt('')
         setPendingRetryRequest(null)
         setLastGenerationRequest(null)
-        setPromptValue(initialPrompt)
-        creationFlow.setRawMessage(initialPrompt)
+        updatePromptDraft(initialPrompt)
         setSessionRootPrompt(null)
         setAuditFlowId(null)
         auditFlowIdRef.current = null
@@ -656,7 +684,7 @@ export default function ImagePage() {
         setSessionSaveError(null)
         pendingBaselineResetRef.current = true
         setHasUnsavedChanges(false)
-    }, [creationFlow])
+    }, [creationFlow, updatePromptDraft])
 
     const createNewImageSession = useCallback(async (
         initialPrompt?: string,
@@ -815,7 +843,9 @@ export default function ImagePage() {
         if (activeWorkSession === undefined) return
         if (hasHydratedScopeRef.current) return
 
-        if (activeWorkSession?.snapshot) {
+        const hasIncoming = typeof window !== 'undefined' && !!sessionStorage.getItem(INCOMING_PROMPT_FLAG_STORAGE_KEY)
+        if (hasIncoming) sessionStorage.removeItem(INCOMING_PROMPT_FLAG_STORAGE_KEY)
+        if (activeWorkSession?.snapshot && !hasIncoming) {
             pendingBaselineResetRef.current = true
             restoreWorkspaceFromSnapshot(activeWorkSession.snapshot as ImageWorkspaceSnapshot)
             setCurrentSessionId(String(activeWorkSession._id))
@@ -1123,13 +1153,15 @@ export default function ImagePage() {
             setSelectedContext([])
             creationFlow.reset()
             setDebugPromptData(null)
-            setPromptValue('')
+            const restoredPrompt = resolveDraftPromptAfterBrandReset(incomingPromptRef.current || pendingIncomingPrompt)
+            setPromptValue(restoredPrompt)
+            creationFlow.setRawMessage(restoredPrompt)
             setCompositionMode('basic')
             basicLayoutCursorByIntentRef.current = {}
             setPendingRetryRequest(null)
             setLastGenerationRequest(null)
         }
-    }, [activeBrandKit?.id])
+    }, [activeBrandKit?.id]) // eslint-disable-line react-hooks/exhaustive-deps
 
     useEffect(() => {
         const previous = lastCompositionModeRef.current
@@ -1506,8 +1538,7 @@ export default function ImagePage() {
             })
             const data = await res.json()
             if (data.success && data.text) {
-                setPromptValue(data.text)
-                creationFlow.setRawMessage(data.text)
+                updatePromptDraft(data.text)
             }
         } catch (err) {
             console.error('Failed to generate prompt inspiration:', err)
@@ -1706,7 +1737,10 @@ export default function ImagePage() {
 
             creationFlow.ensureDefaultFormat(creationFlow.state.selectedPlatform || 'instagram')
 
-            if (!creationFlow.state.aiImageDescription.trim()) {
+            if (shouldRefreshAiImageDescription({
+                currentDescription: creationFlow.state.aiImageDescription,
+                previousSuggestions: creationFlow.state.imagePromptSuggestions,
+            })) {
                 const fallbackDescription = Array.isArray(result.imagePromptSuggestions) && result.imagePromptSuggestions[0]
                     ? result.imagePromptSuggestions[0]
                     : (result.headline || promptValue)
@@ -2464,15 +2498,16 @@ export default function ImagePage() {
             creationFlow={creationFlow}
             highlightedFields={highlightedFields}
             promptValue={promptValue}
-            onPromptChange={(val) => {
-                setPromptValue(val)
-                creationFlow.setRawMessage(val)
-            }}
+            onPromptChange={updatePromptDraft}
             isMagicParsing={isMagicParsing}
             isGenerating={isGenerating}
             canGenerate={Boolean(canGenerate)}
             onUnifiedAction={handleUnifiedAction}
             onAnalyze={() => handleSmartAnalyze()}
+            onSendToCarousel={promptValue.trim() ? () => {
+                sessionStorage.setItem('x-studio:incoming-prompt', promptValue.trim())
+                router.push('/carousel')
+            } : undefined}
             onCancelAnalyze={handleCancelAnalyze}
             isAdmin={isAdmin}
             adminEmail={user?.emailAddresses?.[0]?.emailAddress}

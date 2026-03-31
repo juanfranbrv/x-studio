@@ -523,6 +523,49 @@ These values are editable from Admin and must remain the single source of truth 
 4. If the auth file does not exist or expires, Playwright must still be able to run public-route checks without failing config bootstrap.
 5. In this project with Clerk dev keys, `storageState` alone may not fully rehydrate an authenticated session in a fresh Playwright browser. For authenticated E2E against local development, prefer attaching Playwright to the shared debug browser session through the endpoint resolved by `scripts/resolve-chrome-cdp-endpoint.mjs`.
 
+## Video de carrusel desde Admin
+
+### Fuente de verdad global
+
+- La duracion del video exportado del modulo `carousel` ya no debe quedarse hardcodeada en el canvas.
+- Los valores globales viven en `app_settings`:
+  - `carousel_video_slide_duration_ms`
+  - `carousel_video_last_slide_duration_ms`
+- La query publica que consume el frontend es `api.settings.getCarouselVideoConfig`.
+
+### Biblioteca global de audio
+
+- Las pistas del video de carrusel deben gestionarse desde Admin y persistirse en Convex Storage, no en la carpeta local `songs/` como fuente principal.
+- La tabla de catalogo es `admin_audio_tracks`.
+- La query publica `api.adminAudio.listActiveTracks` devuelve solo pistas activas con URL resuelta.
+- El export del carrusel elige una pista activa al azar.
+
+### Regla operativa
+
+1. Si no hay pistas activas, el export con musica debe fallar con error explicito y no usar fallback silencioso.
+2. La duracion del audio se adapta al total del video; la musica no gobierna la duracion de slides.
+3. La UI de Admin debe permitir:
+   - subir pistas
+   - activar/desactivar pistas
+   - borrar pistas
+4. La exportacion final debe renderizarse en servidor y no depender del codec que el navegador del usuario soporte en `MediaRecorder`.
+
+### Render y compatibilidad
+
+- La route de verdad para export video del carrusel es `src/app/api/carousel/export-video/route.ts`.
+- El cliente del canvas solo prepara las slides y dispara esa route; no debe volver a decidir contenedor o codec localmente.
+- El render compatible actual sale en:
+  - contenedor `mp4`
+  - video `H.264` (`libx264`)
+  - audio `AAC` cuando hay pista
+  - pixel format `yuv420p`
+  - `+faststart` para mejorar compatibilidad al compartir y reproducir online
+
+### Limites operativos
+
+- El total del video del carrusel queda limitado a `60s`.
+- Si la configuracion global de duraciones supera ese maximo para el numero de slides exportadas, la route debe rechazar la exportacion con error explicito en lugar de intentar un render largo en Vercel.
+
 ### Practical note
 
 - The spec `tests/image-debug-auth.spec.ts` is designed to run against the shared debug browser session.
@@ -659,6 +702,26 @@ Si Clerk exige verificacion completa del dominio para correo o cuenta hospedada,
   - un `Brand Kit` nuevo creado desde el asistente debe arrancar en `0%`
   - placeholders como `My Brand`, `Mi marca` o equivalentes no cuentan como progreso real
   - la completitud solo debe subir cuando el usuario rellena contenido real o cuando el analisis autocompleta datos validos
+
+## Import/export portable de Brand Kit
+
+- El formato portable del Brand Kit vive en `src/lib/portable-brand-kit.ts`.
+- El export portable debe embeder siempre los assets visuales del kit:
+  - `logo_url`
+  - `logos[]`
+  - `favicon_url`
+  - `screenshot_url`
+  - `images[]`
+- Regla operativa:
+  1. si uno o mas assets del kit no pueden leerse durante el export, el export debe fallar; no se permite generar un JSON "medio portable" con URLs colgando
+  2. al importar un kit portable, todos los assets embebidos deben re-subirse a storage del usuario destino antes de guardar el documento
+  3. si falta algun asset embebido o falla la copia de uno de ellos, la importacion debe abortarse; no se permite conservar URLs del usuario origen como fallback silencioso
+  4. los logos importados deben re-subirse como `assetKind=logo` para conservar el tratamiento de transparencia y compresion especifico de logos
+- Seguridad:
+  - `POST /api/brand-kit/create-empty` debe validar la sesion Clerk y rechazar cualquier intento de crear un kit para un `clerk_user_id` distinto del usuario autenticado
+- Limite vigente:
+  - el formato portable cubre los assets persistidos dentro de `brand_dna`
+  - los assets efimeros o de sesion fuera del Brand Kit, como `session_images`, no forman parte del paquete portable salvo implementacion explicita futura
 
 ## Preview editable de textos
 

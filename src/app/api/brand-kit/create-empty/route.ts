@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { ConvexHttpClient } from 'convex/browser';
 import { api } from '../../../../../convex/_generated/api';
+import { auth } from '@clerk/nextjs/server';
 
 const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
 
@@ -8,11 +9,19 @@ export async function POST(request: NextRequest) {
     try {
         const body = await request.json();
         const { clerk_user_id, brand_name, source_url } = body;
+        const { userId } = await auth();
 
         if (!clerk_user_id) {
             return NextResponse.json(
                 { success: false, error: 'clerk_user_id is required' },
                 { status: 400 }
+            );
+        }
+
+        if (!userId || userId !== clerk_user_id) {
+            return NextResponse.json(
+                { success: false, error: 'Unauthorized' },
+                { status: 401 }
             );
         }
 

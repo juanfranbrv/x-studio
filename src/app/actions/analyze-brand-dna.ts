@@ -63,7 +63,7 @@ async function extractVisualPalette(imageUrl: string): Promise<string[]> {
  * Extract official brand colors from the logo
  * Returns top 5-6 colors by frequency, filtering out backgrounds
  */
-async function extractLogoColors(logoUrl: string): Promise<string[]> {
+export async function extractLogoColors(logoUrl: string): Promise<string[]> {
     try {
         console.log(`🎨 Extrayendo colores del logo: ${logoUrl}`);
 
@@ -144,6 +144,13 @@ async function extractLogoColors(logoUrl: string): Promise<string[]> {
         console.error('Error en logo palette extraction:', e);
         return [];
     }
+}
+
+/** Async wrapper export so Next.js 'use server' accepts it */
+export async function assignStudioColorRolesAction(
+    colors: { color: string; sources: string[]; score: number }[]
+): Promise<{ color: string; sources: string[]; score: number; role: 'Fondo' | 'Texto' | 'Acento' }[]> {
+    return assignStudioColorRoles(colors)
 }
 
 /**

@@ -2,6 +2,8 @@
 
 import { Loader2 } from '@/components/ui/spinner'
 import { useState, useEffect, useRef, useMemo } from 'react'
+import { useQuery } from 'convex/react'
+import { api } from '@/../convex/_generated/api'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -77,6 +79,14 @@ const VISUAL_INTENT_MARKERS = [
     'Objetivo visual deste slide',
     'Obiettivo visivo di questa slide',
 ]
+
+const DEFAULT_SLIDE_DURATION_MS = 4000
+const DEFAULT_LAST_SLIDE_DURATION_MS = 6000
+
+function formatDurationLabel(durationMs: number) {
+    const seconds = durationMs / 1000
+    return `${Number.isInteger(seconds) ? seconds : seconds.toFixed(1)}s`
+}
 
 function splitVisualPromptForEditor(value: string): { editable: string; hiddenIntent: string } {
     const normalized = String(value || '').trim()
@@ -219,6 +229,10 @@ export function CarouselCanvasPanel({
     const { t } = useTranslation()
     const tt = (key: string, defaultValue: string, options?: Record<string, unknown>) =>
         t(key, { defaultValue, ...options })
+    const carouselVideoConfig = useQuery(api.settings.getCarouselVideoConfig, {})
+    const activeAudioTracks = useQuery(api.adminAudio.listActiveTracks, {})
+    const slideDurationMs = carouselVideoConfig?.slideDurationMs ?? DEFAULT_SLIDE_DURATION_MS
+    const lastSlideDurationMs = carouselVideoConfig?.lastSlideDurationMs ?? DEFAULT_LAST_SLIDE_DURATION_MS
     const [zoom, setZoom] = useState(110)
     const [hasManualZoom, setHasManualZoom] = useState(false)
     const containerRef = useRef<HTMLDivElement>(null)
@@ -576,119 +590,6 @@ export function CarouselCanvasPanel({
         URL.revokeObjectURL(zipUrl)
     }
 
-    const getCanvasDimensions = (ratio: '1:1' | '4:5' | '3:4') => {
-        if (ratio === '1:1') return { width: 1080, height: 1080 }
-        if (ratio === '4:5') return { width: 1080, height: 1350 }
-        return { width: 1080, height: 1440 }
-    }
-
-    const loadImageToCanvasSource = async (url: string): Promise<{ img: HTMLImageElement; revoke?: () => void }> => {
-        let objectUrl: string | undefined
-        try {
-            const response = await fetch(url)
-            if (!response.ok) {
-                throw new Error(`No se pudo descargar la slide (${response.status})`)
-            }
-            const blob = await response.blob()
-            objectUrl = URL.createObjectURL(blob)
-        } catch {
-            objectUrl = undefined
-        }
-
-        const src = objectUrl || url
-
-        const img = await new Promise<HTMLImageElement>((resolve, reject) => {
-            const image = new Image()
-            image.crossOrigin = 'anonymous'
-            image.onload = () => resolve(image)
-            image.onerror = () => reject(new Error(`No se pudo cargar la imagen: ${url}`))
-            image.src = src
-        })
-
-        return {
-            img,
-            revoke: objectUrl ? () => URL.revokeObjectURL(objectUrl as string) : undefined
-        }
-    }
-
-    const wait = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms))
-
-    const pickVideoMimeType = () => {
-        const candidates = [
-            'video/mp4;codecs=avc1.42E01E,mp4a.40.2',
-            'video/mp4',
-            'video/webm;codecs=vp9,opus',
-            'video/webm;codecs=vp8,opus',
-            'video/webm'
-        ]
-        return candidates.find((type) => MediaRecorder.isTypeSupported(type)) || ''
-    }
-
-    const buildMusicTrack = async (musicUrl: string): Promise<{
-        stream: MediaStream
-        cleanup: () => void
-        start: (targetDurationMs: number) => Promise<void>
-    }> => {
-        const audioContext = new AudioContext()
-        const destination = audioContext.createMediaStreamDestination()
-        const gainNode = audioContext.createGain()
-        const audioElement = new Audio(musicUrl)
-        audioElement.crossOrigin = 'anonymous'
-        audioElement.preload = 'auto'
-        audioElement.loop = true
-
-        const sourceNode = audioContext.createMediaElementSource(audioElement)
-        sourceNode.connect(gainNode)
-        gainNode.connect(destination)
-
-        return {
-            stream: destination.stream,
-            cleanup: () => {
-                try {
-                    audioElement.pause()
-                    audioElement.src = ''
-                } catch { }
-                try {
-                    sourceNode.disconnect()
-                } catch { }
-                try {
-                    gainNode.disconnect()
-                } catch { }
-                try {
-                    destination.disconnect()
-                } catch { }
-                void audioContext.close()
-            },
-            start: async (targetDurationMs: number) => {
-                if (audioContext.state === 'suspended') {
-                    await audioContext.resume()
-                }
-                const durationSeconds = Math.max(1, targetDurationMs / 1000)
-                const now = audioContext.currentTime
-                const fadeInSeconds = Math.min(1.2, durationSeconds * 0.16)
-                const fadeOutSeconds = 0.75
-                const fadeOutStart = Math.max(now + fadeInSeconds, now + durationSeconds - fadeOutSeconds)
-
-                gainNode.gain.cancelScheduledValues(now)
-                gainNode.gain.setValueAtTime(0, now)
-                gainNode.gain.linearRampToValueAtTime(0.88, now + fadeInSeconds)
-                gainNode.gain.setValueAtTime(0.88, fadeOutStart)
-                gainNode.gain.linearRampToValueAtTime(0, fadeOutStart + fadeOutSeconds)
-                audioElement.currentTime = 0
-                await audioElement.play()
-            }
-        }
-    }
-
-    const fetchExperimentalSongs = async (): Promise<Array<{ name: string; label: string; url: string }>> => {
-        const response = await fetch('/api/experimental-songs', { cache: 'no-store' })
-        if (!response.ok) {
-            throw new Error('No se pudo cargar la lista de canciones experimentales.')
-        }
-        const payload = await response.json()
-        return Array.isArray(payload?.songs) ? payload.songs : []
-    }
-
     const exportCarouselVideo = async (withMusic: boolean) => {
         const completedSlidesOrdered = [...slides]
             .filter((slide) => slide.status === 'done' && Boolean(slide.imageUrl))
@@ -713,30 +614,6 @@ export function CarouselCanvasPanel({
             return
         }
 
-        const mimeType = pickVideoMimeType()
-        if (!mimeType) {
-            toast({
-                title: tt('common:preview.browserUnsupportedTitle', 'Unsupported browser'),
-                description: tt('common:preview.browserUnsupportedDescription', 'This browser cannot record video from the canvas.'),
-                variant: 'destructive'
-            })
-            return
-        }
-
-        const { width, height } = getCanvasDimensions(aspectRatio)
-        const canvas = document.createElement('canvas')
-        canvas.width = width
-        canvas.height = height
-        const ctx = canvas.getContext('2d')
-        if (!ctx) {
-            toast({
-                title: tt('common:preview.canvasErrorTitle', 'Canvas error'),
-                description: tt('common:preview.canvasErrorDescription', 'The video render could not be initialized.'),
-                variant: 'destructive'
-            })
-            return
-        }
-
         setIsExportingVideo(true)
         setVideoExportProgress(5)
         setVideoExportPhase(tt('common:preview.preparingExport', 'Preparing export'))
@@ -745,95 +622,57 @@ export function CarouselCanvasPanel({
             description: tt('common:preview.exportingVideoDescription', 'We are assembling the carousel MP4. This can take a moment.')
         })
 
-        const fps = 30
-        const videoStream = canvas.captureStream(fps)
-        let music: Awaited<ReturnType<typeof buildMusicTrack>> | null = null
-        let outputStream: MediaStream = videoStream
-        const chunks: BlobPart[] = []
-        let selectedSongLabel = ''
-
         try {
-            const totalDurationMs = completedSlidesOrdered.reduce((sum, _slide, idx) => sum + (idx === completedSlidesOrdered.length - 1 ? 6000 : 4000), 0)
-
             if (withMusic) {
-                setVideoExportPhase(tt('common:preview.loadingExperimentalTrack', 'Loading experimental track'))
-                const songs = await fetchExperimentalSongs()
+                const songs = Array.isArray(activeAudioTracks)
+                    ? activeAudioTracks.filter((track) => typeof track?.url === 'string' && track.url)
+                    : []
                 if (songs.length === 0) {
-        throw new Error(tt('common:preview.noExperimentalTracks', 'No experimental tracks are available in /songs.'))
-                }
-                const selectedSong = songs[Math.floor(Math.random() * songs.length)]
-                selectedSongLabel = selectedSong.label
-                music = await buildMusicTrack(selectedSong.url)
-                outputStream = new MediaStream([
-                    ...videoStream.getVideoTracks(),
-                    ...music.stream.getAudioTracks()
-                ])
-            }
-
-            const recorder = new MediaRecorder(outputStream, {
-                mimeType,
-                videoBitsPerSecond: 8_000_000
-            })
-
-            recorder.ondataavailable = (event) => {
-                if (event.data.size > 0) {
-                    chunks.push(event.data)
+                    throw new Error(tt('common:preview.noExperimentalTracks', 'No hay pistas activas disponibles en Admin.'))
                 }
             }
-
-            const recordDone = new Promise<void>((resolve, reject) => {
-                recorder.onstop = () => resolve()
-                recorder.onerror = () => reject(new Error('Fallo al grabar el video'))
-            })
 
             setVideoExportProgress(15)
             setVideoExportPhase(tt('common:preview.loadingSlides', 'Loading slides'))
-            const loaded = await Promise.all(
-                completedSlidesOrdered.map((slide) => loadImageToCanvasSource(slide.imageUrl as string))
-            )
+            const response = await fetch('/api/carousel/export-video', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    slides: completedSlidesOrdered.map((slide) => ({
+                        index: slide.index,
+                        imageUrl: slide.imageUrl,
+                    })),
+                    aspectRatio,
+                    withMusic,
+                    brandName,
+                    hook,
+                }),
+            })
 
-            recorder.start(250)
-            if (music) {
-                await music.start(totalDurationMs)
+            if (!response.ok) {
+                const payload = await response.json().catch(() => null)
+                throw new Error(
+                    typeof payload?.error === 'string'
+                        ? payload.error
+                        : tt('common:preview.videoExportErrorDescription', 'The video could not be generated.')
+                )
             }
 
-            let renderedMs = 0
-            let lastProgressUpdate = 0
-            setVideoExportProgress(22)
+            setVideoExportProgress(76)
             setVideoExportPhase(
-                music
-                    ? tt('common:preview.renderingVideoWithAudio', 'Rendering video with audio: {{track}}', { track: selectedSongLabel || tt('common:preview.experimentalTrack', 'experimental track') })
+                withMusic
+                    ? tt('common:preview.renderingVideoWithAudio', 'Rendering video with audio: {{track}}', { track: tt('common:preview.experimentalTrack', 'compatible track') })
                     : tt('common:preview.renderingVideo', 'Rendering video')
             )
 
-            for (let i = 0; i < loaded.length; i++) {
-                const durationMs = i === loaded.length - 1 ? 6000 : 4000
-                const start = performance.now()
-                while (performance.now() - start < durationMs) {
-                    const now = performance.now()
-                    const elapsedInSlide = Math.min(durationMs, now - start)
-                    if (now - lastProgressUpdate > 120) {
-                        const progress = 22 + Math.round(((renderedMs + elapsedInSlide) / totalDurationMs) * 68)
-                        setVideoExportProgress(Math.min(90, progress))
-                        lastProgressUpdate = now
-                    }
-                    ctx.clearRect(0, 0, width, height)
-                    ctx.drawImage(loaded[i].img, 0, 0, width, height)
-                    await wait(1000 / fps)
-                }
-                renderedMs += durationMs
-            }
-
             setVideoExportProgress(94)
             setVideoExportPhase(tt('common:preview.finalizingFile', 'Finalizing file'))
-            recorder.stop()
-            await recordDone
-            loaded.forEach((item) => item.revoke?.())
-
-            const blob = new Blob(chunks, { type: mimeType })
+            const blob = await response.blob()
             const downloadUrl = URL.createObjectURL(blob)
             const link = document.createElement('a')
-            const extension = mimeType.includes('mp4') ? 'mp4' : 'webm'
+            const extension = 'mp4'
 
             const date = new Date()
             const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
@@ -850,12 +689,8 @@ export function CarouselCanvasPanel({
             setVideoExportPhase(tt('common:preview.completed', 'Completed'))
 
             toast({
-                title: extension === 'mp4'
-                    ? tt('common:preview.mp4ExportedTitle', 'MP4 exported')
-                    : tt('common:preview.videoExportedTitle', 'Video exported'),
-                description: extension === 'mp4'
-                    ? tt('common:preview.mp4ExportedDescription', 'Ready to publish on Facebook or TikTok.')
-                    : tt('common:preview.webmExportedDescription', 'Your browser exported WebM. If you need MP4, we can try a different encoding strategy.')
+                title: tt('common:preview.mp4ExportedTitle', 'MP4 exported'),
+                description: tt('common:preview.mp4ExportedDescription', 'Ready to publish on Facebook or TikTok.')
             })
         } catch (error) {
             console.error('Video export error:', error)
@@ -865,7 +700,6 @@ export function CarouselCanvasPanel({
                 variant: 'destructive'
             })
         } finally {
-            if (music) music.cleanup()
             setTimeout(() => {
                 setVideoExportProgress(0)
                 setVideoExportPhase('')
@@ -940,7 +774,10 @@ export function CarouselCanvasPanel({
                         className={CANVAS_TOOL_BUTTON_CLASS}
                         onClick={() => exportCarouselVideo(false)}
                         disabled={isExportingVideo || completedSlides === 0}
-                        title={tt('common:preview.exportVideoDurations', 'Export video (4s / 6s)')}
+                        title={tt('common:preview.exportVideoDurations', 'Export video ({{slide}} / {{last}})', {
+                            slide: formatDurationLabel(slideDurationMs),
+                            last: formatDurationLabel(lastSlideDurationMs),
+                        })}
                     >
                         <IconVideo className={cn(CANVAS_TOOL_ICON_CLASS, isExportingVideo && "animate-pulse")} />
                     </Button>

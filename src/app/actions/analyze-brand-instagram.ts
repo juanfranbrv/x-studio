@@ -1,144 +1,114 @@
 'use server'
 
 import { z } from 'zod'
-import sharp from 'sharp'
 import { ApifyClient } from 'apify-client'
-import { fetchQuery, fetchMutation } from 'convex/nextjs'
+import { fetchMutation, fetchQuery } from 'convex/nextjs'
 import { api } from '../../../convex/_generated/api'
 import { generateTextUnified } from '@/lib/gemini'
 import type { AnalyzeBrandDNAResponse, BrandDNA } from '@/lib/brand-types'
-import { clusterColors, assignStudioColorRoles } from '@/lib/color-utils'
-import { analyzeBrandDNA } from './analyze-brand-dna'
-
-const APIFY_TOKEN = process.env.APIFY_API_TOKEN
-const DEFAULT_INTELLIGENCE_MODEL = 'wisdom/gemini-2.5-flash'
+import sharp from 'sharp'
+import { clusterColors } from '@/lib/color-utils'
+import { analyzeBrandDNA, assignStudioColorRolesAction } from './analyze-brand-dna'
 
 /**
- * Extracts dominant colors from a remote image URL using sharp pixel analysis.
- * Skips near-white, near-black and transparent pixels to focus on brand colors.
+ * Extracts brand colors from a profile picture.
+ * Unlike the web logo extractor, this one preserves white/light colors
+ * (they are valid brand colors in logos, not just backgrounds).
+ * Returns 4-5 clustered, distinct colors with roles.
  */
-async function extractColorsFromImageUrl(imageUrl: string, maxColors = 8): Promise<string[]> {
+async function extractColorsFromProfilePic(
+  imageUrl: string
+): Promise<{ color: string; sources: string[]; score: number; role: 'Fondo' | 'Texto' | 'Acento' }[]> {
   try {
-    const response = await fetch(imageUrl, { signal: AbortSignal.timeout(10000) })
-    if (!response.ok) return []
+    const res = await fetch(imageUrl, { signal: AbortSignal.timeout(10000) })
+    if (!res.ok) return []
 
-    const buffer = Buffer.from(await response.arrayBuffer())
+    const buffer = Buffer.from(await res.arrayBuffer())
     const image = sharp(buffer)
     const { width, height, channels } = await image.metadata()
     if (!width || !height) return []
 
-    const rawBuffer = await image.raw().toBuffer()
-    const colorCounts = new Map<string, number>()
+    const raw = await image.raw().toBuffer()
     const ch = channels ?? 3
+    const colorCounts = new Map<string, number>()
     const step = width * height > 10000 ? 3 : 1
 
-    for (let i = 0; i < rawBuffer.length; i += ch * step) {
-      const r = rawBuffer[i]
-      const g = rawBuffer[i + 1]
-      const b = rawBuffer[i + 2]
-      const a = ch === 4 ? rawBuffer[i + 3] : 255
+    for (let i = 0; i < raw.length; i += ch * step) {
+      const r = raw[i], g = raw[i + 1], b = raw[i + 2]
+      const a = ch === 4 ? raw[i + 3] : 255
+      if (a < 50) continue // skip transparent
 
-      if (a < 50) continue
+      // Only skip pure black — keep whites and all brand colors
+      if (r < 8 && g < 8 && b < 8) continue
 
-      const max = Math.max(r, g, b)
-      const min = Math.min(r, g, b)
-      const l = (max + min) / 2 / 255
-
-      // Skip near-white, pure white, near-black
-      if (l > 0.92 || (r > 248 && g > 248 && b > 248) || (r < 8 && g < 8 && b < 8)) continue
-
-      // Quantize to nearest 10
-      const qr = Math.round(r / 10) * 10
-      const qg = Math.round(g / 10) * 10
-      const qb = Math.round(b / 10) * 10
-
+      const qr = Math.round(r / 12) * 12
+      const qg = Math.round(g / 12) * 12
+      const qb = Math.round(b / 12) * 12
       const hex = `#${((1 << 24) + (qr << 16) + (qg << 8) + qb).toString(16).slice(1).toUpperCase()}`
       colorCounts.set(hex, (colorCounts.get(hex) || 0) + 1)
     }
 
-    return Array.from(colorCounts.entries())
+    const totalPixels = (width * height) / step
+    // Take top candidates by frequency
+    const candidates = Array.from(colorCounts.entries())
       .sort((a, b) => b[1] - a[1])
-      .slice(0, maxColors)
-      .map(([hex]) => hex)
+      .slice(0, 60)
+      .map(([hex, count]) => ({ hex, weight: count / totalPixels }))
+
+    // Aggressive clustering (threshold 35) — merges near-duplicate browns/shades
+    const clusters = clusterColors(candidates, 35)
+
+    // Keep max 5 distinct colors, sorted by score descending
+    const top5 = clusters
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 5)
+      .map((c) => ({
+        color: c.representative,
+        sources: ['logo'] as string[],
+        score: c.score,
+      }))
+
+    return assignStudioColorRolesAction(top5)
   } catch {
     return []
   }
 }
 
-/**
- * Builds a deduplicated brand palette from profile pic + post images.
- * Returns up to 5 clustered colors in BrandDNA format.
- */
-async function extractInstagramPalette(
-  profilePicUrl: string | null,
-  imageUrls: string[]
-): Promise<BrandDNA['colors']> {
-  const sources: Array<{ url: string; weight: number; label: string }> = []
-
-  if (profilePicUrl) sources.push({ url: profilePicUrl, weight: 3, label: 'instagram-profile' })
-  imageUrls.slice(0, 3).forEach((url) => sources.push({ url, weight: 1, label: 'instagram-post' }))
-
-  if (!sources.length) return []
-
-  const allColors = await Promise.allSettled(sources.map((s) => extractColorsFromImageUrl(s.url)))
-
-  const votes: { hex: string; weight: number }[] = []
-  sources.forEach((s, idx) => {
-    const result = allColors[idx]
-    if (result.status === 'fulfilled') {
-      result.value.forEach((hex, rank) =>
-        votes.push({ hex, weight: s.weight * (1 - rank * 0.08) })
-      )
-    }
-  })
-
-  if (!votes.length) return []
-
-  const raw = clusterColors(votes, 30)
-    .sort((a, b) => b.score - a.score)
-    .slice(0, 5)
-    .map((c) => ({
-      color: c.representative,
-      sources: ['instagram'],
-      score: Math.round(c.score * 100) / 100,
-      selected: true,
-    }))
-
-  return assignStudioColorRoles(raw)
-}
-
-/**
- * Downloads an external image URL, converts to WebP and uploads to Convex Storage.
- * Returns a permanent public URL, or null on failure.
- */
-async function uploadImageToConvex(imageUrl: string): Promise<string | null> {
+/** Downloads an external image URL and uploads it to Convex storage.
+ *  Returns the permanent Convex URL, or null on failure. */
+async function uploadExternalImageToConvex(externalUrl: string): Promise<string | null> {
   try {
-    const response = await fetch(imageUrl, {
+    const res = await fetch(externalUrl, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (compatible; Googlebot/2.1)',
+        Accept: 'image/*,*/*;q=0.8',
+        Referer: 'https://www.instagram.com/',
+      },
+      redirect: 'follow',
       signal: AbortSignal.timeout(10000),
-      headers: { 'User-Agent': 'Mozilla/5.0' },
     })
-    if (!response.ok) return null
+    if (!res.ok) return null
+    const contentType = res.headers.get('content-type') || 'image/jpeg'
+    if (!contentType.startsWith('image/')) return null
 
-    const buffer = Buffer.from(await response.arrayBuffer())
-    const webpBuffer = await sharp(buffer)
-      .resize({ width: 400, withoutEnlargement: true })
-      .webp({ quality: 85 })
-      .toBuffer()
-
+    const buffer = await res.arrayBuffer()
     const uploadUrl = await fetchMutation(api.assets.generateUploadUrl, {})
-    const result = await fetch(uploadUrl, {
+    const uploadRes = await fetch(uploadUrl, {
       method: 'POST',
-      body: new Blob([new Uint8Array(webpBuffer)], { type: 'image/webp' }),
-      headers: { 'Content-Type': 'image/webp' },
+      body: buffer,
+      headers: { 'Content-Type': contentType },
     })
-    if (!result.ok) return null
-
-    const { storageId } = await result.json()
-    return await fetchQuery(api.assets.getImageUrl, { storageId })
+    if (!uploadRes.ok) return null
+    const { storageId } = await uploadRes.json()
+    const url = await fetchQuery(api.assets.getImageUrl, { storageId })
+    return url ?? null
   } catch {
     return null
   }
 }
+
+const APIFY_TOKEN = process.env.APIFY_API_TOKEN
+const DEFAULT_INTELLIGENCE_MODEL = 'wisdom/gemini-2.5-flash'
 
 const InstagramBrandSchema = z.object({
   brand_name: z.string(),
@@ -158,6 +128,7 @@ const InstagramBrandSchema = z.object({
 
 class InstagramAccountNotFoundError extends Error {
   readonly code = 'INSTAGRAM_ACCOUNT_NOT_FOUND'
+
   constructor(handle: string) {
     super(`Instagram account @${handle} not found`)
     this.name = 'InstagramAccountNotFoundError'
@@ -184,8 +155,6 @@ async function scrapeInstagram(handle: string) {
   }
 
   const profile = items[0] as any
-
-  // Apify sometimes returns an item with an error field for non-existent profiles
   if (profile.error || profile.pageNotFound || (profile.username === undefined && !profile.fullName)) {
     throw new InstagramAccountNotFoundError(cleanHandle)
   }
@@ -254,16 +223,9 @@ ${jsonStructure}
 
 Include 5 brand_values, 3 tone_of_voice adjectives, 3 visual_aesthetic adjectives, 3 target_audience profiles, 5 marketing_hooks, 5 visual_keywords, 3 ctas.`
 
-    // Start web analysis + color extraction + profile pic upload in parallel
+    // Start web analysis in parallel if external URL exists
     const webPromise = igData.externalUrl
       ? analyzeBrandDNA(igData.externalUrl, false, clerkUserId).catch(() => null)
-      : Promise.resolve(null)
-
-    const colorPromise = extractInstagramPalette(igData.profilePicUrl, igData.imageUrls)
-
-    // Upload profile pic to Convex so it's always accessible (Instagram CDN blocks browser loads)
-    const profilePicUploadPromise = igData.profilePicUrl
-      ? uploadImageToConvex(igData.profilePicUrl).catch(() => null)
       : Promise.resolve(null)
 
     // AI analysis using admin-configured model
@@ -279,15 +241,19 @@ Include 5 brand_values, 3 tone_of_voice adjectives, 3 visual_aesthetic adjective
     if (!jsonMatch) throw new Error('AI returned no JSON')
     const aiResult = InstagramBrandSchema.parse(JSON.parse(jsonMatch[0]))
 
-    // Wait for all parallel tasks
-    const [webResult, instagramColors, hostedProfilePicUrl] = await Promise.all([
-      webPromise,
-      colorPromise,
-      profilePicUploadPromise,
-    ])
+    // Wait for web analysis
+    const webResult = await webPromise
 
-    // Use hosted URL if available, fallback to original (may not load in browser)
-    const profilePicUrl = hostedProfilePicUrl || igData.profilePicUrl || undefined
+    // Upload profile pic to Convex so it's always accessible (Instagram CDN blocks hotlinking)
+    const profilePicConvexUrl = igData.profilePicUrl
+      ? await uploadExternalImageToConvex(igData.profilePicUrl)
+      : null
+
+    // Extract colors from profile pic (since there's no web to scrape)
+    const logoForColors = profilePicConvexUrl || igData.profilePicUrl
+    const logoColors = logoForColors
+      ? await extractColorsFromProfilePic(logoForColors).catch(() => [])
+      : []
 
     // Build base brand DNA
     const brandData: BrandDNA = {
@@ -299,23 +265,28 @@ Include 5 brand_values, 3 tone_of_voice adjectives, 3 visual_aesthetic adjective
       tone_of_voice: aiResult.tone_of_voice,
       visual_aesthetic: aiResult.visual_aesthetic,
       target_audience: aiResult.target_audience,
-      colors: instagramColors,
+      colors: logoColors,
       fonts: [
         { family: 'Inter', role: 'heading' as const },
         { family: 'Inter', role: 'body' as const },
       ],
-      favicon_url: profilePicUrl,
-      logo_url: profilePicUrl,
+      favicon_url: profilePicConvexUrl || igData.profilePicUrl || undefined,
+      logo_url: profilePicConvexUrl || igData.profilePicUrl || undefined,
+      logos: profilePicConvexUrl
+        ? [{ url: profilePicConvexUrl, selected: true }]
+        : igData.profilePicUrl
+          ? [{ url: igData.profilePicUrl, selected: true }]
+          : [],
       images: igData.imageUrls.slice(0, 6).map((url) => ({ url, selected: false })),
       preferred_language: preferredLanguage,
       text_assets: aiResult.text_assets,
       social_links: [{ platform: 'instagram', url: `https://instagram.com/${igData.username}`, username: igData.username }],
     }
 
-    // Merge web data if available (web colors take priority if richer)
+    // Merge web data if available
     if (webResult?.success && webResult.data) {
       const web = webResult.data
-      if (web.colors?.length && web.colors.length >= instagramColors.length) {
+      if (web.colors?.length) {
         brandData.colors = web.colors.slice(0, 5).map((c) => ({ ...c, selected: true }))
       }
       if (web.fonts?.length) {
@@ -330,7 +301,6 @@ Include 5 brand_values, 3 tone_of_voice adjectives, 3 visual_aesthetic adjective
   } catch (error: any) {
     console.error('[analyze-brand-instagram] Error:', error.message)
 
-    // Account not found — return hard error, no fallback
     if (error instanceof InstagramAccountNotFoundError || error.code === 'INSTAGRAM_ACCOUNT_NOT_FOUND') {
       return {
         success: false,
@@ -362,11 +332,6 @@ Include 5 brand_values, 3 tone_of_voice adjectives, 3 visual_aesthetic adjective
         if (result.success && result.data) {
           result.data.url = igUrl
           if (screenshotUrl) result.data.screenshot_url = screenshotUrl
-          result.data.debug = {
-            ...(result.data.debug || {}),
-            fallback: true,
-            fallback_reason: 'instagram_scrape_failed',
-          }
         }
 
         return result

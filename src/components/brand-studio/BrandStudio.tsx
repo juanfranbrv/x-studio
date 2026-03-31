@@ -393,7 +393,12 @@ export function BrandStudio({ userId }: BrandStudioProps) {
             targetUrl={state.webUrl}
             instagramHandle={state.instagramHandle}
             screenshotUrl={state.draft.screenshot_url}
-            profilePicUrl={state.draft.favicon_url || state.draft.logo_url}
+            profilePicUrl={(() => {
+              const raw = state.draft.favicon_url || state.draft.logo_url
+              if (!raw) return undefined
+              const isInstagramCdn = raw.includes('cdninstagram.com') || raw.includes('fbcdn.net')
+              return isInstagramCdn ? `/api/proxy-image?url=${encodeURIComponent(raw)}` : raw
+            })()}
             extractedColors={state.draft.colors?.slice(0, 5).map(c => c.color).filter(Boolean) as string[] | undefined}
             usedFallback={!!state.draft.debug?.fallback}
             onCancel={handleCancel}
@@ -579,7 +584,6 @@ export function BrandStudio({ userId }: BrandStudioProps) {
           nextDisabled={isNextDisabled || (state.currentStep === 'brandBoard' && isSaving)}
           nextLabel={state.currentStep === 'brandBoard' ? (t('brandBoard.save') || 'Guardar y empezar a crear') : undefined}
           showSidebar={showSidebar}
-          hasExistingKits={hasExistingKits}
         />
       )}
     </div>

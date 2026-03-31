@@ -5,6 +5,8 @@ import { log } from '@/lib/logger'
 import { ConvexHttpClient } from 'convex/browser'
 import { api } from '@/../convex/_generated/api'
 import { Id } from '@/../convex/_generated/dataModel'
+import { buildPromptDiversitySuffix } from './promptDiversity'
+import { buildForcedIntentInstruction, selectPromptIntent } from './intentRotation'
 
 const LANGUAGE_NAMES: Record<string, string> = {
     es: 'Spanish',
@@ -51,13 +53,19 @@ export async function POST(request: NextRequest) {
         const convex = new ConvexHttpClient(convexUrl)
 
         // Fetch in parallel: system prompt template, brand kit, AI config
-        const [promptTemplate, brandKit, aiConfig] = await Promise.all([
+        const [promptTemplate, brandKit, aiConfig, recentIntents] = await Promise.all([
             convex.query(api.systemPrompts.getByKey, { key: `generate_user_prompt_${module}` }),
             convex.query(api.brands.getBrandDNAById, {
                 id: brandKitId as Id<'brand_dna'>,
                 clerk_user_id: userId,
             }),
             convex.query(api.settings.getAIConfig, {}),
+            convex.query(api.work_sessions.listRecentPromptIntents, {
+                user_id: userId,
+                module,
+                brand_id: brandKitId as Id<'brand_dna'>,
+                limit: 6,
+            }),
         ])
 
         if (!promptTemplate) {
@@ -75,7 +83,10 @@ export async function POST(request: NextRequest) {
         }
 
         // Prepare variables for injection
-        const textAssets = (brandKit.text_assets as any) || {}
+        const textAssets =
+            brandKit.text_assets && typeof brandKit.text_assets === 'object'
+                ? brandKit.text_assets as { marketing_hooks?: unknown }
+                : {}
         const marketingHooks = Array.isArray(textAssets.marketing_hooks)
             ? textAssets.marketing_hooks.slice(0, 3).join(', ')
             : ''
@@ -93,6 +104,26 @@ export async function POST(request: NextRequest) {
 
         // Inject variables into template
         const injectedPrompt = injectVariables(promptTemplate.body, variables)
+        const selectedIntent = module === 'image'
+            ? selectPromptIntent({
+                module,
+                brandKitId,
+                seed: new Date().toISOString().slice(0, 10),
+                brandName: brandKit.brand_name || '',
+                businessOverview: brandKit.business_overview || '',
+                toneOfVoice: Array.isArray(brandKit.tone_of_voice) ? brandKit.tone_of_voice.join(', ') : '',
+                targetAudience: Array.isArray(brandKit.target_audience) ? brandKit.target_audience.join(', ') : '',
+                brandValues: Array.isArray(brandKit.brand_values) ? brandKit.brand_values.join(', ') : '',
+                marketingHooks,
+                recentIntents: Array.isArray(recentIntents) ? recentIntents : [],
+            })
+            : null
+
+        const forcedIntentBlock = module === 'image'
+            ? buildForcedIntentInstruction(selectedIntent!)
+            : ''
+
+        const finalPrompt = `${injectedPrompt}\n\n${forcedIntentBlock}\n\n${buildPromptDiversitySuffix(module)}`
 
         // Determine model to use
         let modelId = 'gemini-2.0-flash-lite'
@@ -111,7 +142,7 @@ export async function POST(request: NextRequest) {
             contents: [
                 {
                     role: 'user',
-                    parts: [{ text: injectedPrompt }]
+                    parts: [{ text: finalPrompt }]
                 }
             ],
             generationConfig: {
@@ -134,7 +165,9 @@ export async function POST(request: NextRequest) {
                 user_email: userRow?.email || undefined,
                 metadata: {
                     module,
+                    selected_intent: selectedIntent?.id,
                     template_len: promptTemplate.body.length,
+                    final_prompt_len: finalPrompt.length,
                     output_len: text.length,
                 }
             })

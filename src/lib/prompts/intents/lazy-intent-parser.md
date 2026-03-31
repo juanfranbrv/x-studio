@@ -153,8 +153,12 @@ RULES
     - Are all three suggestions genuinely different in approach?
     - Are all three suggestions complete packages (headline + cta + caption + imageTexts)?
 19. imagePromptSuggestions:
-    - Return EXACTLY 8 concise prompts describing ONLY semantic content: subject, action, setting, and key contextual objects.
-    - "WHAT, NOT HOW": describe what is happening and where; never describe artistic execution or visual treatment.
+    - Return EXACTLY 8 concise prompts for the "AI Generated Content" card.
+    - These prompts must support or illustrate the publication message with concrete visual content.
+    - "WHAT, NOT HOW": describe subject, action, setting, and key objects. Never describe artistic execution or visual treatment.
+    - Never return editorial angles, publication intentions, claims, CTAs, or strategic framings.
+    - Wrong: "Explicar que hace especial...", "Demostrar calidad...", "Posar en valor..."
+    - Correct: "Mans treballant la massa mare a l'obrador.", "Safata amb coca de Sant Joan acabada de preparar."
     - DO NOT include style/design/visual instructions (no color, lighting, mood, composition, camera, rendering, artistic references).
     - HARD BAN: never mention words like "fotografía", "fotografico", "ilustración", "ilustrativo", "realista", "acuarela", "3D", "cinemático", "estilo", "aesthetic", "look", "mood", "lighting", "color palette".
     - If you accidentally include any banned style word, rewrite the prompt before returning JSON.

@@ -105,7 +105,7 @@ export function BrandKitFloatingPalette({
                 title={t('board.export', { defaultValue: 'Exportar Kit' })}
             >
                 {isExporting
-                    ? <Loader2 className={cn(TOOL_ICON_CLASS, 'animate-spin')} />
+                    ? <Loader2 className={TOOL_ICON_CLASS} />
                     : <IconDownloadSquare className={TOOL_ICON_CLASS} />
                 }
             </Button>

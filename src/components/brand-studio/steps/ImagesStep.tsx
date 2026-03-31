@@ -4,6 +4,7 @@ import { AnimatePresence, motion } from 'framer-motion'
 import { Plus, X, Image as ImageIcon, Upload, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { uploadBrandImage } from '@/app/actions/upload-image'
+import { proxyCdnImageUrl } from '@/lib/image-utils'
 import type { BrandDNA } from '@/lib/brand-types'
 import type { WizardAction } from '../hooks/useWizardState'
 import {
@@ -18,6 +19,7 @@ interface ImagesStepProps {
   draft: Partial<BrandDNA>
   dispatch: React.Dispatch<WizardAction>
 }
+
 
 export function ImagesStep({ draft, dispatch }: ImagesStepProps) {
   const { t } = useTranslation('brandStudio')
@@ -158,7 +160,7 @@ export function ImagesStep({ draft, dispatch }: ImagesStepProps) {
               >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
-                  src={img.url}
+                  src={proxyCdnImageUrl(img.url)}
                   alt=""
                   className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
                   onError={(e) => {

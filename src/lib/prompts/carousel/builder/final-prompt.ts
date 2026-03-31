@@ -214,6 +214,9 @@ function buildCtaDirective(ctaText: string | undefined, ctaUrl: string | undefin
             : P09B.FINAL_URL_ONLY_VISIBILITY_INSTRUCTION(ctaUrl)
         return `
 CALL-TO-ACTION (FINAL SLIDE TREATMENT):
+- If a URL is provided here, it is MANDATORY visible output on the final slide, not an optional suggestion.
+- Reserve a dedicated final action/info block for it inside the existing final-slide hierarchy.
+- Never omit, summarize, rewrite, or replace the provided URL with a cleaner variant, homepage guess, button label, or generic CTA.
 ${hierarchyInstruction}
 ${P09B.URL_HERO_INSTRUCTION(ctaUrl)}
 ${safeCtaText ? P09B.CTA_SECONDARY_INSTRUCTION(safeCtaText) : ''}
@@ -227,6 +230,9 @@ TEXT RENDER SAFETY: Never render labels/tokens like "CTA", "URL", "CTA CONTAINER
 
     return `
 CALL-TO-ACTION (FINAL SLIDE TREATMENT):
+- If a CTA line is provided here, it is required visible output on the final slide.
+- Reserve a dedicated final action/info block for it inside the existing final-slide hierarchy.
+- Never omit, rewrite, paraphrase, or replace the provided CTA with a generic equivalent.
 ${P09B.CTA_ONLY_INSTRUCTION(safeCtaText)}
 CTA ACCENT COLOR: ${accentColor}
 TEXT RENDER SAFETY: Never render labels/tokens like "CTA", "URL", "CTA CONTAINER", "CTA:", "URL:", "URLOCTAO", "CTAO". Render only the provided user-facing text.
@@ -408,7 +414,9 @@ function buildTypographyFingerprintBlock(params: {
         '- This fingerprint must be derived primarily from the STYLE ANALYSIS of the reference image, using layout/composition text only as secondary support.',
         '- This fingerprint defines the typography family logic for the WHOLE carousel.',
         '- Choose the family once from this fingerprint and keep it stable across every slide.',
+        '- Treat Slide 1 as the master type specimen: every later slide must keep the same title type specimen established in Slide 1, preserving the same family identity, serif/sans morphology, terminal shapes, contrast feeling, width impression, and overall letter personality.',
         '- Do NOT mutate the family class, serif/sans decision, stroke logic, edge language, contrast model, or paragraph companion between slides.',
+        '- Do not substitute a nearby family, a cleaner serif, a different sans, or a lookalike font.',
         '- Slide 1 must establish this fingerprint clearly; all later slides must clone it faithfully.',
         '- The title should visibly embody this fingerprint. The paragraph should clearly belong to the same typographic world, but in a calmer reading register.',
         ...details,
@@ -588,10 +596,14 @@ function buildContactDirective(contactLines: string[] | undefined): string {
 
     return `
 CONTACT DETAILS (FINAL SLIDE ONLY):
+- If these contact lines are provided, they are MANDATORY visible output in the final slide.
+- Omitting any provided contact line is a failed output.
+- Reserve a dedicated contact/info block for them inside the final information zone.
 - Render these details as a secondary contact block inside the final information zone.
 - Keep them clearly smaller than the headline and below the main CTA/URL hierarchy.
 - Use ONLY these exact visible contact strings:
 ${safeLines.map((line) => `  - ${line}`).join('\n')}
+- Do not shorten, normalize, translate, paraphrase, reorder, or merge these contact lines.
 - Do not invent extra contact labels, icons, prefixes, or metadata.
 - Do not turn contact details into the hero message.
 `.trim()
@@ -616,7 +628,7 @@ function buildTypographyRenderGuard(applyStyleToTypography?: boolean): string {
 
 function buildTypographyConsistencyRule(applyStyleToTypography?: boolean): string {
     if (applyStyleToTypography) {
-        return 'Use one single style-driven typography system for the whole carousel. Slide 1 must establish the visible family, formal character, edge behavior, texture logic, and headline/paragraph relationship; every later slide must keep that same typography system, not invent a new one or fall back to a generic corporate sans solution.'
+        return 'Use one single style-driven typography system for the whole carousel. Slide 1 must establish the visible family, formal character, edge behavior, texture logic, and headline/paragraph relationship; every later slide must keep that same typography system, not invent a new one or fall back to a generic corporate sans solution. The title font in later slides must be the same title type specimen established in Slide 1, not a nearby substitute, not a cleaner reinterpretation, and not a stylistic drift of the same mood.'
     }
 
     return 'Keep identical typography scale, font style, weight, and hierarchy across slides.'
