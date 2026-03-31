@@ -2,6 +2,7 @@
 
 import { generateTextUnified } from '@/lib/gemini'
 import { log } from '@/lib/logger'
+import type { BrandDNA } from '@/lib/brand-types'
 import { buildIntentParserPrompt } from '@/lib/prompts/intents/parser'
 import { buildSemanticImagePromptSuggestions } from '@/lib/prompts/intents/semantic-image-prompt-suggestions'
 import { INTENT_CATALOG, MERGED_LAYOUTS_BY_INTENT, type IntentCategory } from '@/lib/creation-flow-types'
@@ -29,10 +30,9 @@ export interface ParsedIntentResult {
     error?: string
 }
 
-type BrandContextInput = {
+type BrandContextInput = Partial<BrandDNA> & {
     brand_name?: string
     name?: string
-    [key: string]: unknown
 }
 
 const INTENT_ALIASES: Record<string, string> = {
@@ -1213,12 +1213,12 @@ CREATIVE VARIATION MODE:
         const brandName = brandDNA?.brand_name || brandDNA?.name || 'la marca'
         const brandContextForAI = {
             name: brandName,
-            brand_dna: brandDNA || {}
+            brand_dna: (brandDNA || {}) as unknown as BrandDNA
         }
 
         // 4. Call AI with specialized System Instruction (Empty override to avoid persona blending)
         const jsonResponse = await generateTextUnified(
-            brandContextForAI as Record<string, unknown>,
+            brandContextForAI,
             promptWithVariation,
             modelToUse,
             [], // No images for intent parsing

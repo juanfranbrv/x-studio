@@ -27,7 +27,7 @@ function getPromptTemplate(): string {
 export function buildIntentParserPrompt(
   userRequest: string,
   brandWebsite?: string,
-  brandDNA?: BrandDNA | null,
+  brandDNA?: Partial<BrandDNA> | null,
   intent?: IntentMeta,
   layout?: LayoutOption,
   previewTextContext?: string,

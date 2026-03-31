@@ -7,7 +7,7 @@
 
 import { BrandDNA } from '@/lib/brand-types'
 
-export function buildBrandContextBlock(brandDNA: BrandDNA | null | undefined): string {
+export function buildBrandContextBlock(brandDNA: Partial<BrandDNA> | null | undefined): string {
     if (!brandDNA) {
         return ''
     }
