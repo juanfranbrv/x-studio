@@ -570,7 +570,6 @@ export function BrandStudio({ userId }: BrandStudioProps) {
           nextDisabled={isNextDisabled || (state.currentStep === 'brandBoard' && isSaving)}
           nextLabel={state.currentStep === 'brandBoard' ? (t('brandBoard.save') || 'Guardar y empezar a crear') : undefined}
           showSidebar={showSidebar}
-          hasExistingKits={hasExistingKits}
         />
       )}
     </div>

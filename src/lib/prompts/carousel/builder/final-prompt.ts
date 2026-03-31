@@ -214,6 +214,9 @@ function buildCtaDirective(ctaText: string | undefined, ctaUrl: string | undefin
             : P09B.FINAL_URL_ONLY_VISIBILITY_INSTRUCTION(ctaUrl)
         return `
 CALL-TO-ACTION (FINAL SLIDE TREATMENT):
+- If a URL is provided here, it is MANDATORY visible output on the final slide, not an optional suggestion.
+- Reserve a dedicated final action/info block for it inside the existing final-slide hierarchy.
+- Never omit, summarize, rewrite, or replace the provided URL with a cleaner variant, homepage guess, button label, or generic CTA.
 ${hierarchyInstruction}
 ${P09B.URL_HERO_INSTRUCTION(ctaUrl)}
 ${safeCtaText ? P09B.CTA_SECONDARY_INSTRUCTION(safeCtaText) : ''}
@@ -227,6 +230,9 @@ TEXT RENDER SAFETY: Never render labels/tokens like "CTA", "URL", "CTA CONTAINER
 
     return `
 CALL-TO-ACTION (FINAL SLIDE TREATMENT):
+- If a CTA line is provided here, it is required visible output on the final slide.
+- Reserve a dedicated final action/info block for it inside the existing final-slide hierarchy.
+- Never omit, rewrite, paraphrase, or replace the provided CTA with a generic equivalent.
 ${P09B.CTA_ONLY_INSTRUCTION(safeCtaText)}
 CTA ACCENT COLOR: ${accentColor}
 TEXT RENDER SAFETY: Never render labels/tokens like "CTA", "URL", "CTA CONTAINER", "CTA:", "URL:", "URLOCTAO", "CTAO". Render only the provided user-facing text.
@@ -590,10 +596,14 @@ function buildContactDirective(contactLines: string[] | undefined): string {
 
     return `
 CONTACT DETAILS (FINAL SLIDE ONLY):
+- If these contact lines are provided, they are MANDATORY visible output in the final slide.
+- Omitting any provided contact line is a failed output.
+- Reserve a dedicated contact/info block for them inside the final information zone.
 - Render these details as a secondary contact block inside the final information zone.
 - Keep them clearly smaller than the headline and below the main CTA/URL hierarchy.
 - Use ONLY these exact visible contact strings:
 ${safeLines.map((line) => `  - ${line}`).join('\n')}
+- Do not shorten, normalize, translate, paraphrase, reorder, or merge these contact lines.
 - Do not invent extra contact labels, icons, prefixes, or metadata.
 - Do not turn contact details into the hero message.
 `.trim()

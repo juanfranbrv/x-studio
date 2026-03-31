@@ -27,6 +27,7 @@ import { PromptDebugModal } from '@/components/studio/modals/PromptDebugModal'
 import { buildEditPrompt } from '@/lib/prompts/image-edit'
 import { buildImagePrompt } from '@/lib/prompt-builder'
 import { parseLazyIntentAction } from '@/app/actions/parse-intent'
+import { shouldRefreshAiImageDescription } from '@/lib/prompts/intents/legacy-visual-brief'
 import { IntentCategory, TextAsset } from '@/lib/creation-flow-types'
 import { useUI } from '@/contexts/UIContext'
 import { hexToHslString } from '@/lib/color-utils'
@@ -1736,7 +1737,10 @@ export default function ImagePage() {
 
             creationFlow.ensureDefaultFormat(creationFlow.state.selectedPlatform || 'instagram')
 
-            if (!creationFlow.state.aiImageDescription.trim()) {
+            if (shouldRefreshAiImageDescription({
+                currentDescription: creationFlow.state.aiImageDescription,
+                previousSuggestions: creationFlow.state.imagePromptSuggestions,
+            })) {
                 const fallbackDescription = Array.isArray(result.imagePromptSuggestions) && result.imagePromptSuggestions[0]
                     ? result.imagePromptSuggestions[0]
                     : (result.headline || promptValue)

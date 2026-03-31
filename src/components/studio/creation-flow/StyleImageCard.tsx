@@ -117,7 +117,7 @@ export function StyleImageCard({
                 id: selectedPreset._id,
                 url: selectedPreset.image_url,
                 sourceLabel: tt('styleImage.presetBadge', 'Preset'),
-                title: selectedPreset.name || tt('styleImage.presetTitle', 'Preset style'),
+                title: selectedPreset.name || tt('styleImage.presetTitle', 'Predefined style'),
                 removable: false,
             }
             : null
@@ -220,7 +220,7 @@ export function StyleImageCard({
                             className={cn(STYLE_ACTION_BUTTON_CLASS, 'min-w-0')}
                             onClick={() => setIsPresetModalOpen(true)}
                         >
-                            <span className="truncate">{tt('styleImage.presetButton', 'Preset style')}</span>
+                            <span className="truncate">{tt('styleImage.presetButton', 'Predefined style')}</span>
                         </Button>
                         <Button
                             type="button"
@@ -431,7 +431,7 @@ export function StyleImageCard({
                                                         {canRenderImageUrl(preset.image_url) ? (
                                                             <img
                                                                 src={preset.image_url}
-                                                                alt={preset.name || tt('styleImage.presetTitle', 'Preset style')}
+                                                                alt={preset.name || tt('styleImage.presetTitle', 'Predefined style')}
                                                                 className="w-full h-full object-cover"
                                                                 onError={() => markImageAsFailed(preset.image_url)}
                                                             />

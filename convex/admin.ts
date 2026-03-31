@@ -75,6 +75,8 @@ export const initializeSettings = mutation({
         if (!isAdmin(args.admin_email)) throw new Error("Unauthorized");
 
         const defaults = [
+            { key: "carousel_video_slide_duration_ms", value: 4000, description: "Duracion base en milisegundos para cada slide del video del carrusel" },
+            { key: "carousel_video_last_slide_duration_ms", value: 6000, description: "Duracion en milisegundos para la ultima slide del video del carrusel" },
             { key: "beta_initial_credits", value: 100, description: "Créditos iniciales para beta testers" },
             { key: "low_credits_threshold", value: 10, description: "Umbral para alerta de créditos bajos" },
             { key: "credits_per_generation", value: 1, description: "Créditos consumidos por generación" },

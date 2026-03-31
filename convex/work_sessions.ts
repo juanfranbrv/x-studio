@@ -1019,6 +1019,41 @@ export const listSessions = query({
   },
 });
 
+export const listRecentPromptIntents = query({
+  args: {
+    user_id: v.string(),
+    module: v.string(),
+    brand_id: v.optional(v.id("brand_dna")),
+    limit: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const moduleKey = ensureModule(args.module);
+    const limit = Math.max(1, Math.min(args.limit ?? 6, 20));
+    const rows = await listLatestForScope(ctx, {
+      user_id: args.user_id,
+      module: moduleKey,
+      brand_id: args.brand_id,
+      limit: Math.max(limit * 3, limit),
+    });
+
+    const intents: string[] = [];
+    for (const row of rows) {
+      const snapshot = row.snapshot as Record<string, unknown> | undefined;
+      const creationFlowState = snapshot?.creationFlowState && typeof snapshot.creationFlowState === "object"
+        ? snapshot.creationFlowState as Record<string, unknown>
+        : null;
+      const selectedIntent = typeof creationFlowState?.selectedIntent === "string"
+        ? creationFlowState.selectedIntent.trim()
+        : "";
+      if (!selectedIntent) continue;
+      intents.push(selectedIntent);
+      if (intents.length >= limit) break;
+    }
+
+    return intents;
+  },
+});
+
 export const getLastVisitedModule = query({
   args: {
     user_id: v.string(),

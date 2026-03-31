@@ -43,6 +43,8 @@ import { Fragment } from 'react'
 import { CompositionsSummaryTable } from '@/components/admin/CompositionsSummaryTable'
 import { StylePresetsManager } from '@/components/admin/StylePresetsManager'
 import { BillingAdminPanel } from '@/components/admin/BillingAdminPanel'
+import { CarouselVideoSettingsCard } from '@/components/admin/CarouselVideoSettingsCard'
+import { AdminAudioTracksCard } from '@/components/admin/AdminAudioTracksCard'
 import {
     buildThemeColors,
     deriveSchemeAsHex,
@@ -245,6 +247,8 @@ const THEME_PRESETS: ThemePreset[] = [
 
 const THEME_SETTINGS_HIDDEN_KEYS = new Set([
     ...THEME_PALETTE_FIELDS.map((field) => field.settingKey),
+    'carousel_video_slide_duration_ms',
+    'carousel_video_last_slide_duration_ms',
     'model_image_generation',
     'model_intelligence',
     'provider_google_api_key',
@@ -253,6 +257,9 @@ const THEME_SETTINGS_HIDDEN_KEYS = new Set([
     'provider_replicate_api_key',
     'provider_atlas_api_key',
 ])
+
+const CAROUSEL_VIDEO_SLIDE_DURATION_SETTING_KEY = 'carousel_video_slide_duration_ms'
+const CAROUSEL_VIDEO_LAST_SLIDE_DURATION_SETTING_KEY = 'carousel_video_last_slide_duration_ms'
 
 const hslToHex = (raw: string): string | null => {
     const trimmed = raw.replace(/^hsl\(/, '').replace(/\)$/, '').trim()
@@ -1339,6 +1346,14 @@ export default function AdminPage() {
 
                     {/* Settings Tab */}
                     <TabsContent value="settings" className="space-y-4">
+                        <CarouselVideoSettingsCard
+                            adminEmail={userEmail}
+                            slideDurationKey={CAROUSEL_VIDEO_SLIDE_DURATION_SETTING_KEY}
+                            lastSlideDurationKey={CAROUSEL_VIDEO_LAST_SLIDE_DURATION_SETTING_KEY}
+                        />
+
+                        <AdminAudioTracksCard adminEmail={userEmail} />
+
                         {/* Default Theme Card */}
                         <Card>
                             <CardHeader>

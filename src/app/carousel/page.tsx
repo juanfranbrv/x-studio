@@ -102,6 +102,7 @@ export default function CarouselPage() {
     const ensureCarouselDefaults = useMutation(api.carouselSeed.ensureDefaultsIfEmpty)
     const updateCarouselComposition = useMutation(api.carouselAdmin.updateComposition)
     const hasTriggeredCarouselSeedRef = useRef(false)
+    const unsavedBrandChangeGuardRef = useRef<((brandId: string) => Promise<boolean>) | null>(null)
 
     const [isGenerating, setIsGenerating] = useState(false)
     const [isAnalyzing, setIsAnalyzing] = useState(false)
@@ -115,6 +116,7 @@ export default function CarouselPage() {
     const [slideCorrectionPrompt, setSlideCorrectionPrompt] = useState('')
     const [aspectRatio, setAspectRatio] = useState<'1:1' | '4:5' | '3:4'>('4:5')
     const [carouselSettings, setCarouselSettings] = useState<CarouselSettings | null>(null)
+    const latestCarouselSettingsResolverRef = useRef<(((overrides?: Partial<CarouselSettings>) => CarouselSettings) | null)>(null)
     const [previewCompositionState, setPreviewCompositionState] = useState<{
         structureId: string | null
         compositionId: string | null
@@ -223,6 +225,15 @@ export default function CarouselPage() {
     const handleNewBrandKit = () => {
         router.push('/brand-kit/new')
     }
+
+    const handleBrandChange = useCallback(async (brandId: string) => {
+        if (!brandId || brandId === String(activeBrandKit?.id || '')) return
+
+        const canContinue = await unsavedBrandChangeGuardRef.current?.(brandId)
+        if (canContinue === false) return
+
+        await setActiveBrandKit(brandId)
+    }, [activeBrandKit?.id, setActiveBrandKit])
 
     const [imagePromptSuggestions, setImagePromptSuggestions] = useState<string[]>([])
     const [sessionHistory, setSessionHistory] = useState<Array<{
@@ -1672,7 +1683,10 @@ export default function CarouselPage() {
         setAnalysisHook(undefined)
         setAnalysisStructure(undefined)
         setAnalysisIntent(undefined)
+        setSuggestions([])
         setImagePromptSuggestions([])
+        setSlideVariantSelection([])
+        setOriginalAnalysis(null)
         setSessionHistory([])
         setPendingGenerateSettings(null)
         setDebugPromptData(null)
@@ -1776,14 +1790,21 @@ export default function CarouselPage() {
             previewSessionHistory={sessionHistory}
             onRestorePreviewState={handleRestorePreviewFromPreset}
             getAuditFlowId={getOrCreateCreationFlowId}
+            registerSettingsResolver={(resolver) => {
+                latestCarouselSettingsResolverRef.current = resolver
+            }}
+            registerUnsavedBrandChangeGuard={(guard) => {
+                unsavedBrandChangeGuardRef.current = guard
+            }}
         />
     )
 
     const generateBar = (
         <StudioGenerateBar
             onGenerate={() => {
-                if (!carouselSettings) return
-                void handleGenerate(carouselSettings)
+                const latestSettings = latestCarouselSettingsResolverRef.current?.() ?? carouselSettings
+                if (!latestSettings) return
+                void handleGenerate(latestSettings)
             }}
             onRetry={() => void handleRetryLastGenerate()}
             onCancelGenerate={handleCancelGenerate}
@@ -1830,9 +1851,10 @@ export default function CarouselPage() {
                 <div className="rounded-[1.35rem] border border-border/45 bg-background/95 p-2 shadow-[0_18px_40px_-28px_rgba(15,23,42,0.3)]">
                     <div
                         onClick={() => {
-                            if (!carouselSettings || isGenerating || isAnalyzing || requiresReanalysis) return
+                            const latestSettings = latestCarouselSettingsResolverRef.current?.() ?? carouselSettings
+                            if (!latestSettings || isGenerating || isAnalyzing || requiresReanalysis) return
                             setMobileControlsOpen(false)
-                            void handleGenerate(carouselSettings)
+                            void handleGenerate(latestSettings)
                         }}
                     >
                         {generateBar}
@@ -1876,7 +1898,7 @@ export default function CarouselPage() {
             <DashboardLayout
                 brands={brandKits}
                 currentBrand={activeBrandKit}
-                onBrandChange={setActiveBrandKit}
+                onBrandChange={handleBrandChange}
                 onBrandDelete={deleteBrandKitById}
                 onNewBrandKit={handleNewBrandKit}
                 isFixed={!isMobile}
@@ -1895,7 +1917,7 @@ export default function CarouselPage() {
         <DashboardLayout
             brands={brandKits}
             currentBrand={activeBrandKit}
-            onBrandChange={setActiveBrandKit}
+            onBrandChange={handleBrandChange}
             onBrandDelete={deleteBrandKitById}
             onNewBrandKit={handleNewBrandKit}
             isFixed={!isMobile}

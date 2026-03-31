@@ -19,13 +19,16 @@ interface LoadingStepProps {
   status: AnalysisStatus
   error: string | null
   targetUrl?: string
+  instagramHandle?: string
   screenshotUrl?: string
   profilePicUrl?: string
   extractedColors?: string[]
+  usedFallback?: boolean
   onCancel: () => void
   onRetry: () => void
   onNext: () => void
   onUrlChange?: (url: string) => void
+  onHandleChange?: (handle: string) => void
 }
 
 // ── Scan line that sweeps over the browser mockup ───────────
@@ -399,13 +402,16 @@ export function LoadingStep({
   status,
   error,
   targetUrl,
+  instagramHandle,
   screenshotUrl,
   profilePicUrl,
   extractedColors,
+  usedFallback,
   onCancel,
   onRetry,
   onNext,
   onUrlChange,
+  onHandleChange,
 }: LoadingStepProps) {
   const { t } = useTranslation('brandStudio')
   const [messageIndex, setMessageIndex] = useState(0)
@@ -504,25 +510,43 @@ export function LoadingStep({
           )}
 
           {isSuccess && (
-            <motion.p
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.4 }}
-              className="text-base text-muted-foreground"
-            >
-              {t('loading.doneSubtitle')}
-            </motion.p>
+            <div className="space-y-2">
+              <motion.p
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.4 }}
+                className="text-base text-muted-foreground"
+              >
+                {t('loading.doneSubtitle')}
+              </motion.p>
+              {usedFallback ? (
+                <motion.p
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.45, delay: 0.05 }}
+                  className="text-sm text-muted-foreground/85"
+                >
+                  {t('loading.fallbackNotice', { defaultValue: 'Se ha aplicado una recuperacion automatica para completar el analisis.' })}
+                </motion.p>
+              ) : null}
+            </div>
           )}
 
           {isError && (
             <div className="space-y-2">
-              {targetUrl !== undefined && onUrlChange && (
+              {isInsta && instagramHandle !== undefined && onHandleChange ? (
+                <input
+                  value={instagramHandle}
+                  onChange={(e) => onHandleChange(e.target.value)}
+                  className={`${WIZARD_INPUT} text-center`}
+                />
+              ) : targetUrl !== undefined && onUrlChange ? (
                 <input
                   value={targetUrl}
                   onChange={(e) => onUrlChange(e.target.value)}
                   className={`${WIZARD_INPUT} text-center`}
                 />
-              )}
+              ) : null}
               <p className="text-sm text-muted-foreground">
                 {t('loading.errorCheckUrl')}
               </p>

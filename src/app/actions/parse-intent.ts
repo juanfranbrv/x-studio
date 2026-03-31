@@ -3,8 +3,9 @@
 import { generateTextUnified } from '@/lib/gemini'
 import { log } from '@/lib/logger'
 import { buildIntentParserPrompt } from '@/lib/prompts/intents/parser'
+import { buildSemanticImagePromptSuggestions } from '@/lib/prompts/intents/semantic-image-prompt-suggestions'
 import { INTENT_CATALOG, MERGED_LAYOUTS_BY_INTENT, type IntentCategory } from '@/lib/creation-flow-types'
-import { detectLanguage, detectLanguageWithApi, detectLanguageFromPartsWithApi } from '@/lib/language-detection'
+import { detectLanguageWithApi } from '@/lib/language-detection'
 import { auth } from '@clerk/nextjs/server'
 import { ConvexHttpClient } from 'convex/browser'
 import { api } from '@/../convex/_generated/api'
@@ -23,9 +24,15 @@ export interface ParsedIntentResult {
     suggestions?: Array<{
         title: string
         subtitle: string
-        modifications: any // Will be Partial<ParsedIntentResult> effectively
+        modifications: Record<string, unknown> // Partial<ParsedIntentResult> effectively
     }>
     error?: string
+}
+
+type BrandContextInput = {
+    brand_name?: string
+    name?: string
+    [key: string]: unknown
 }
 
 const INTENT_ALIASES: Record<string, string> = {
@@ -667,166 +674,33 @@ async function buildImagePromptSuggestions(
     userText: string,
     targetLanguage = 'es'
 ): Promise<string[]> {
-    const targetLang = normalizeLang(targetLanguage) || normalizeLang(parsed.detectedLanguage) || 'es'
-
-    const isSuggestionInTargetLanguage = async (text: string) => {
-        const clean = sanitizePromptSuggestion(text)
-        if (!clean) return false
-        const detected = normalizeLang(await detectLanguageFromPartsWithApi([clean], targetLang)) || targetLang
-        return detected === targetLang
-    }
-
-    const dedupe = (items: string[]) => Array.from(new Set(items.map(sanitizePromptSuggestion).filter(Boolean)))
-    const hasSceneStructure = (text: string) => {
-        const clean = sanitizePromptSuggestion(text).toLowerCase()
-        if (!clean) return false
-        const hasPlaceConnector = /\b(en|sobre|junto a|frente a|dentro de|en una|en un|at|in|inside|near|next to)\b/.test(clean)
-        const hasActionVerb = /\b(mostrando|realizando|usando|presentando|entregando|explicando|atendiendo|preparando|trabajando|comparando|sosteniendo|haciendo|showing|using|working|presenting|explaining)\b/.test(clean)
-        return hasPlaceConnector || hasActionVerb
-    }
-    const getSceneFallbacks = () => {
-        const lang = targetLang
-        const subject = extractCoreSubject(userText) || organizedBase.headline || organizedBase.cta || 'el producto o servicio principal'
-
-        const templatesEs = [
-            `${subject} en uso real por una persona, en un entorno cotidiano relacionado con el servicio.`,
-            `${subject} siendo presentado en una situación profesional, con elementos del contexto del negocio.`,
-            `${subject} en una escena de atención al cliente, mostrando el momento clave del beneficio.`,
-            `${subject} en una ubicación realista del sector, con objetos de apoyo coherentes.`,
-            `${subject} durante una demostración práctica, con interacción clara y propósito concreto.`,
-            `${subject} en una situación de antes y después, con contraste de resultado visible.`,
-            `${subject} en un escenario de equipo o colaboración, con acción principal bien definida.`,
-            `${subject} en una escena de decisión o compra, con contexto comercial real y específico.`,
-        ]
-
-        const templatesEn = [
-            `${subject} being used by a real person in an everyday context related to the service.`,
-            `${subject} presented in a professional situation with business-relevant context objects.`,
-            `${subject} in a customer interaction scene showing the key moment of benefit.`,
-            `${subject} in a realistic industry location with coherent supporting objects.`,
-            `${subject} during a practical demonstration with clear interaction and purpose.`,
-            `${subject} in a before-and-after scenario with visible outcome contrast.`,
-            `${subject} in a team or collaboration scenario with one clear main action.`,
-            `${subject} in a buying or decision moment with specific commercial context.`,
-        ]
-
-        const templatesCa = [
-            `${subject} en ús real per una persona, en un entorn quotidià relacionat amb el servei.`,
-            `${subject} presentat en una situació professional, amb elements contextuals del negoci.`,
-            `${subject} en una escena d’atenció al client, mostrant el moment clau del benefici.`,
-            `${subject} en una ubicació realista del sector, amb objectes de suport coherents.`,
-            `${subject} durant una demostració pràctica, amb interacció clara i propòsit concret.`,
-            `${subject} en una situació d’abans i després, amb contrast visible de resultat.`,
-            `${subject} en un escenari d’equip o col·laboració, amb acció principal definida.`,
-            `${subject} en una escena de decisió o compra, amb context comercial real i específic.`,
-        ]
-
-        if (lang === 'en') return templatesEn
-        if (lang === 'ca') return templatesCa
-        return templatesEs
-    }
-
-    const fromModel = Array.isArray(parsed.imagePromptSuggestions)
-        ? dedupe(parsed.imagePromptSuggestions)
-        : []
-
-    if (fromModel.length > 0) {
-        const checks = await Promise.all(fromModel.map(async (item) => ({
-            item,
-            matches: await isSuggestionInTargetLanguage(item)
-        })))
-        const inLang = checks.filter((entry) => entry.matches).map((entry) => entry.item)
-        const source = inLang.length > 0 ? inLang : fromModel
-        const semantic = source.filter(hasSceneStructure)
-        const base = semantic.length > 0 ? semantic : source
-        const merged = dedupe([...base, ...getSceneFallbacks()])
-        return merged.slice(0, 8)
-    }
-
-    const fromSuggestions = Array.isArray(parsed.suggestions)
+    const promptSeedSuggestions = Array.isArray(parsed.suggestions)
         ? parsed.suggestions
-            .map((s) => {
-                const modifications = (s?.modifications || {}) as Record<string, unknown>
-                const head = sanitizePromptSuggestion(modifications.headline)
-                const textBlock = Array.isArray(modifications.imageTexts)
-                    ? sanitizePromptSuggestion((modifications.imageTexts[0] as Record<string, unknown>)?.value)
+            .map((suggestion) => {
+                const modifications = (suggestion?.modifications || {}) as Record<string, unknown>
+                const headline = typeof modifications.headline === 'string' ? modifications.headline : ''
+                const imageText = Array.isArray(modifications.imageTexts)
+                    ? String(((modifications.imageTexts[0] as Record<string, unknown>)?.value || ''))
                     : ''
-                return [head, textBlock].filter(Boolean).join('. ')
+                return [headline, imageText].map(sanitizePromptSuggestion).filter(Boolean).join('. ')
             })
-            .map((v) => sanitizePromptSuggestion(v))
             .filter(Boolean)
         : []
 
-    if (fromSuggestions.length > 0) {
-        const checks = await Promise.all(fromSuggestions.map(async (item) => ({
-            item,
-            matches: await isSuggestionInTargetLanguage(item)
-        })))
-        const inLang = checks.filter((entry) => entry.matches).map((entry) => entry.item)
-        const source = inLang.length > 0 ? inLang : fromSuggestions
-        const semantic = source.filter(hasSceneStructure)
-        const base = semantic.length > 0 ? semantic : source
-        const merged = dedupe([...base, ...getSceneFallbacks()])
-        return merged.slice(0, 8)
-    }
-
-    const captionSeed = (organizedBase.caption || '').split(/[.!?]\s+/g)[0] || ''
-    const imageTextSeed = Array.isArray(organizedBase.imageTexts) && organizedBase.imageTexts[0]
-        ? String(organizedBase.imageTexts[0].value || '').split(/\r?\n+/g)[0]
-        : ''
-
-    const localizedSituationSuffix: Record<string, string> = {
-        es: 'en una situación real y concreta',
-        en: 'in a real and specific situation',
-        ca: 'en una situació real i concreta',
-        pt: 'numa situa\u00E7\u00E3o real e concreta',
-        fr: 'dans une situation réelle et concrète',
-        de: 'in einer realen und konkreten Situation',
-        it: 'in una situazione reale e concreta',
-    }
-
-    const rawSeeds = [
-        organizedBase.headline,
-        organizedBase.cta,
-        captionSeed,
-        imageTextSeed,
-        `${organizedBase.headline || organizedBase.cta} ${localizedSituationSuffix[targetLang] || localizedSituationSuffix.es}`.trim()
-    ]
-
-    const normalizedSeeds = rawSeeds
-        .map(sanitizePromptSuggestion)
-        .filter(Boolean)
-    const inLangSeeds = normalizedSeeds.filter(isSuggestionInTargetLanguage)
-    const seedBase = inLangSeeds.length > 0 ? inLangSeeds : normalizedSeeds
-
-    const uniqueSeeds = Array.from(new Set(seedBase))
-    const merged = dedupe([...uniqueSeeds, ...getSceneFallbacks()])
-    return merged.slice(0, 8)
-}
-
-function buildSafeFallbackParsedOutput(
-    userText: string,
-    brandWebsite?: string,
-    intentId?: string,
-    detectedLanguage = 'es'
-): ParsedIntentResult {
-    const inferredIntent =
-        (intentId && INTENT_CATALOG.some((i) => i.id === intentId) ? intentId : undefined) ||
-        inferIntentFromText(userText) ||
-        DEFAULT_FALLBACK_INTENT
-
-    const base: ParsedIntentResult = {
-        detectedIntent: inferredIntent,
-        detectedLanguage: normalizeLang(detectedLanguage) || 'es',
-        confidence: 0.25,
-        headline: extractCoreSubject(userText),
-        cta: '',
-        ctaUrl: brandWebsite?.trim() || '',
-        caption: '',
-        imageTexts: [],
-    }
-
-    return organizeParsedOutput(base, userText, brandWebsite)
+    return buildSemanticImagePromptSuggestions({
+        targetLanguage: normalizeLang(targetLanguage) || normalizeLang(parsed.detectedLanguage) || 'es',
+        detectedIntent: organizedBase.detectedIntent,
+        userText,
+        headline: organizedBase.headline,
+        caption: organizedBase.caption,
+        imageTexts: Array.isArray(organizedBase.imageTexts)
+            ? organizedBase.imageTexts.map((item) => String(item?.value || '')).filter(Boolean)
+            : [],
+        modelSuggestions: [
+            ...(Array.isArray(parsed.imagePromptSuggestions) ? parsed.imagePromptSuggestions : []),
+            ...promptSeedSuggestions
+        ]
+    })
 }
 
 /**
@@ -1284,7 +1158,7 @@ export async function parseLazyIntentAction({
     auditFlowId
 }: {
     userText: string
-    brandDNA: any
+    brandDNA: BrandContextInput | null | undefined
     brandWebsite?: string
     intentId?: string
     layoutId?: string
@@ -1344,7 +1218,7 @@ CREATIVE VARIATION MODE:
 
         // 4. Call AI with specialized System Instruction (Empty override to avoid persona blending)
         const jsonResponse = await generateTextUnified(
-            brandContextForAI as any,
+            brandContextForAI as Record<string, unknown>,
             promptWithVariation,
             modelToUse,
             [], // No images for intent parsing

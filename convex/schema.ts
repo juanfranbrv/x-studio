@@ -161,6 +161,19 @@ export default defineSchema({
     .index("by_created", ["created_at"])
     .index("by_status", ["status"]),
 
+  admin_audio_tracks: defineTable({
+    name: v.string(),
+    storage_id: v.string(),
+    mime_type: v.optional(v.string()),
+    size_bytes: v.optional(v.number()),
+    is_active: v.boolean(),
+    sort_order: v.number(),
+    created_at: v.string(),
+    updated_at: v.string(),
+    updated_by: v.optional(v.string()),
+  }).index("by_active", ["is_active"])
+    .index("by_sort_order", ["sort_order"]),
+
   // Session image assets: keep original file for publishing and lightweight preview for UI/session history.
   session_images: defineTable({
     user_id: v.string(),

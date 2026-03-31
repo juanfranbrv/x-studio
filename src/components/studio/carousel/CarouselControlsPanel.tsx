@@ -388,6 +388,8 @@ interface CarouselControlsPanelProps {
     }) => void
     getAuditFlowId?: () => string | undefined
     initialPrompt?: string
+    registerUnsavedBrandChangeGuard?: (guard: ((brandId: string) => Promise<boolean>) | null) => void
+    registerSettingsResolver?: (resolver: ((overrides?: Partial<CarouselSettings>) => CarouselSettings) | null) => void
 }
 
 type CarouselWorkspaceSnapshot = {
@@ -523,7 +525,9 @@ export function CarouselControlsPanel({
     previewSessionHistory = [],
     onRestorePreviewState,
     getAuditFlowId,
-    initialPrompt
+    initialPrompt,
+    registerUnsavedBrandChangeGuard,
+    registerSettingsResolver,
 }: CarouselControlsPanelProps) {
     const { t, i18n } = useTranslation('carousel')
     const router = useRouter()
@@ -646,6 +650,19 @@ export function CarouselControlsPanel({
         }
         return decision === 'discard'
     }, [hasUnsavedChanges, openSessionDecisionModal])
+
+    useEffect(() => {
+        if (!registerUnsavedBrandChangeGuard) return
+
+        registerUnsavedBrandChangeGuard(async (brandId: string) => {
+            if (!brandId || brandId === String(scopedBrandId || '')) return true
+            return await confirmDiscardUnsavedChanges(t('ui.switchBrandAction', { defaultValue: 'switch Brand Kits' }))
+        })
+
+        return () => {
+            registerUnsavedBrandChangeGuard(null)
+        }
+    }, [registerUnsavedBrandChangeGuard, scopedBrandId, confirmDiscardUnsavedChanges, t])
     const [prompt, setPrompt] = useState(initialPrompt ?? '')
     const [isInspiring, setIsInspiring] = useState(false)
     const [slideCount, setSlideCount] = useState(initialPrompt ? 3 : 0)
@@ -2703,6 +2720,14 @@ export function CarouselControlsPanel({
         }
         return { ...baseSettings, ...overrides }
     }
+
+    useEffect(() => {
+        registerSettingsResolver?.(buildSettings)
+
+        return () => {
+            registerSettingsResolver?.(null)
+        }
+    }, [buildSettings, registerSettingsResolver])
 
     const handleGenerate = () => {
         if (!prompt.trim() || slideCount < 1) return
