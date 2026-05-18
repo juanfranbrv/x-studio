@@ -40,6 +40,7 @@ import {
   HEADER_DROPDOWN_CONTENT_CLASS,
   HEADER_DROPDOWN_ITEM_CLASS,
 } from '@/components/layout/headerDropdownStyles'
+import { PublicLandingNav } from '@/components/layout/PublicLandingNav'
 
 // Font is now applied globally via CSS --font-sans
 
@@ -314,7 +315,7 @@ function LandingPage({ hasAccess = false }: { hasAccess?: boolean }) {
   return (
     <div className="relative flex min-h-screen flex-col overflow-x-hidden">
       {/* ── Nav ── */}
-      <LandingNav hasAccess={hasAccess} />
+      <PublicLandingNav hasAccess={hasAccess} />
 
       {/* ── Hero ── */}
       <HeroSection hasAccess={hasAccess} />
@@ -354,6 +355,7 @@ function LandingNav({ hasAccess }: { hasAccess: boolean }) {
 
   const navLinks = [
     { href: '#features', label: t('footer.features') },
+    { href: '/academy', label: t('footer.academy') },
     { href: '/pricing', label: t('footer.pricing') },
     { href: '/contact', label: t('footer.contact') },
   ]
@@ -1059,15 +1061,15 @@ function LandingFooter() {
       title: t('footer.company'),
       links: [
         { label: t('footer.about'), href: '/contact' },
-        { label: t('footer.blog'), href: '#' },
+        { label: t('footer.blog'), href: '/academy' },
         { label: t('footer.careers'), href: '#' },
       ],
     },
     {
       title: t('footer.resources'),
       links: [
-        { label: t('footer.docs'), href: '#' },
-        { label: t('footer.help'), href: '#' },
+        { label: t('footer.docs'), href: '/academy' },
+        { label: t('footer.help'), href: '/academy' },
         { label: t('footer.community'), href: '#' },
       ],
     },

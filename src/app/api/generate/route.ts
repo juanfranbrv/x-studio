@@ -130,6 +130,8 @@ export async function POST(request: NextRequest) {
                 ? 'Replicate'
             : model?.startsWith('atlas/')
                 ? 'Atlas'
+            : model?.startsWith('openai/')
+                ? 'OpenAI'
             : model?.startsWith('google/')
                 ? 'Google Oficial'
                 : 'Google Oficial'
@@ -215,6 +217,8 @@ export async function POST(request: NextRequest) {
         let errorType = 'UNKNOWN'
 
         if (errorMessage.toLowerCase().includes('system busy') ||
+            errorMessage.toLowerCase().includes('system overloaded') ||
+            errorMessage.toLowerCase().includes('overloaded') ||
             errorMessage.toLowerCase().includes('please try again') ||
             errorMessage.toLowerCase().includes('no available channel') ||
             errorMessage.toLowerCase().includes('429 received from upstream')) {

@@ -174,6 +174,16 @@ export default defineSchema({
   }).index("by_active", ["is_active"])
     .index("by_sort_order", ["sort_order"]),
 
+  replace_templates: defineTable({
+    title: v.string(),
+    image_url: v.string(),
+    thumbnail_url: v.optional(v.string()),
+    sort_order: v.number(),
+    created_at: v.string(),
+    updated_at: v.string(),
+    updated_by: v.optional(v.string()),
+  }).index("by_sort_order", ["sort_order"]),
+
   // Session image assets: keep original file for publishing and lightweight preview for UI/session history.
   session_images: defineTable({
     user_id: v.string(),

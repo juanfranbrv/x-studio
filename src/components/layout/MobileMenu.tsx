@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useClerk, useUser } from '@clerk/nextjs'
 import { useTranslation } from 'react-i18next'
-import { IconCarousel, IconHome, IconImage, IconLogout, IconMenu, IconSettings } from '@/components/ui/icons'
+import { IconCarousel, IconFileText, IconHome, IconImage, IconLogout, IconMenu, IconSettings } from '@/components/ui/icons'
 import { AppLogo } from '@/components/ui/AppLogo'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
@@ -30,6 +30,7 @@ export function MobileMenu() {
         { icon: IconCarousel, label: 'nav.brandKit', href: '/brand-kit' },
         { icon: IconImage, label: 'nav.image', href: '/image' },
         { icon: IconCarousel, label: 'nav.carousel', href: '/carousel' },
+        { icon: IconFileText, label: 'nav.academy', href: '/academy' },
         { icon: IconSettings, label: 'nav.settings', href: '/settings' },
     ]
 
@@ -51,7 +52,7 @@ export function MobileMenu() {
                 <div className="flex h-full flex-col">
                     <nav className="flex flex-1 flex-col gap-2 p-4">
                         {navItems.map((item) => {
-                            const isActive = pathname === item.href
+                            const isActive = pathname === item.href || pathname?.startsWith(`${item.href}/`)
                             return (
                                 <Link
                                     key={item.href}

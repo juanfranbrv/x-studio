@@ -9,7 +9,7 @@ import { useRouter } from 'next/navigation'
 import { useQuery, useMutation } from 'convex/react'
 import { api } from '@/../convex/_generated/api'
 import type { Id } from '@/../convex/_generated/dataModel'
-import { IconUsers, IconCoins, IconRefresh, IconPlus, IconMinus, IconCheckSimple, IconClose, IconSettings, IconActivity, IconArrowLeft, IconMail, IconExternalLink, IconDelete, IconMessage, IconShapes, IconBanknote, IconSave, IconChevronRight, IconChevronDown, IconDownload, IconPalette, IconWand } from '@/components/ui/icons'
+import { IconUsers, IconCoins, IconRefresh, IconPlus, IconMinus, IconCheckSimple, IconClose, IconSettings, IconActivity, IconArrowLeft, IconMail, IconExternalLink, IconDelete, IconMessage, IconShapes, IconBanknote, IconSave, IconChevronRight, IconChevronDown, IconDownload, IconPalette, IconWand, IconLayers } from '@/components/ui/icons'
 import { CreditsBadge } from '@/components/layout/CreditsBadge'
 import { getCompositionsSummaryAction, type CompositionSummary } from '@/lib/admin-compositions-actions'
 import { Button } from '@/components/ui/button'
@@ -35,16 +35,19 @@ import {
     DialogTitle,
 } from '@/components/ui/dialog'
 import { Label } from '@/components/ui/label'
+import { Switch } from '@/components/ui/switch'
 import { useToast } from '@/hooks/use-toast'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Fragment } from 'react'
 
 
 import { CompositionsSummaryTable } from '@/components/admin/CompositionsSummaryTable'
+import { ReplaceTemplatesManager } from '@/components/admin/ReplaceTemplatesManager'
 import { StylePresetsManager } from '@/components/admin/StylePresetsManager'
 import { BillingAdminPanel } from '@/components/admin/BillingAdminPanel'
 import { CarouselVideoSettingsCard } from '@/components/admin/CarouselVideoSettingsCard'
 import { AdminAudioTracksCard } from '@/components/admin/AdminAudioTracksCard'
+import { DEFAULT_REPLACE_SYSTEM_PROMPT } from '@/lib/replace-generation'
 import {
     buildThemeColors,
     deriveSchemeAsHex,
@@ -53,10 +56,14 @@ import {
     type ThemePaletteDraft,
     type ThemePaletteFieldKey,
 } from '@/lib/theme-colors'
+import { STUDIO_DEBUG_OVERLAYS_ENABLED_SETTING_KEY, normalizeStudioDebugOverlaysEnabled } from '@/lib/studio-debug-visibility'
+import { REPLACE_MODULE_ENABLED_SETTING_KEY, normalizeReplaceModuleEnabled } from '@/lib/replace-module-visibility'
 
 const IMAGE_MODEL_OPTIONS = [
     { value: 'wisdom/gemini-3-pro-image-preview', label: 'Wisdom · Gemini 3 Pro Image Preview' },
     { value: 'wisdom/gemini-3.1-flash-image-preview', label: 'Wisdom · Gemini 3.1 Flash Image Preview' },
+    { value: 'wisdom/gpt-image-2', label: 'Wisdom · GPT Image 2' },
+    { value: 'openai/gpt-image-2', label: 'OpenAI · GPT Image 2' },
     { value: 'google/gemini-3-pro-image-preview', label: 'Google · Gemini 3 Pro Image Preview' },
     { value: 'naga/seedream-5-lite', label: 'NagaAI · seedream-5-lite' },
     { value: 'naga/gpt-image-1.5-2025-12-16', label: 'NagaAI · gpt-image-1.5-2025-12-16' },
@@ -84,6 +91,7 @@ const PROVIDER_COST_LINKS: Record<string, string> = {
     replicate: 'https://replicate.com/',
     atlas: 'https://www.atlascloud.ai/es/console/usage-history',
     google: 'https://aistudio.google.com/spend?project=gen-lang-client-0054505696',
+    openai: 'https://platform.openai.com/usage',
 }
 
 const ADMIN_TAB_STORAGE_KEY = 'x-studio-admin-active-tab'
@@ -256,6 +264,9 @@ const THEME_SETTINGS_HIDDEN_KEYS = new Set([
     'provider_naga_api_key',
     'provider_replicate_api_key',
     'provider_atlas_api_key',
+    'provider_openai_api_key',
+    STUDIO_DEBUG_OVERLAYS_ENABLED_SETTING_KEY,
+    REPLACE_MODULE_ENABLED_SETTING_KEY,
 ])
 
 const CAROUSEL_VIDEO_SLIDE_DURATION_SETTING_KEY = 'carousel_video_slide_duration_ms'
@@ -425,13 +436,39 @@ export default function AdminPage() {
     const [editingPromptKey, setEditingPromptKey] = useState<string | null>(null)
     const [promptDraft, setPromptDraft] = useState('')
     const [isSeedingPrompts, setIsSeedingPrompts] = useState(false)
+    const hasEnsuredReplacePromptRef = useRef(false)
 
     // Settings state
-    const [editingSettings, setEditingSettings] = useState<Record<string, number | string>>({})
+    const [editingSettings, setEditingSettings] = useState<Record<string, number | string | boolean>>({})
 
     // Admin default theme state
     const [adminThemePalette, setAdminThemePalette] = useState<ThemePaletteDraft>(DEFAULT_THEME_DRAFT)
     const [savingTheme, setSavingTheme] = useState(false)
+
+    useEffect(() => {
+        if (!hasAdminAccess) return
+        if (!Array.isArray(systemPrompts)) return
+
+        const hasReplacePrompt = systemPrompts.some((prompt) => prompt.key === DEFAULT_REPLACE_SYSTEM_PROMPT.key)
+        if (hasReplacePrompt) {
+            hasEnsuredReplacePromptRef.current = true
+            return
+        }
+
+        if (hasEnsuredReplacePromptRef.current) return
+        hasEnsuredReplacePromptRef.current = true
+
+        void upsertSystemPrompt({
+            key: DEFAULT_REPLACE_SYSTEM_PROMPT.key,
+            name: DEFAULT_REPLACE_SYSTEM_PROMPT.name,
+            body: DEFAULT_REPLACE_SYSTEM_PROMPT.body,
+            description: DEFAULT_REPLACE_SYSTEM_PROMPT.description,
+            updated_by: userEmail || 'system/admin-prompts-bootstrap',
+        }).catch((error) => {
+            hasEnsuredReplacePromptRef.current = false
+            console.error('Error ensuring Replace prompt in admin:', error)
+        })
+    }, [hasAdminAccess, systemPrompts, upsertSystemPrompt, userEmail])
     const [customPresets, setCustomPresets] = useState<ThemePreset[]>([])
     const [savingPresetName, setSavingPresetName] = useState('')
     const economicModelSuggestions = Array.from(
@@ -439,6 +476,12 @@ export default function AdminPage() {
             ...INTELLIGENCE_MODEL_OPTIONS.map((option) => option.value),
             ...IMAGE_MODEL_OPTIONS.map((option) => option.value),
         ])
+    )
+    const showStudioDebugOverlays = normalizeStudioDebugOverlaysEnabled(
+        settings?.find((setting) => setting.key === STUDIO_DEBUG_OVERLAYS_ENABLED_SETTING_KEY)?.value
+    )
+    const showReplaceModule = normalizeReplaceModuleEnabled(
+        settings?.find((setting) => setting.key === REPLACE_MODULE_ENABLED_SETTING_KEY)?.value
     )
 
     // Initialize settings on first load
@@ -674,7 +717,7 @@ export default function AdminPage() {
         setIsProcessing(false)
     }
 
-    const handleSaveSetting = async (key: string, value: number | string) => {
+    const handleSaveSetting = async (key: string, value: number | string | boolean) => {
         try {
             await updateSetting({ admin_email: userEmail, key, value })
             toast({ title: 'Configuración guardada' })
@@ -888,6 +931,7 @@ export default function AdminPage() {
         'provider_naga_api_key',
         'provider_replicate_api_key',
         'provider_atlas_api_key',
+        'provider_openai_api_key',
     ] as const
 
     const isModelSettingsDirty = MODEL_SETTINGS_KEYS.some((key) => {
@@ -972,6 +1016,12 @@ export default function AdminPage() {
                             <Button variant="outline" className="gap-2">
                                 <IconShapes className="h-4 w-4" />
                                 Gestor carruseles
+                            </Button>
+                        </Link>
+                        <Link href="/admin/replace-templates">
+                            <Button variant="outline" className="gap-2">
+                                <IconLayers className="h-4 w-4" />
+                                Plantillas Replace
                             </Button>
                         </Link>
                         <CreditsBadge />
@@ -1529,6 +1579,42 @@ export default function AdminPage() {
                                 <CardDescription>Valores configurables para créditos</CardDescription>
                             </CardHeader>
                             <CardContent className="space-y-6">
+                                <div className="flex items-center justify-between gap-4 rounded-2xl border border-border/60 bg-muted/20 px-4 py-3">
+                                    <div className="flex-1">
+                                        <Label className="text-base">Depuración visual del estudio</Label>
+                                        <p className="text-sm text-muted-foreground">
+                                            Muestra u oculta los overlays de depuración del estudio para imagen y carrusel, incluido el botón de prompt y la barra de composición admin.
+                                        </p>
+                                    </div>
+                                    <div className="flex items-center gap-3">
+                                        <span className="text-sm text-muted-foreground">
+                                            {showStudioDebugOverlays ? 'Visible' : 'Oculta'}
+                                        </span>
+                                        <Switch
+                                            checked={showStudioDebugOverlays}
+                                            onCheckedChange={(checked) => void handleSaveSetting(STUDIO_DEBUG_OVERLAYS_ENABLED_SETTING_KEY, checked)}
+                                            aria-label="Mostrar depuración visual del estudio"
+                                        />
+                                    </div>
+                                </div>
+                                <div className="flex items-center justify-between gap-4 rounded-2xl border border-border/60 bg-muted/20 px-4 py-3">
+                                    <div className="flex-1">
+                                        <Label className="text-base">Visibilidad del módulo Replace</Label>
+                                        <p className="text-sm text-muted-foreground">
+                                            Mostrar módulo Replace en la navegación del estudio y permitir acceso a su vista experimental.
+                                        </p>
+                                    </div>
+                                    <div className="flex items-center gap-3">
+                                        <span className="text-sm text-muted-foreground">
+                                            {showReplaceModule ? 'Visible' : 'Oculto'}
+                                        </span>
+                                        <Switch
+                                            checked={showReplaceModule}
+                                            onCheckedChange={(checked) => void handleSaveSetting(REPLACE_MODULE_ENABLED_SETTING_KEY, checked)}
+                                            aria-label="Mostrar módulo Replace en el estudio"
+                                        />
+                                    </div>
+                                </div>
                                 {settings?.filter(s => !THEME_SETTINGS_HIDDEN_KEYS.has(s.key)).map((setting) => (
                                     <div key={setting.key} className="flex items-center justify-between gap-4">
                                         <div className="flex-1">
@@ -1539,7 +1625,11 @@ export default function AdminPage() {
                                             <Input
                                                 type={typeof setting.value === 'number' ? "number" : "text"}
                                                 className="w-24"
-                                                value={editingSettings[setting.key] ?? setting.value}
+                                                value={
+                                                    typeof (editingSettings[setting.key] ?? setting.value) === 'number'
+                                                        ? Number(editingSettings[setting.key] ?? setting.value)
+                                                        : String(editingSettings[setting.key] ?? setting.value)
+                                                }
                                                 onChange={(e) => setEditingSettings(prev => ({
                                                     ...prev,
                                                     [setting.key]: typeof setting.value === 'number' ? (parseInt(e.target.value) || 0) : e.target.value
@@ -2127,6 +2217,22 @@ export default function AdminPage() {
                                     </div>
 
                                     <div>
+                                        <Label className="text-base">OpenAI API Key</Label>
+                                        <p className="text-sm text-muted-foreground">Se usa al seleccionar modelos con prefijo <code>openai/</code>.</p>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <Input
+                                            type="text"
+                                            value={String(editingSettings.provider_openai_api_key ?? '')}
+                                            onChange={(e) => setEditingSettings(prev => ({
+                                                ...prev,
+                                                provider_openai_api_key: e.target.value
+                                            }))}
+                                            placeholder="sk-..."
+                                        />
+                                    </div>
+
+                                    <div>
                                         <Label className="text-base">NagaAI API Key</Label>
                                         <p className="text-sm text-muted-foreground">Se usa al seleccionar modelos con prefijo <code>naga/</code>.</p>
                                     </div>
@@ -2187,6 +2293,26 @@ export default function AdminPage() {
                             </CardHeader>
                             <CardContent>
                                 <StylePresetsManager adminEmail={userEmail} />
+                            </CardContent>
+                        </Card>
+
+                        <Card>
+                            <CardHeader>
+                                <div className="flex items-center justify-between gap-4">
+                                    <div>
+                                        <CardTitle>Plantillas Replace</CardTitle>
+                                        <CardDescription>Gestión de imágenes de plantilla para el panel derecho del módulo Replace.</CardDescription>
+                                    </div>
+                                    <Link href="/admin/replace-templates">
+                                        <Button variant="outline" className="gap-2">
+                                            <IconLayers className="h-4 w-4" />
+                                            Abrir gestor completo
+                                        </Button>
+                                    </Link>
+                                </div>
+                            </CardHeader>
+                            <CardContent>
+                                <ReplaceTemplatesManager adminEmail={userEmail} />
                             </CardContent>
                         </Card>
                     </TabsContent>

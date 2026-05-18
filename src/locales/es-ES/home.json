@@ -71,8 +71,8 @@
     "sectionTitle": "Diseñado para marcas que no pueden permitirse parecer genéricas",
     "sectionSubtitle": "Cada función de Post laboratory existe para resolver un problema real de equipos de marketing que necesitan velocidad sin perder identidad.",
     "brandDNA": {
-      "title": "Tu Brand Kit se construye solo. En lugar de quedarse olvidado en un PDF.",
-      "description": "La mayoría de las empresas tienen guías de marca que nadie consulta antes de publicar. Post laboratory elimina ese problema en su raíz. Nuestro motor de análisis con navegador headless, visión artificial y análisis DOM extrae tu identidad directamente de tu web: logos en todos sus formatos, paletas de color exactas, jerarquía tipográfica y estilo visual. El resultado es un Brand Kit vivo que se aplica automáticamente en cada pieza que generes.",
+      "title": "Tu Kit de marca se construye solo. En lugar de quedarse olvidado en un PDF.",
+      "description": "La mayoría de las empresas tienen guías de marca que nadie consulta antes de publicar. Post laboratory elimina ese problema en su raíz. Nuestro motor de análisis con navegador headless, visión artificial y análisis DOM extrae tu identidad directamente de tu web: logos en todos sus formatos, paletas de color exactas, jerarquía tipográfica y estilo visual. El resultado es un Kit de marca vivo que se aplica automáticamente en cada pieza que generes.",
       "link": "Analizar mi marca ahora"
     },
     "multiAsset": {
@@ -126,6 +126,7 @@
     "terms": "Términos",
     "cookies": "Cookies",
     "contact": "Contacto",
+    "academy": "Academy",
     "pricing": "Planes y precios",
     "product": "Producto",
     "features": "Funcionalidades",

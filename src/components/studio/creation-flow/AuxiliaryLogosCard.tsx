@@ -206,7 +206,7 @@ export function AuxiliaryLogosCard({
               onClick={() => setIsBrandKitModalOpen(true)}
             >
               <IconFingerprint className="h-3.5 w-3.5" />
-              {tt('auxLogos.fromBrandKit', 'From Brand Kit')}
+              {tt('auxLogos.fromBrandKit', 'Desde Kit de marca')}
             </Button>
           </div>
 
@@ -249,7 +249,7 @@ export function AuxiliaryLogosCard({
                   className="group relative aspect-square overflow-hidden rounded-[1.15rem] border border-border/65 bg-background shadow-[0_18px_38px_-30px_rgba(15,23,42,0.28)]"
                   title={tt('auxLogos.removeTitle', 'Remove auxiliary logo')}
                 >
-                  <img src={item.url} alt={item.name || tt('auxLogos.brandKitAssetAlt', 'Brand Kit auxiliary asset')} className="h-full w-full object-cover" />
+                  <img src={item.url} alt={item.name || tt('auxLogos.brandKitAssetAlt', 'Recurso auxiliar de Kit de marca')} className="h-full w-full object-cover" />
                   <span className="absolute left-2 top-2 rounded-full border border-emerald-500/20 bg-emerald-500/90 px-2 py-1 text-[0.7rem] font-semibold text-white shadow-sm">
                     {tt('auxLogos.brandKitBadge', 'Kit')}
                   </span>
@@ -290,10 +290,10 @@ export function AuxiliaryLogosCard({
               <div className="flex items-start justify-between gap-3">
                 <div className="space-y-2">
                   <DialogTitle className="text-[clamp(1.08rem,1.02rem+0.14vw,1.18rem)] font-semibold tracking-[-0.01em]">
-                    {tt('auxLogos.selectFromBrandKitTitle', 'Select auxiliary logos from Brand Kit')}
+                    {tt('auxLogos.selectFromBrandKitTitle', 'Selecciona logos auxiliares desde Kit de marca')}
                   </DialogTitle>
                   <DialogDescription className="text-[0.94rem] leading-relaxed text-muted-foreground">
-                    {tt('auxLogos.selectFromBrandKitDescription', 'Brand Kit images are shown here so you can choose auxiliary logos or secondary visual assets.')}
+                    {tt('auxLogos.selectFromBrandKitDescription', 'Aquí se muestran las imágenes del Kit de marca para que puedas elegir logos auxiliares o recursos visuales secundarios.')}
                   </DialogDescription>
                 </div>
                 <Button
@@ -341,7 +341,7 @@ export function AuxiliaryLogosCard({
                               : 'cursor-not-allowed border-border/50 bg-muted/30 opacity-50'
                         )}
                       >
-                        <img src={item.url} alt={item.name || tt('auxLogos.brandKitImageAlt', 'Brand Kit image')} className="h-full w-full object-cover" />
+                        <img src={item.url} alt={item.name || tt('auxLogos.brandKitImageAlt', 'Imagen de Kit de marca')} className="h-full w-full object-cover" />
                         {isSelected ? (
                           <IconCheckCircle className="absolute right-2.5 top-2.5 h-9 w-9 text-white drop-shadow-[0_4px_10px_rgba(0,0,0,0.62)]" />
                         ) : null}
@@ -351,7 +351,7 @@ export function AuxiliaryLogosCard({
                 </div>
               ) : (
                 <div className="mt-1 rounded-[1.15rem] border border-dashed border-border/70 bg-background/72 p-8 text-center text-[0.94rem] text-muted-foreground">
-                  {tt('auxLogos.noBrandKitImages', 'This Brand Kit does not have any images yet.')}
+                  {tt('auxLogos.noBrandKitImages', 'Este Kit de marca todavía no tiene imágenes.')}
                 </div>
               )}
             </div>

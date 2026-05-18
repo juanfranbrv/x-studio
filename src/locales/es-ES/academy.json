@@ -1,0 +1,40 @@
+{
+  "shell": {
+    "eyebrow": "Academy",
+    "title": "Aprende dentro del producto",
+    "backToStudio": "Volver al estudio",
+    "home": "Inicio",
+    "pricing": "Pricing",
+    "openProduct": "Entrar al lab"
+  },
+  "hero": {
+    "kicker": "Guias, criterio y novedades",
+    "title": "Una capa editorial para entender la plataforma sin salir de ella.",
+    "description": "Academy mezcla ayuda accionable, tutoriales, novedades e inspiracion para que el producto se explique mejor desde dentro y tambien desde fuera.",
+    "featuredLabel": "Lectura destacada",
+    "openFeature": "Abrir articulo",
+    "primaryCta": "Probar Imagen",
+    "secondaryCta": "Preparar Kit de marca"
+  },
+  "listing": {
+    "kicker": "Biblioteca publica",
+    "title": "Publicaciones para aprender, descubrir y activar el producto",
+    "description": "Explora guias de uso, tutoriales, notas de producto e ideas aplicadas sin tener que salir del ecosistema de Post laboratory."
+  },
+  "categories": {
+    "all": "Todo",
+    "guides": "Guias",
+    "tutorials": "Tutoriales",
+    "news": "Novedades",
+    "inspiration": "Inspiracion"
+  },
+  "post": {
+    "readArticle": "Leer articulo"
+  },
+  "article": {
+    "backToIndex": "Volver a Academy",
+    "relatedKicker": "Sigue explorando",
+    "relatedTitle": "Lecturas relacionadas",
+    "relatedDescription": "Mas piezas para convertir el contexto en acciones dentro del estudio."
+  }
+}

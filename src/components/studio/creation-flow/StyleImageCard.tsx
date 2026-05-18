@@ -108,7 +108,7 @@ export function StyleImageCard({
         ? {
             id: currentStyleImage.id,
             url: currentStyleImage.url,
-            sourceLabel: currentStyleIsUpload ? tt('styleImage.uploadedBadge', 'Uploaded') : tt('styleImage.brandKitBadge', 'Brand Kit'),
+            sourceLabel: currentStyleIsUpload ? tt('styleImage.uploadedBadge', 'Uploaded') : tt('styleImage.brandKitBadge', 'Kit de marca'),
             title: currentStyleImage.name || tt('styleImage.referenceTitle', 'Style reference'),
             removable: true,
         }
@@ -212,7 +212,7 @@ export function StyleImageCard({
                             onClick={() => setIsBrandKitModalOpen(true)}
                         >
                             <IconPalette className="h-3.5 w-3.5 shrink-0" />
-                            <span className="truncate">{tt('styleImage.fromBrandKit', 'From Brand Kit')}</span>
+                            <span className="truncate">{tt('styleImage.fromBrandKit', 'Desde Kit de marca')}</span>
                         </Button>
                         <Button
                             type="button"
@@ -327,7 +327,7 @@ export function StyleImageCard({
                     >
                         <DialogHeader className="px-7 pb-2 pt-7">
                             <DialogTitle className="text-[clamp(1.16rem,1.08rem+0.18vw,1.28rem)] font-semibold tracking-[-0.01em]">
-                                {tt('styleImage.selectFromBrandKitTitle', 'Select style from Brand Kit')}
+                                {tt('styleImage.selectFromBrandKitTitle', 'Selecciona estilo desde Kit de marca')}
                             </DialogTitle>
                             <DialogDescription className="text-[1rem] leading-relaxed text-muted-foreground">
                                 {tt('styleImage.selectFromBrandKitDescription', 'You can only choose one style image. If you select another one, it replaces the current one.')}
@@ -354,7 +354,7 @@ export function StyleImageCard({
                                                         : 'border-border/65 bg-background hover:border-primary/30 hover:-translate-y-0.5 hover:shadow-[0_18px_36px_-30px_rgba(15,23,42,0.24)]'
                                                 )}
                                             >
-                                                <img src={image.url} alt={image.name || tt('styleImage.brandKitImageAlt', 'Brand Kit image')} className="w-full h-full object-cover" />
+                                                <img src={image.url} alt={image.name || tt('styleImage.brandKitImageAlt', 'Imagen de Kit de marca')} className="w-full h-full object-cover" />
                                                 {isSelected && (
                                                     <IconCheck className="absolute right-2.5 top-2.5 h-7 w-7 text-white drop-shadow-[0_3px_10px_rgba(15,23,42,0.55)]" />
                                                 )}
@@ -364,7 +364,7 @@ export function StyleImageCard({
                                 </div>
                             ) : (
                                 <div className="mt-1 rounded-[1.15rem] border border-dashed border-border/70 bg-background/72 p-8 text-center text-[0.94rem] text-muted-foreground">
-                                    {tt('styleImage.noBrandKitImages', 'This Brand Kit does not have any images yet.')}
+                                    {tt('styleImage.noBrandKitImages', 'Este Kit de marca todavía no tiene imágenes.')}
                                 </div>
                             )}
                         </div>

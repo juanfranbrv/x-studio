@@ -499,6 +499,9 @@ export function CanvasPanel({
                 }, 500)
                 return () => clearTimeout(timer)
             }
+        } else if (!currentImage) {
+            setIsRevealing(false)
+            setWasJustGenerated(false)
         }
     }, [isGenerating, currentImage, prevImage, wasJustGenerated])
 

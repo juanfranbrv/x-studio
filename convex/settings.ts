@@ -1,5 +1,13 @@
 import { v } from "convex/values";
 import { query, mutation } from "./_generated/server";
+import {
+    normalizeStudioDebugOverlaysEnabled,
+    STUDIO_DEBUG_OVERLAYS_ENABLED_SETTING_KEY,
+} from "../src/lib/studio-debug-visibility";
+import {
+    normalizeReplaceModuleEnabled,
+    REPLACE_MODULE_ENABLED_SETTING_KEY,
+} from "../src/lib/replace-module-visibility";
 
 const ADMIN_EMAILS = ["juanfranbrv@gmail.com"];
 const isAdmin = (email: string) => ADMIN_EMAILS.includes(String(email || "").toLowerCase().trim());
@@ -74,6 +82,34 @@ export const getCarouselVideoConfig = query({
         return {
             slideDurationMs: normalizeDuration(slideDuration?.value, 4000),
             lastSlideDurationMs: normalizeDuration(lastSlideDuration?.value, 6000),
+        };
+    },
+});
+
+export const getStudioDebugFlags = query({
+    args: {},
+    handler: async (ctx) => {
+        const setting = await ctx.db
+            .query("app_settings")
+            .withIndex("by_key", (q) => q.eq("key", STUDIO_DEBUG_OVERLAYS_ENABLED_SETTING_KEY))
+            .first();
+
+        return {
+            showDebugOverlays: normalizeStudioDebugOverlaysEnabled(setting?.value),
+        };
+    },
+});
+
+export const getReplaceModuleFlags = query({
+    args: {},
+    handler: async (ctx) => {
+        const setting = await ctx.db
+            .query("app_settings")
+            .withIndex("by_key", (q) => q.eq("key", REPLACE_MODULE_ENABLED_SETTING_KEY))
+            .first();
+
+        return {
+            showReplaceModule: normalizeReplaceModuleEnabled(setting?.value),
         };
     },
 });

@@ -22,6 +22,8 @@ import billingEs from '@/locales/es-ES/billing.json'
 import billingEn from '@/locales/en-US/billing.json'
 import brandStudioEs from '@/locales/es-ES/brandStudio.json'
 import brandStudioEn from '@/locales/en-US/brandStudio.json'
+import academyEs from '@/locales/es-ES/academy.json'
+import academyEn from '@/locales/en-US/academy.json'
 import { AppLocale, DEFAULT_LOCALE, LOCALE_STORAGE_KEY, normalizeLocale, SUPPORTED_LOCALES } from '@/locales/config'
 
 export const resources = {
@@ -37,6 +39,7 @@ export const resources = {
         legal: legalEs,
         billing: billingEs,
         brandStudio: brandStudioEs,
+        academy: academyEs,
     },
     'en-US': {
         common: commonEn,
@@ -50,10 +53,11 @@ export const resources = {
         legal: legalEn,
         billing: billingEn,
         brandStudio: brandStudioEn,
+        academy: academyEn,
     },
 } as const
 
-export const I18N_NAMESPACES = ['common', 'auth', 'home', 'settings', 'video', 'image', 'carousel', 'brandKit', 'legal', 'billing', 'brandStudio'] as const
+export const I18N_NAMESPACES = ['common', 'auth', 'home', 'settings', 'video', 'image', 'carousel', 'brandKit', 'legal', 'billing', 'brandStudio', 'academy'] as const
 
 function readNestedValue(source: unknown, dottedKey: string): string | null {
     if (!source || !dottedKey) return null

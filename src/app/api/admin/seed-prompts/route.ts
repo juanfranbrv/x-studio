@@ -3,6 +3,7 @@ import { auth } from '@clerk/nextjs/server'
 import { ConvexHttpClient } from 'convex/browser'
 import { api } from '@/../convex/_generated/api'
 import { log } from '@/lib/logger'
+import { DEFAULT_REPLACE_SYSTEM_PROMPT } from '@/lib/replace-generation'
 
 const DEFAULT_PROMPTS = [
     {
@@ -75,7 +76,8 @@ Write ONE concept in {{language}} (2-3 sentences) that describes:
 3. How it ENDS - the final CTA or takeaway that makes it worth saving or sharing
 
 Return ONLY the concept description. No labels, no explanations, no quotes.`
-    }
+    },
+    DEFAULT_REPLACE_SYSTEM_PROMPT
 ]
 
 export async function POST() {

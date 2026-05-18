@@ -1,0 +1,40 @@
+{
+  "shell": {
+    "eyebrow": "Academy",
+    "title": "Learn inside the product",
+    "backToStudio": "Back to the studio",
+    "home": "Home",
+    "pricing": "Pricing",
+    "openProduct": "Open the lab"
+  },
+  "hero": {
+    "kicker": "Guides, judgement, and product updates",
+    "title": "An editorial layer that explains the platform without leaving it.",
+    "description": "Academy blends practical help, tutorials, product notes, and inspiration so the platform can teach itself from the inside and stay public from the outside.",
+    "featuredLabel": "Featured read",
+    "openFeature": "Open article",
+    "primaryCta": "Try Image",
+    "secondaryCta": "Set up Brand Kit"
+  },
+  "listing": {
+    "kicker": "Public library",
+    "title": "Posts to learn, discover, and activate the product",
+    "description": "Browse guides, tutorials, product notes, and applied inspiration without leaving the Post laboratory ecosystem."
+  },
+  "categories": {
+    "all": "All",
+    "guides": "Guides",
+    "tutorials": "Tutorials",
+    "news": "News",
+    "inspiration": "Inspiration"
+  },
+  "post": {
+    "readArticle": "Read article"
+  },
+  "article": {
+    "backToIndex": "Back to Academy",
+    "relatedKicker": "Keep exploring",
+    "relatedTitle": "Related reads",
+    "relatedDescription": "More pieces to turn context into action across the studio."
+  }
+}

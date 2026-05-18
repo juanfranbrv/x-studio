@@ -36,7 +36,7 @@
     "unexpectedError": "Ocurrió un error inesperado.",
     "identifyCreatedError": "No se pudo identificar el kit de marca recién creado.",
     "identifierErrorTitle": "Error de identificador",
-    "identifierErrorDescription": "No se puede guardar porque falta el ID del Brand Kit. Intenta recargar la página o regenerarlo.",
+    "identifierErrorDescription": "No se puede guardar porque falta el ID del Kit de marca. Intenta recargar la página o regenerarlo.",
     "limitExceededTitle": "Límite excedido",
     "logoLimitDescription": "Solo puedes tener hasta 6 logos.",
     "normalizingImportedKit": "Normalizando datos del kit importado..."

@@ -52,6 +52,12 @@ describe('Preview layout mode', () => {
         expect(canvasPanelSource).toContain("if (previewLayoutMode === 'compact-scroll')")
     })
 
+    it('apaga el overlay de revelado si la generacion termina sin imagen', () => {
+        expect(canvasPanelSource).toContain('} else if (!currentImage) {')
+        expect(canvasPanelSource).toContain('setIsRevealing(false)')
+        expect(canvasPanelSource).toContain('setWasJustGenerated(false)')
+    })
+
     it('cablea el mismo modo de layout entre CarouselPage y CarouselCanvasPanel', () => {
         expect(carouselPageSource).toContain('const previewLayoutMode = resolvePreviewLayoutMode(')
         expect(carouselPageSource).toContain("previewLayoutMode === 'compact-scroll'")

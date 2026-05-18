@@ -6,10 +6,14 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useClerk, useUser } from '@clerk/nextjs'
 import { useTranslation } from 'react-i18next'
+import { useQuery } from 'convex/react'
+import { api } from '@/../convex/_generated/api'
 import {
     IconBrandKit,
     IconImage,
     IconCarousel,
+    IconFileText,
+    IconLayers,
     IconSettings,
     IconUser,
     IconLogout,
@@ -41,11 +45,14 @@ export function Sidebar({ className, showLogo = true, offsetTopClassName }: Side
     const { user } = useUser()
     const { signOut } = useClerk()
     const [isLoggingOut, setIsLoggingOut] = useState(false)
+    const replaceModuleFlags = useQuery(api.settings.getReplaceModuleFlags, {})
 
     const navItems = [
         { icon: IconBrandKit, label: t('nav.brandKit'), href: '/brand-kit' },
         { icon: IconImage, label: t('nav.image'), href: '/image' },
         { icon: IconCarousel, label: t('nav.carousel'), href: '/carousel' },
+        ...(replaceModuleFlags?.showReplaceModule ? [{ icon: IconLayers, label: t('nav.replace'), href: '/replace' }] : []),
+        { icon: IconFileText, label: t('nav.academy'), href: '/academy' },
     ]
 
     const handleLogout = async () => {
@@ -89,7 +96,7 @@ export function Sidebar({ className, showLogo = true, offsetTopClassName }: Side
                 showLogo ? 'pt-[31px] [@media(max-height:820px)]:pt-5' : 'pt-5 [@media(max-height:820px)]:pt-4'
             )}>
                 {navItems.map((item) => {
-                    const isActive = pathname === item.href
+                    const isActive = pathname === item.href || pathname?.startsWith(`${item.href}/`)
                     return (
                         <Link
                             key={item.href}

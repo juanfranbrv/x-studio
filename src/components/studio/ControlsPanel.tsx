@@ -974,24 +974,43 @@ export function ControlsPanel({
                         <div className={cn(
                             isMobile
                                 ? 'mt-2 flex items-center justify-end gap-2'
-                                : 'absolute left-2 right-2 bottom-2 flex flex-wrap items-center gap-2'
+                                : 'absolute left-2 right-2 bottom-2 flex items-center gap-3'
                         )}>
                             {activeBrandKit && !isMobile && (
-                                <button
-                                    type="button"
-                                    onClick={handleInspire}
-                                    disabled={isInspiring}
-                                    className={cn("mr-auto inline-flex items-center gap-1.5", PANEL_TEXT_BUTTON_REVEAL_CLASS)}
-                                >
-                                    {isInspiring ? (
-                                        <Loader2 className="w-3.5 h-3.5" />
-                                    ) : (
-                                        <IconWand className="w-3.5 h-3.5" />
-                                    )}
-                                    {t('inspireMe')}
-                                </button>
+                                <div className="flex min-w-0 flex-1 items-center gap-2 overflow-hidden">
+                                    <button
+                                        type="button"
+                                        onClick={handleInspire}
+                                        disabled={isInspiring}
+                                        className={cn("inline-flex min-w-0 items-center gap-1.5", PANEL_TEXT_BUTTON_REVEAL_CLASS)}
+                                    >
+                                        {isInspiring ? (
+                                            <Loader2 className="h-3.5 w-3.5 shrink-0" />
+                                        ) : (
+                                            <IconWand className="h-3.5 w-3.5 shrink-0" />
+                                        )}
+                                        <span className="truncate">{t('inspireMe')}</span>
+                                    </button>
+                                    <div className="flex min-w-[146px] items-center justify-start gap-2">
+                                        {isMagicParsing && onCancelAnalyze ? (
+                                            <Button
+                                                size="sm"
+                                                variant="ghost"
+                                                onClick={onCancelAnalyze}
+                                                className="min-h-[42px] rounded-[1rem] px-4 text-[clamp(0.9rem,0.86rem+0.1vw,0.96rem)] font-semibold text-muted-foreground hover:bg-muted/80 hover:text-foreground"
+                                            >
+                                                {t('ui.stop')}
+                                            </Button>
+                                        ) : null}
+                                        {isCancelingAnalyze ? (
+                                            <span className="text-[clamp(0.9rem,0.86rem+0.1vw,0.96rem)] font-medium text-muted-foreground">
+                                                {t('ui.canceling')}
+                                            </span>
+                                        ) : null}
+                                    </div>
+                                </div>
                             )}
-                            {isMagicParsing && onCancelAnalyze ? (
+                            {(!activeBrandKit || isMobile) && isMagicParsing && onCancelAnalyze ? (
                                 <Button
                                     size="sm"
                                     variant="ghost"
@@ -1004,7 +1023,7 @@ export function ControlsPanel({
                                     {t('ui.stop')}
                                 </Button>
                             ) : null}
-                            {isCancelingAnalyze ? (
+                            {(!activeBrandKit || isMobile) && isCancelingAnalyze ? (
                                 <span className="text-[clamp(0.9rem,0.86rem+0.1vw,0.96rem)] font-medium text-muted-foreground">
                                     {t('ui.canceling')}
                                 </span>

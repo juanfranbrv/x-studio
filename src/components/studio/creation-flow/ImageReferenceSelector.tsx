@@ -432,7 +432,7 @@ export function ImageReferenceSelector({
                                 >
                                     <img
                                         src={img.url}
-                                        alt={img.name || t('imageReference.brandKitImageAlt', { defaultValue: 'Brand Kit image' })}
+                                        alt={img.name || t('imageReference.brandKitImageAlt', { defaultValue: 'Imagen de Kit de marca' })}
                                         className="w-full h-full object-cover"
                                     />
                                     {isSelected && onReferenceRoleChange && (

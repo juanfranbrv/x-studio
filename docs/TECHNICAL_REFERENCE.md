@@ -116,6 +116,66 @@ Nota operativa:
   - boton de cierre visible dentro de la cabecera
   - transicion rapida y organica, respetando `prefers-reduced-motion`
 
+### Modulo experimental Replace
+
+- Existe un modulo experimental `replace` con ruta propia `/replace`.
+- Su visibilidad no queda hardcodeada en frontend: depende del flag global `replace_module_enabled` en `app_settings`.
+- La fuente de verdad publica para cliente es `api.settings.getReplaceModuleFlags`.
+- Reglas vigentes:
+  - si el flag esta desactivado, `Sidebar` no debe mostrar el acceso
+  - si alguien entra por URL directa con el flag desactivado, el modulo debe redirigir a `/image`
+  - la activacion y desactivacion debe controlarse desde `/admin`
+
+### Plantillas Replace
+
+- Las plantillas visuales del panel derecho de `/replace` ya no viven hardcodeadas en frontend.
+- Fuente de verdad:
+  - tabla `replace_templates`
+  - query publica `api.replaceTemplates.listActive`
+- Gestion admin:
+  - ruta dedicada `/admin/replace-templates`
+  - alta basica con `title`, `image_url` y `thumbnail_url`
+  - eliminacion desde el propio gestor
+- Regla operativa:
+  - el panel derecho de `Replace` debe renderizar directamente las imagenes de esta tabla
+  - si no hay registros, el modulo muestra estado vacio en lugar de placeholders falsos
+
+### Generacion Replace
+
+- El CTA principal de `Replace` no debe estar activo por defecto.
+- Regla vigente:
+  - solo se activa cuando el usuario ha seleccionado una imagen de producto y una plantilla
+  - el campo de prompt manual es opcional y actua solo como refinamiento adicional
+  - si el refinamiento esta vacio, se usa exclusivamente la instruccion base configurable desde Admin
+- La generacion real del modulo vive en `POST /api/replace`.
+- El backend debe reutilizar:
+  - `app_settings.model_image_generation` como modelo de imagen activo
+  - `system_prompts.generate_replace_image` como prompt editable desde Admin
+- En cada generacion de `Replace` se deben enviar al modelo:
+  - la imagen del producto del usuario como referencia de sujeto
+  - la imagen de plantilla como referencia de composicion/escena
+- Regla de prompt:
+  - la plantilla aporta mood, iluminacion, composicion y vibe general
+  - el producto del usuario debe sustituir completamente al producto principal original
+  - no debe sobrevivir branding, packaging ni texto visible del competidor
+
+### Modelo Wisdom GPT Image 2
+
+- `wisdom/gpt-image-2` esta disponible como modelo de imagen seleccionable en Admin > Modelos.
+- Wisdom lo expone como modelo OpenAI-compatible con identificador `gpt-image-2`.
+- En `src/lib/gemini.ts`, los modelos `wisdom/*` que no son Gemini se enrutan por `/v1/images/generations`.
+- El catalogo de costes de Admin > Economia se sincroniza desde `IMAGE_MODEL_OPTIONS`, por lo que este modelo debe aparecer como modelo de imagen registrable con coste editable.
+
+### Proveedor OpenAI para imagen
+
+- Existe proveedor de imagen con prefijo `openai/*`.
+- `openai/gpt-image-2` esta disponible como modelo de imagen seleccionable en Admin > Modelos y registrable en Admin > Economia.
+- La API key se guarda en `app_settings.provider_openai_api_key` desde Admin > Modelos.
+- Las llamadas directas a OpenAI usan `quality: "medium"` por defecto.
+- Si no hay imagenes de referencia, se usa `POST https://api.openai.com/v1/images/generations`.
+- Si hay referencias visuales o plantilla de layout, se usa `POST https://api.openai.com/v1/images/edits` con `image[]` para conservar el contexto visual.
+- El tamano enviado a OpenAI se deriva del formato social con dimensiones validas multiplo de 16, por ejemplo `4:5 -> 1024x1280`, `9:16 -> 1024x1792` y `16:9 -> 1792x1024`.
+
 ### Preview desktop de texto en canvas
 
 - La preview editable de `image` en desktop ya no debe gobernarse por breakpoints de viewport ni por offsets negativos para encajar texto.
@@ -632,6 +692,24 @@ These values are editable from Admin and must remain the single source of truth 
 - La UI de Admin debe exponer la paleta completa para que Juanfran pueda retocar cada token antes de guardar.
 - Cuando un preset se construye desde una paleta corta de varios colores, la UI debe conservar y mostrar la paleta original completa como referencia visual, aunque luego derive los tokens globales (`theme_primary`, `theme_secondary`, `theme_surface`, `theme_surface_alt`, `theme_muted`, `theme_border`, `theme_ring`) para la edicion.
 
+## Depuracion visual del estudio
+
+### Regla de producto
+
+- Los overlays de depuracion visual del estudio no deben eliminarse del codigo cuando haya que grabar demos o capturas.
+- Su visibilidad se gobierna desde Admin con un unico setting global.
+
+### Fuente de verdad
+
+- La clave global es `studio_debug_overlays_enabled` en `app_settings`.
+- Si la clave no existe, el comportamiento por defecto es visible para mantener compatibilidad con el estado historico del proyecto.
+
+### Alcance actual
+
+- Oculta o muestra el icono de ver prompt en `image`.
+- Oculta o muestra el icono y modal de prompt debug en `carousel`.
+- Oculta o muestra la barra `Admin composición` del modulo `carousel`.
+
 ## Blindaje de tipografias en prompts
 
 ### Regla de producto
@@ -702,6 +780,50 @@ Si Clerk exige verificacion completa del dominio para correo o cuenta hospedada,
   - un `Brand Kit` nuevo creado desde el asistente debe arrancar en `0%`
   - placeholders como `My Brand`, `Mi marca` o equivalentes no cuentan como progreso real
   - la completitud solo debe subir cuando el usuario rellena contenido real o cuando el analisis autocompleta datos validos
+
+## Seccion Academy publica integrada
+
+### Objetivo de producto
+
+- `Academy` sera una seccion publica integrada en la propia plataforma para cubrir ayuda de uso, contenido de descubrimiento y captacion externa sin sacar al usuario del ecosistema.
+
+### Rutas base
+
+- indice publico: `/academy`
+- detalle publico: `/academy/[slug]`
+
+### Regla estructural
+
+- `Academy` debe heredar la misma familia de shell y navegacion del producto, pero con layout editorial y sin panel derecho.
+- No debe sentirse como un blog externo ni como una landing aislada.
+
+### Integracion de navegacion
+
+1. La landing publica debe enlazar `Academy` como destino visible de contenido.
+2. La barra lateral interna debe incluir `Academy` como entrada estable del ecosistema.
+3. El acceso a `Academy` y a sus articulos debe ser libre, con o sin sesion.
+
+### Modelo editorial V1
+
+- categorias visibles desde el inicio:
+  - `guides`
+  - `tutorials`
+  - `news`
+  - `inspiration`
+- metadatos minimos por publicacion:
+  - `slug`
+  - `title`
+  - `excerpt`
+  - `category`
+  - `publishedAt`
+  - `coverImage`
+  - `featured`
+  - `content`
+
+### Regla tecnica de V1
+
+- La V1 de `Academy` debe resolverse con una fuente de contenido local tipada, sin CMS externo.
+- El modulo debe disponer de namespace propio de i18n: `academy`.
 
 ## Import/export portable de Brand Kit
 

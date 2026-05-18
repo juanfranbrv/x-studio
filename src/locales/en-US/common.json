@@ -5,9 +5,11 @@
   "nav": {
     "home": "Home",
     "image": "Image",
+    "academy": "Academy",
     "studioWorkspace": "Studio",
     "brandKit": "Brand Kit",
     "carousel": "Carousel",
+    "replace": "Replace",
     "video": "Video",
     "settings": "Settings"
   },

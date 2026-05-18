@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useTranslation } from 'react-i18next'
-import { IconHome, IconImage, IconCarousel, IconSettings } from '@/components/ui/icons'
+import { IconHome, IconImage, IconCarousel, IconFileText, IconSettings } from '@/components/ui/icons'
 import { cn } from '@/lib/utils'
 
 export function MobileNav() {
@@ -14,13 +14,14 @@ export function MobileNav() {
         { icon: IconHome, label: 'nav.home', href: '/' },
         { icon: IconCarousel, label: 'nav.brandKit', href: '/brand-kit' },
         { icon: IconImage, label: 'nav.image', href: '/image' },
+        { icon: IconFileText, label: 'nav.academy', href: '/academy' },
         { icon: IconSettings, label: 'nav.settings', href: '/settings' },
     ]
 
     return (
         <nav className="fixed bottom-0 left-0 right-0 z-50 bg-background border-t border-border flex justify-around items-center h-16 px-2 md:hidden">
             {navItems.map((item) => {
-                const isActive = pathname === item.href
+                const isActive = pathname === item.href || pathname?.startsWith(`${item.href}/`)
                 return (
                     <Link
                         key={item.href}

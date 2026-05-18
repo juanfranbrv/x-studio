@@ -51,6 +51,7 @@ import { getCompositionsSummaryAction, type CompositionSummary } from '@/lib/adm
 import { useTranslation } from 'react-i18next'
 import { buildAutomaticSessionTitle, getSessionDisplayTitle, normalizeCustomSessionTitle } from '@/lib/session-titles'
 import { getLastVisitedModuleAction } from '@/app/actions/get-last-visited-module'
+import { normalizeStudioDebugOverlaysEnabled } from '@/lib/studio-debug-visibility'
 import { shouldApplyLastVisitedImageBrand } from './lastVisitedScope'
 import {
     INCOMING_PROMPT_FLAG_STORAGE_KEY,
@@ -197,6 +198,7 @@ export default function ImagePage() {
 
     // AI Configuration
     const aiConfig = useQuery(api.settings.getAIConfig)
+    const studioDebugFlags = useQuery(api.settings.getStudioDebugFlags, {})
 
     // Detect mobile viewport
     useEffect(() => {
@@ -219,12 +221,19 @@ export default function ImagePage() {
     const [debugPromptData, setDebugPromptData] = useState<DebugPromptData | null>(null)
     const [editableDebugPrompt, setEditableDebugPrompt] = useState('')
     const [isDebugViewOnly, setIsDebugViewOnly] = useState(false)
+    const showStudioDebugOverlays = normalizeStudioDebugOverlaysEnabled(studioDebugFlags?.showDebugOverlays)
     const [pendingGenerationData, setPendingGenerationData] = useState<any>(null)
     const [pendingRetryRequest, setPendingRetryRequest] = useState<{
         payload: Record<string, unknown>
         errorTitle: string
         errorFallback: string
     } | null>(null)
+
+    useEffect(() => {
+        if (!showStudioDebugOverlays) {
+            setShowDebugModal(false)
+        }
+    }, [showStudioDebugOverlays])
     const [lastGenerationRequest, setLastGenerationRequest] = useState<{
         payload: Record<string, unknown>
         errorTitle: string
@@ -2094,7 +2103,7 @@ export default function ImagePage() {
         forcedLayoutId?: string
         auditFlowId?: string
     }) => {
-        if (!isAdmin) {
+        if (!isAdmin || !showStudioDebugOverlays) {
             await handleGenerate(data)
             return
         }
@@ -2437,7 +2446,7 @@ export default function ImagePage() {
                         onRemoveReferenceImage={handleRemoveReferenceFromPreview}
                         onDisableAiPromptReference={handleDisableAiPromptReference}
                         onOpenPromptDebug={handleOpenPromptDebug}
-                        showPromptDebugTrigger={Boolean(isAdmin && creationFlow.state.generatedImage && debugPromptData?.finalPrompt)}
+                        showPromptDebugTrigger={Boolean(showStudioDebugOverlays && isAdmin && creationFlow.state.generatedImage && debugPromptData?.finalPrompt)}
                         layoutIconOverrides={layoutIconOverrides}
                         isAdmin={Boolean(isAdmin)}
                         sessionName={buildDisplaySessionTitle(
@@ -2652,7 +2661,7 @@ export default function ImagePage() {
             )}
 
             <PromptDebugModal
-                open={showDebugModal}
+                open={showStudioDebugOverlays && showDebugModal}
                 onClose={cancelGeneration}
                 onConfirm={confirmGeneration}
                 promptData={debugPromptData}

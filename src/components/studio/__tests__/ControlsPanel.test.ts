@@ -94,6 +94,15 @@ describe('ControlsPanel bottom spacing', () => {
         expect(controlsPanelSource).toContain('className={cn("mr-auto inline-flex items-center gap-1.5", PANEL_TEXT_BUTTON_REVEAL_CLASS)}')
     })
 
+    it('mantiene la barra de acciones del prompt en una sola fila estructurada para evitar solapes con el texto', () => {
+        expect(controlsPanelSource).toContain("'absolute left-2 right-2 bottom-2 flex items-center gap-3'")
+        expect(controlsPanelSource).toContain("'flex min-w-0 flex-1 items-center gap-2 overflow-hidden'")
+        expect(controlsPanelSource).toContain("'inline-flex min-w-0 items-center gap-1.5'")
+        expect(controlsPanelSource).toContain('<span className="truncate">{t(\'inspireMe\')}</span>')
+        expect(controlsPanelSource).toContain("'flex min-w-[146px] items-center justify-start gap-2'")
+        expect(controlsPanelSource).not.toContain(": 'absolute left-2 right-2 bottom-2 flex flex-wrap items-center gap-2'")
+    })
+
     it('simplifica las opciones alternativas a una sola linea y sin tooltip', () => {
         expect(controlsPanelSource).toContain('activeSuggestionIndex={state.selectedSuggestionIndex}')
         expect(creationFlowTypesSource).toContain('selectedSuggestionIndex?: number | null')

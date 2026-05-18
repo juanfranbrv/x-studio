@@ -24,6 +24,7 @@ import type * as layoutRatings from "../layoutRatings.js";
 import type * as pipeline from "../pipeline.js";
 import type * as presets from "../presets.js";
 import type * as referrals from "../referrals.js";
+import type * as replaceTemplates from "../replaceTemplates.js";
 import type * as sessionImages from "../sessionImages.js";
 import type * as settings from "../settings.js";
 import type * as stylePresets from "../stylePresets.js";
@@ -54,6 +55,7 @@ declare const fullApi: ApiFromModules<{
   pipeline: typeof pipeline;
   presets: typeof presets;
   referrals: typeof referrals;
+  replaceTemplates: typeof replaceTemplates;
   sessionImages: typeof sessionImages;
   settings: typeof settings;
   stylePresets: typeof stylePresets;

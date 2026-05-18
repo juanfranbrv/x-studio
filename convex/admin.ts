@@ -84,9 +84,11 @@ export const initializeSettings = mutation({
             { key: "model_intelligence", value: "wisdom/gemini-3-flash-preview", description: "Modelo por defecto para inteligencia y análisis" },
             { key: "provider_google_api_key", value: "", description: "API key de Google para modelos de texto google/*" },
             { key: "provider_wisdom_api_key", value: "", description: "API key de Wisdom para modelos wisdom/*" },
+            { key: "provider_openai_api_key", value: "", description: "API key de OpenAI para modelos openai/*" },
             { key: "provider_naga_api_key", value: "", description: "API key de NagaAI para modelos naga/*" },
             { key: "provider_replicate_api_key", value: "", description: "API key de Replicate para modelos replicate/*" },
             { key: "provider_atlas_api_key", value: "", description: "API key de Atlas para modelos atlas/*" },
+            { key: "replace_module_enabled", value: false, description: "Activa o desactiva el modulo experimental Replace en la navegación del estudio" },
             { key: "referral_signup_reward_credits", value: 5, description: "Creditos fijos por alta con referido" },
             { key: "referral_purchase_reward_percentage", value: 50, description: "Porcentaje de creditos del pack que gana quien invita" },
         ];

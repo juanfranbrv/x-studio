@@ -2,7 +2,7 @@
   "errors": {
     "genericTitle": "Error",
     "unknown": "Error desconocido",
-    "selectBrandKit": "Selecciona un Brand Kit primero.",
+    "selectBrandKit": "Selecciona un Kit de marca primero.",
     "missingAiConfigTitle": "Falta configuración de IA",
     "missingAiConfigDescription": "No hay un modelo de imagen configurado en el panel de Admin.",
     "noSlidesForGenerate": "No hay slides preparadas para generar. Pulsa \"Analizar\" primero.",

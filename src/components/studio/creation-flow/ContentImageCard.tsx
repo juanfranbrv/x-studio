@@ -173,9 +173,9 @@ export function ContentImageCard({
                             className="group relative aspect-square overflow-hidden rounded-[1.15rem] border border-border/65 bg-background shadow-[0_18px_38px_-30px_rgba(15,23,42,0.28)]"
                             title={tt('contentImage.removeFromContentTitle', 'Remove from content')}
                         >
-                            <img src={image.url} alt={image.name || tt('contentImage.brandKitImageAlt', 'Brand Kit image')} className="w-full h-full object-cover" />
+                            <img src={image.url} alt={image.name || tt('contentImage.brandKitImageAlt', 'Imagen de Kit de marca')} className="w-full h-full object-cover" />
                         <span className="absolute left-2 top-2 rounded-full border border-emerald-500/20 bg-emerald-500/90 px-2 py-1 text-[0.7rem] font-semibold text-white shadow-sm">
-                            {tt('contentImage.brandKitBadge', 'Brand Kit')}
+                            {tt('contentImage.brandKitBadge', 'Kit de marca')}
                         </span>
                         <span className={CONTENT_REMOVE_BUTTON_CLASS}>
                             <IconClose className="w-3 h-3" />
@@ -259,7 +259,7 @@ export function ContentImageCard({
                             onClick={() => setIsBrandKitModalOpen(true)}
                         >
                             <IconPalette className="h-3.5 w-3.5" />
-                            {tt('contentImage.fromBrandKit', 'From Brand Kit')}
+                            {tt('contentImage.fromBrandKit', 'Desde Kit de marca')}
                         </Button>
                     </div>
 
@@ -301,7 +301,7 @@ export function ContentImageCard({
                                     : tt('contentImage.dragOrClick', 'Drag content images here or click')}
                             </p>
                             <p className="text-[clamp(0.84rem,0.8rem+0.08vw,0.9rem)] text-muted-foreground">
-                                {tt('contentImage.maxImages', 'Up to {{count}} images combining uploads and Brand Kit.', { count: MAX_CONTENT_IMAGES })}
+                                {tt('contentImage.maxImages', 'Hasta {{count}} imágenes combinando subidas y Kit de marca.', { count: MAX_CONTENT_IMAGES })}
                             </p>
                         </div>
                     )}
@@ -316,7 +316,7 @@ export function ContentImageCard({
                 <DialogContent className={CONTENT_MODAL_CLASS}>
                     <DialogHeader className="px-7 pb-2 pt-7">
                         <DialogTitle className="text-[clamp(1.08rem,1.02rem+0.14vw,1.18rem)] font-semibold tracking-[-0.01em]">
-                            {tt('contentImage.selectFromBrandKitTitle', 'Select content from Brand Kit')}
+                            {tt('contentImage.selectFromBrandKitTitle', 'Selecciona contenido desde Kit de marca')}
                         </DialogTitle>
                         <DialogDescription className="text-[0.94rem] leading-relaxed text-muted-foreground">
                             {tt('contentImage.selectFromBrandKitDescription', 'Choose the images you want to use as the main content in the generation.')}
@@ -356,13 +356,13 @@ export function ContentImageCard({
                                                     ? 'border-border/65 bg-background hover:border-primary/30 hover:-translate-y-0.5 hover:shadow-[0_18px_36px_-30px_rgba(15,23,42,0.24)]'
                                                     : 'cursor-not-allowed border-border/50 bg-muted/30 opacity-50'
                                         )}>
-                                            <img src={image.url} alt={image.name || tt('contentImage.brandKitImageAlt', 'Brand Kit image')} className="w-full h-full object-cover" />
+                                            <img src={image.url} alt={image.name || tt('contentImage.brandKitImageAlt', 'Imagen de Kit de marca')} className="w-full h-full object-cover" />
                                             {isSelected && (
                                                 <IconCheckCircle className="absolute right-2.5 top-2.5 h-9 w-9 text-white drop-shadow-[0_4px_10px_rgba(0,0,0,0.62)]" />
                                             )}
                                             <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/50 to-transparent px-3 pb-2 pt-6">
                                                 <p className="truncate text-[0.82rem] font-medium text-white">
-                                                    {image.name || tt('contentImage.brandKitImageAlt', 'Brand Kit image')}
+                                                    {image.name || tt('contentImage.brandKitImageAlt', 'Imagen de Kit de marca')}
                                                 </p>
                                             </div>
                                         </motion.button>
@@ -371,7 +371,7 @@ export function ContentImageCard({
                             </div>
                         ) : (
                             <div className="mt-1 rounded-[1.15rem] border border-dashed border-border/70 bg-background/72 p-8 text-center text-[0.94rem] text-muted-foreground">
-                                {tt('contentImage.noBrandKitImages', 'This Brand Kit does not have any images yet.')}
+                                {tt('contentImage.noBrandKitImages', 'Este Kit de marca todavía no tiene imágenes.')}
                             </div>
                         )}
                     </div>

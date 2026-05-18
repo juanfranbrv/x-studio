@@ -67,6 +67,7 @@ interface CarouselCanvasPanelProps {
     showPrimaryLogoOnCurrentSlide?: boolean
     compositionGhostIcon?: string
     isAdmin?: boolean
+    showDebugTools?: boolean
     previewLayoutMode?: PreviewLayoutMode
 }
 
@@ -224,6 +225,7 @@ export function CarouselCanvasPanel({
     showPrimaryLogoOnCurrentSlide = true,
     compositionGhostIcon,
     isAdmin = false,
+    showDebugTools = true,
     previewLayoutMode = 'default'
 }: CarouselCanvasPanelProps) {
     const { t } = useTranslation()
@@ -425,6 +427,12 @@ export function CarouselCanvasPanel({
     useEffect(() => {
         loaderVisibleRef.current = isLoaderVisible
     }, [isLoaderVisible])
+
+    useEffect(() => {
+        if (!showDebugTools) {
+            setDebugOpen(false)
+        }
+    }, [showDebugTools])
 
     useEffect(() => {
         if (isGenerating && currentImageUrl && currentImageUrl !== prevImageUrl) {
@@ -999,16 +1007,18 @@ export function CarouselCanvasPanel({
                                         : <IconEdit className="w-4 h-4" />
                                     }
                                 </Button>
-                                <Button
-                                    type="button"
-                                    variant="ghost"
-                                    size="icon"
-                                    onClick={handleOpenDebug}
-                                    className="h-9 w-9 rounded-full bg-white backdrop-blur border border-border shadow-sm hover:shadow-md transition-transform transition-shadow duration-200 hover:scale-[1.03] active:scale-[0.98]"
-                                    title={tt('common:preview.promptDebug', 'Prompt debug')}
-                                >
-                                    <IconBug className="w-4 h-4" />
-                                </Button>
+                                {showDebugTools ? (
+                                    <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="icon"
+                                        onClick={handleOpenDebug}
+                                        className="h-9 w-9 rounded-full bg-white backdrop-blur border border-border shadow-sm hover:shadow-md transition-transform transition-shadow duration-200 hover:scale-[1.03] active:scale-[0.98]"
+                                        title={tt('common:preview.promptDebug', 'Prompt debug')}
+                                    >
+                                        <IconBug className="w-4 h-4" />
+                                    </Button>
+                                ) : null}
                             </div>
                         )}
 
@@ -1375,7 +1385,7 @@ export function CarouselCanvasPanel({
 
             </div>
 
-            <Dialog open={debugOpen} onOpenChange={setDebugOpen}>
+            <Dialog open={showDebugTools && debugOpen} onOpenChange={setDebugOpen}>
                 <DialogContent
                     className="flex flex-col h-[calc(100vh-3rem)] top-6 bottom-6 left-auto right-6 translate-x-0 translate-y-0"
                     style={{ width: '620px', maxWidth: 'calc(100vw - 3rem)' }}

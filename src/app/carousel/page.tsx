@@ -61,6 +61,7 @@ import {
     localizeCarouselCompositionDescription,
     localizeCarouselCompositionName,
 } from '@/lib/carousel-localization'
+import { normalizeStudioDebugOverlaysEnabled } from '@/lib/studio-debug-visibility'
 
 const createAuditFlowId = (prefix: string) =>
     `flow_${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
@@ -98,6 +99,7 @@ export default function CarouselPage() {
     const { toast } = useToast()
     const { panelPosition } = useUI()
     const aiConfig = useQuery(api.settings.getAIConfig)
+    const studioDebugFlags = useQuery(api.settings.getStudioDebugFlags, {})
     const carouselStructures = useQuery(api.carousel.listStructures, { includeInactive: false })
     const ensureCarouselDefaults = useMutation(api.carouselSeed.ensureDefaultsIfEmpty)
     const updateCarouselComposition = useMutation(api.carouselAdmin.updateComposition)
@@ -261,6 +263,7 @@ export default function CarouselPage() {
     }>({ open: false, title: '', message: '' })
     const [slideCountOverride, setSlideCountOverride] = useState<number | null>(null)
     const [isAdminCompositionOpen, setIsAdminCompositionOpen] = useState(false)
+    const showStudioDebugOverlays = normalizeStudioDebugOverlaysEnabled(studioDebugFlags?.showDebugOverlays)
     const selectedStylePresetDetails = useQuery(
         api.stylePresets.getActiveById,
         referencePreviewState.selectedStylePresetId
@@ -278,6 +281,13 @@ export default function CarouselPage() {
         }
         return currentCreationFlowIdRef.current
     }, [])
+
+    useEffect(() => {
+        if (!showStudioDebugOverlays) {
+            setIsAdminCompositionOpen(false)
+            setShowDebugModal(false)
+        }
+    }, [showStudioDebugOverlays])
 
     const analysisIntentLabel = useMemo(() => {
         if (!analysisIntent) return undefined
@@ -1939,7 +1949,7 @@ export default function CarouselPage() {
                 )}>
                     {/* LEFT COLUMN (Main Canvas) */}
                     <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-3 overflow-y-auto no-scrollbar">
-                    {!isMobile && isAdmin && activeComposition && activeCompositionRecommendation && (
+                    {!isMobile && showStudioDebugOverlays && isAdmin && activeComposition && activeCompositionRecommendation && (
                         <div className="shrink-0 px-4 pt-4 md:px-6">
                             <div className="rounded-2xl border border-border/70 bg-white shadow-sm">
                                 <button
@@ -2158,6 +2168,7 @@ export default function CarouselPage() {
                                 )}
                                 compositionGhostIcon={compositionGhostIcon || undefined}
                                 isAdmin={Boolean(isAdmin)}
+                                showDebugTools={showStudioDebugOverlays}
                                 previewLayoutMode={previewLayoutMode}
                             />
                             {!isMobile && (
@@ -2210,7 +2221,7 @@ export default function CarouselPage() {
             </div>
 
             <PromptDebugModal
-                open={showDebugModal}
+                open={showStudioDebugOverlays && showDebugModal}
                 onClose={cancelGeneration}
                 onConfirm={confirmGeneration}
                 promptData={debugPromptData}

@@ -2,6 +2,7 @@ import { GoogleGenerativeAI } from '@google/generative-ai'
 import type { BrandDNA } from './brand-types'
 import { buildImagePrompt, ImageGenerationOptions } from './prompt-builder'
 import { mapGeminiAspectRatio } from './gemini-aspect-ratio'
+import { getOpenAIImageSizeForAspectRatio } from './openai-image-size'
 import { log } from './logger'
 import { ConvexHttpClient } from 'convex/browser'
 import { api } from '@/../convex/_generated/api'
@@ -135,8 +136,10 @@ export async function generateBrandImage(
 // --- WIDOM GATE INTEGRATION ---
 const WISDOM_BASE_URL = 'https://wisdom-gate.juheapi.com'
 const NAGA_BASE_URL = 'https://api.naga.ac/v1'
+const OPENAI_BASE_URL = 'https://api.openai.com/v1'
 const GOOGLE_TEXT_SETTING_KEY = 'provider_google_api_key'
 const WISDOM_SETTING_KEY = 'provider_wisdom_api_key'
+const OPENAI_SETTING_KEY = 'provider_openai_api_key'
 const NAGA_SETTING_KEY = 'provider_naga_api_key'
 const REPLICATE_BASE_URL = 'https://api.replicate.com/v1'
 const REPLICATE_SETTING_KEY = 'provider_replicate_api_key'
@@ -179,11 +182,15 @@ let googleTextApiKeyCache = ''
 let googleTextApiKeyCacheAt = 0
 let wisdomApiKeyCache = ''
 let wisdomApiKeyCacheAt = 0
+let openaiApiKeyCache = ''
+let openaiApiKeyCacheAt = 0
 const NAGA_API_KEY_CACHE_TTL_MS = 60_000
 const REPLICATE_API_KEY_CACHE_TTL_MS = 60_000
 const ATLAS_API_KEY_CACHE_TTL_MS = 60_000
 const GOOGLE_API_KEY_CACHE_TTL_MS = 60_000
 const WISDOM_API_KEY_CACHE_TTL_MS = 60_000
+const OPENAI_API_KEY_CACHE_TTL_MS = 60_000
+const OPENAI_IMAGE_QUALITY = 'medium'
 let textCallSequence = 0
 
 function nextTextCallId(): string {
@@ -222,6 +229,19 @@ async function resolveWisdomApiKey(): Promise<string> {
     if (value) {
         wisdomApiKeyCache = value
         wisdomApiKeyCacheAt = now
+    }
+    return value
+}
+
+async function resolveOpenAIApiKey(): Promise<string> {
+    const now = Date.now()
+    if (openaiApiKeyCache && (now - openaiApiKeyCacheAt) < OPENAI_API_KEY_CACHE_TTL_MS) {
+        return openaiApiKeyCache
+    }
+    const value = await resolveSettingKey(OPENAI_SETTING_KEY)
+    if (value) {
+        openaiApiKeyCache = value
+        openaiApiKeyCacheAt = now
     }
     return value
 }
@@ -333,6 +353,7 @@ export const WISDOM_MODELS = {
     IMAGE: {
         'gemini-3-pro-image-preview': 'Gemini 3 Image (Wisdom)',
         'gemini-3.1-flash-image-preview': 'Gemini 3.1 Flash Image (Wisdom)',
+        'gpt-image-2': 'GPT Image 2 (Wisdom)',
         'qwen-image': 'Qwen Image (Alibaba)',
         'kolors': 'Kolors (Kwai)',
         'wanx-v1': 'Wanx (Alibaba)',
@@ -442,41 +463,186 @@ async function generateWisdomOpenAIImage(prompt: string, model: string, aspectRa
 
         // Wisdom Gate OpenAI-compatible endpoint
         const endpoint = `${WISDOM_BASE_URL}/v1/images/generations`
+        const maxRetries = 3
+        const retryDelays = [1000, 2000, 4000]
+        let lastError: Error | null = null
 
-        const response = await fetchWithTimeout(endpoint, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${wisdomApiKey}`
-            },
-            body: JSON.stringify(requestBody)
-        }, IMAGE_PROVIDER_TIMEOUT_MS, `Wisdom OpenAI image request (${model})`)
+        for (let attempt = 0; attempt <= maxRetries; attempt++) {
+            try {
+                log.info('IMAGE', `[${attempt + 1}/${maxRetries + 1}] Attempting Wisdom OpenAI image API call`)
 
-        if (!response.ok) {
-            const errorText = await response.text()
-            log.error('IMAGE', 'OpenAI image API failed', errorText)
-            throw new Error(`Wisdom Gate Error: ${errorText}`)
+                const response = await fetchWithTimeout(endpoint, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${wisdomApiKey}`
+                    },
+                    body: JSON.stringify(requestBody)
+                }, IMAGE_PROVIDER_TIMEOUT_MS, `Wisdom OpenAI image request (${model})`)
+
+                if (!response.ok) {
+                    const errorText = await response.text()
+                    const errorMessage = extractProviderErrorMessage(errorText)
+                    const isRetryable = isTransientProviderError(errorMessage, response.status)
+
+                    if (isRetryable && attempt < maxRetries) {
+                        const delay = retryDelays[attempt]
+                        log.warn('IMAGE', `[${attempt + 1}/${maxRetries + 1}] Wisdom OpenAI image endpoint busy, retrying in ${delay}ms`)
+                        lastError = new Error(`Wisdom Gate Error: ${errorMessage}`)
+                        await new Promise(resolve => setTimeout(resolve, delay))
+                        continue
+                    }
+
+                    log.error('IMAGE', 'OpenAI image API failed', errorText)
+                    throw new Error(`Wisdom Gate Error: ${errorText}`)
+                }
+
+                const data = await response.json()
+
+                if (data.data && data.data[0] && data.data[0].b64_json) {
+                    log.success('IMAGE', `[${attempt + 1}/${maxRetries + 1}] Wisdom OpenAI image API call succeeded`)
+                    return `data:image/png;base64,${data.data[0].b64_json}`
+                }
+
+                if (data.data && data.data[0] && data.data[0].url) {
+                    log.success('IMAGE', `[${attempt + 1}/${maxRetries + 1}] Wisdom OpenAI image API call succeeded`)
+                    // If a URL is returned, we might need to fetch it to convert to base64 if consistency is needed,
+                    // but returning the URL is often fine if the frontend handles it.
+                    // However, app expects base64 or accessible URL.
+                    return data.data[0].url
+                }
+
+                throw new Error('No image data found in Wisdom response')
+            } catch (error) {
+                const errorMessage = error instanceof Error ? error.message : String(error)
+                const isRetryable = isTransientProviderError(errorMessage)
+                if (!isRetryable || attempt === maxRetries) {
+                    throw error
+                }
+
+                const delay = retryDelays[attempt]
+                log.warn('IMAGE', `[${attempt + 1}/${maxRetries + 1}] Wisdom OpenAI image request failed transiently, retrying in ${delay}ms`, error)
+                lastError = error instanceof Error ? error : new Error(errorMessage)
+                await new Promise(resolve => setTimeout(resolve, delay))
+            }
         }
 
-        const data = await response.json()
-
-        if (data.data && data.data[0] && data.data[0].b64_json) {
-            return `data:image/png;base64,${data.data[0].b64_json}`
-        }
-
-        if (data.data && data.data[0] && data.data[0].url) {
-            // If a URL is returned, we might need to fetch it to convert to base64 if consistency is needed,
-            // but returning the URL is often fine if the frontend handles it. 
-            // However, app expects base64 or accessible URL.
-            return data.data[0].url
-        }
-
-        throw new Error('No image data found in Wisdom response')
+        throw lastError || new Error('No image data found in Wisdom response')
 
     } catch (error) {
         log.error('IMAGE', 'OpenAI image error', error)
         throw error
     }
+}
+
+async function generateOpenAIImage(
+    prompt: string,
+    model: string,
+    aspectRatio?: string,
+    referenceUrls: string[] = []
+): Promise<string> {
+    const openaiApiKey = await resolveOpenAIApiKey()
+    if (!openaiApiKey) throw new Error('OpenAI API key no configurada en Admin > Modelos y API Keys.')
+
+    const size = getOpenAIImageSizeForAspectRatio(aspectRatio)
+    const endpoint = referenceUrls.length > 0
+        ? `${OPENAI_BASE_URL}/images/edits`
+        : `${OPENAI_BASE_URL}/images/generations`
+    const maxRetries = 2
+    const retryDelays = [1000, 2500]
+    let lastError: Error | null = null
+
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+        try {
+            log.info('OPENAI', `[${attempt + 1}/${maxRetries + 1}] Image request | model=${model} quality=${OPENAI_IMAGE_QUALITY} aspect=${aspectRatio || 'default'} size=${size} refs=${referenceUrls.length}`)
+
+            let response: Response
+            if (referenceUrls.length > 0) {
+                const formData = new FormData()
+                formData.append('model', model)
+                formData.append('prompt', prompt)
+                formData.append('quality', OPENAI_IMAGE_QUALITY)
+                formData.append('size', size)
+
+                let appendedImages = 0
+                for (const [index, url] of referenceUrls.entries()) {
+                    const blob = await imageUrlToBlob(url)
+                    if (!blob) continue
+                    const extension = blob.type.includes('jpeg') || blob.type.includes('jpg') ? 'jpg' : 'png'
+                    formData.append('image[]', blob, `reference-${index + 1}.${extension}`)
+                    appendedImages += 1
+                }
+
+                if (appendedImages === 0) {
+                    throw new Error('No se pudo preparar ninguna imagen de referencia para OpenAI.')
+                }
+
+                response = await fetchWithTimeout(endpoint, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${openaiApiKey}`,
+                    },
+                    body: formData,
+                }, IMAGE_PROVIDER_TIMEOUT_MS, `OpenAI image edit request (${model})`)
+            } else {
+                response = await fetchWithTimeout(endpoint, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${openaiApiKey}`,
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        model,
+                        prompt,
+                        quality: OPENAI_IMAGE_QUALITY,
+                        size,
+                    }),
+                }, IMAGE_PROVIDER_TIMEOUT_MS, `OpenAI image generation request (${model})`)
+            }
+
+            if (!response.ok) {
+                const errorText = await response.text()
+                const errorMessage = extractProviderErrorMessage(errorText)
+                if (isTransientProviderError(errorMessage, response.status) && attempt < maxRetries) {
+                    const delay = retryDelays[attempt]
+                    log.warn('OPENAI', `[${attempt + 1}/${maxRetries + 1}] OpenAI image endpoint transient error, retrying in ${delay}ms`, errorText)
+                    lastError = new Error(`OpenAI Error: ${errorMessage}`)
+                    await new Promise(resolve => setTimeout(resolve, delay))
+                    continue
+                }
+
+                log.error('OPENAI', 'OpenAI image API failed', errorText)
+                throw new Error(`OpenAI Error: ${errorText}`)
+            }
+
+            const data = await response.json()
+            const base64 = data.data?.[0]?.b64_json
+            if (base64) {
+                log.success('OPENAI', `[${attempt + 1}/${maxRetries + 1}] Image request succeeded`)
+                return `data:image/png;base64,${base64}`
+            }
+
+            const url = data.data?.[0]?.url
+            if (url) {
+                log.success('OPENAI', `[${attempt + 1}/${maxRetries + 1}] Image request succeeded`)
+                return url
+            }
+
+            throw new Error('No image data found in OpenAI response')
+        } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : String(error)
+            if (!isTransientProviderError(errorMessage) || attempt === maxRetries) {
+                throw error
+            }
+
+            const delay = retryDelays[attempt]
+            log.warn('OPENAI', `[${attempt + 1}/${maxRetries + 1}] OpenAI image request failed transiently, retrying in ${delay}ms`, error)
+            lastError = error instanceof Error ? error : new Error(errorMessage)
+            await new Promise(resolve => setTimeout(resolve, delay))
+        }
+    }
+
+    throw lastError || new Error('No image data found in OpenAI response')
 }
 
 async function generateNagaImage(
@@ -1109,6 +1275,60 @@ async function fetchWithTimeout(
     }
 }
 
+async function imageUrlToBlob(url: string): Promise<Blob | null> {
+    try {
+        if (!url) return null
+
+        if (url.startsWith('data:')) {
+            const base64Index = url.indexOf(';base64,')
+            if (base64Index === -1) return null
+            const mimeType = url.substring(5, base64Index) || 'image/png'
+            const base64 = url.substring(base64Index + 8)
+            const bytes = Buffer.from(base64, 'base64')
+            return new Blob([bytes], { type: mimeType })
+        }
+
+        const response = await fetch(url)
+        if (!response.ok) {
+            log.warn('OPENAI', `No se pudo descargar referencia de imagen (${response.status})`)
+            return null
+        }
+
+        const mimeType = response.headers.get('content-type') || 'image/png'
+        const arrayBuffer = await response.arrayBuffer()
+        return new Blob([arrayBuffer], { type: mimeType })
+    } catch (error) {
+        log.warn('OPENAI', 'No se pudo preparar una referencia de imagen para OpenAI', error)
+        return null
+    }
+}
+
+function extractProviderErrorMessage(errorText: string): string {
+    try {
+        const json = JSON.parse(errorText)
+        if (typeof json.error?.message === 'string') return json.error.message
+        if (typeof json.message === 'string') return json.message
+    } catch {
+        // Keep raw provider body when it is not JSON.
+    }
+    return errorText
+}
+
+function isTransientProviderError(errorMessage: string, status?: number): boolean {
+    const normalized = errorMessage.toLowerCase()
+    return Boolean(
+        status === 429 ||
+        (typeof status === 'number' && status >= 500) ||
+        normalized.includes('system busy') ||
+        normalized.includes('system overloaded') ||
+        normalized.includes('overloaded') ||
+        normalized.includes('please try again') ||
+        normalized.includes('no available channel') ||
+        normalized.includes('get_channel_failed') ||
+        normalized.includes('429 received from upstream')
+    )
+}
+
 export interface TextGenerationOptions {
     temperature?: number
     topP?: number
@@ -1685,6 +1905,33 @@ export async function generateContentImageUnified(
         return result
     }
 
+    if (modelNameLower.startsWith('openai/')) {
+        log.info('IMAGE', `Provider route: openai (${modelName})`)
+        const openaiModel = modelName.replace(/^openai\//i, '')
+        const enhancedPrompt = options.promptAlreadyBuilt
+            ? prompt
+            : buildImagePrompt(brand, prompt, options)
+        const referenceUrls = (options.context || [])
+            .filter((item) => item.type === 'image' || item.type === 'logo' || item.type === 'aux_logo')
+            .map((item) => item.value)
+            .filter((value): value is string => typeof value === 'string' && value.trim().length > 0)
+
+        if (options.layoutReference) {
+            let layoutUrl = options.layoutReference
+            if (layoutUrl.startsWith('/')) {
+                const baseUrl = typeof window !== 'undefined'
+                    ? window.location.origin
+                    : (process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000')
+                layoutUrl = `${baseUrl}${layoutUrl}`
+            }
+            referenceUrls.push(layoutUrl)
+        }
+
+        const result = await generateOpenAIImage(enhancedPrompt, openaiModel, options.aspectRatio, referenceUrls)
+        log.success('IMAGE', `Generation done in ${Date.now() - generationStart}ms`)
+        return result
+    }
+
     if (modelNameLower.startsWith('google/')) {
         log.info('IMAGE', `Provider route: google (${modelName})`)
         const googleModelRaw = modelName.replace('google/', '')
@@ -1752,6 +1999,10 @@ export async function generateImageFromPromptRaw(
 
     if (modelNameLower.startsWith('atlas/')) {
         return await generateAtlasImage(prompt, modelName.replace(/^atlas\//i, ''), { aspectRatio })
+    }
+
+    if (modelNameLower.startsWith('openai/')) {
+        return await generateOpenAIImage(prompt, modelName.replace(/^openai\//i, ''), aspectRatio)
     }
 
     if (modelNameLower.startsWith('google/')) {
