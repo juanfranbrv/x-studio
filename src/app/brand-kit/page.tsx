@@ -373,6 +373,34 @@ function BrandKitPageContent() {
         }
     }, [contextLoading, brandKits, activeBrandKit, user?.id, searchParams, router, createAssistantKitAndOpen, reloadBrandKits]);
 
+    // Si el guard nos trajo aqui con ?next= (falso "0 kits" transitorio), volvemos al
+    // modulo original en cuanto los kits se recuperan. Solo aplica fuera de flujos de
+    // creacion/seleccion explicita (action/id/creation) para no interrumpirlos.
+    useEffect(() => {
+        if (contextLoading) return;
+
+        const nextParam = searchParams.get('next');
+        if (!nextParam) return;
+
+        const isInternalPath = nextParam.startsWith('/') && !nextParam.startsWith('//');
+        const hasExplicitFlow = Boolean(
+            searchParams.get('action') || searchParams.get('id') || searchParams.get('creation') || searchParams.get('selectUrl')
+        );
+
+        if (brandKits.length > 0 && isInternalPath && !hasExplicitFlow) {
+            console.log('%c[BrandKitPage] kits recovered -> returning to', 'color:#22c55e;font-weight:bold', nextParam);
+            router.replace(nextParam);
+            return;
+        }
+
+        // Param invalido o flujo explicito en curso: limpiamos `next` para no arrastrarlo.
+        if (!isInternalPath || hasExplicitFlow) {
+            const newParams = new URLSearchParams(searchParams.toString());
+            newParams.delete('next');
+            router.replace(`/brand-kit${newParams.toString() ? `?${newParams.toString()}` : ''}`);
+        }
+    }, [contextLoading, brandKits.length, searchParams, router]);
+
     // Si llega un id por query param (ej. tras crear un kit), forzamos seleccion de ese kit.
     useEffect(() => {
         if (contextLoading) return;
