@@ -7,6 +7,7 @@ import sharp from 'sharp';
 import * as cheerio from 'cheerio';
 import { fetchMutation, fetchQuery } from "convex/nextjs";
 import { api } from "../../../convex/_generated/api";
+import { authedFetchQuery, authedFetchMutation } from '@/lib/convex-server';
 import { model, groqModel } from '@/lib/ai';
 import fs from 'fs';
 import path from 'path';
@@ -2370,9 +2371,9 @@ export async function analyzeBrandDNA(url: string, forceRefresh: boolean = false
         if (!forceRefresh) {
             try {
                 // CONVEX MIGRATION: using fetchQuery
-                let existingData = await fetchQuery(api.brands.getBrandDNA, { url: displayUrl, clerk_user_id: clerkUserId });
+                let existingData = await authedFetchQuery(api.brands.getBrandDNA, { url: displayUrl, clerk_user_id: clerkUserId });
                 if (!existingData && displayUrl !== url) {
-                    existingData = await fetchQuery(api.brands.getBrandDNA, { url, clerk_user_id: clerkUserId });
+                    existingData = await authedFetchQuery(api.brands.getBrandDNA, { url, clerk_user_id: clerkUserId });
                 }
 
                 // Si ya tenemos datos Y tienen text_assets, podemos retornar temprano
@@ -2380,7 +2381,7 @@ export async function analyzeBrandDNA(url: string, forceRefresh: boolean = false
                     console.log('Data found in DB with text_assets. Returning cached result.');
                     if (displayUrl && existingData.url !== displayUrl) {
                         try {
-                            await fetchMutation(api.brands.updateBrandDNADoc, {
+                            await authedFetchMutation(api.brands.updateBrandDNADoc, {
                                 id: (existingData as any)._id,
                                 clerk_user_id: clerkUserId!,
                                 updates: { url: displayUrl, updated_at: new Date().toISOString() },
@@ -2411,7 +2412,7 @@ export async function analyzeBrandDNA(url: string, forceRefresh: boolean = false
         if (!forceRefresh) {
             try {
                 // CONVEX MIGRATION: Reuse getBrandDNA query
-                const cachedData = await fetchQuery(api.brands.getBrandDNA, { url, clerk_user_id: clerkUserId });
+                const cachedData = await authedFetchQuery(api.brands.getBrandDNA, { url, clerk_user_id: clerkUserId });
 
                 if (cachedData && cachedData.debug?.screenshot_url) {
                     console.log('✅ Found cached screenshot! Will reuse it but re-analyze everything else.');
@@ -2991,7 +2992,7 @@ export async function analyzeBrandDNA(url: string, forceRefresh: boolean = false
             // We need to cast types or ensure they match what Convex expects
             // upsertBrandDNA expects specific fields
 
-            const resultId = await fetchMutation(api.brands.upsertBrandDNA, upsertPayload);
+            const resultId = await authedFetchMutation(api.brands.upsertBrandDNA, upsertPayload);
             console.log('✅ [DEBUG] Convex Upsert Success. ID:', resultId);
             (result as any).id = String(resultId);
 

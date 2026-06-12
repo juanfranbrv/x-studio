@@ -3,6 +3,7 @@
 import { auth } from '@clerk/nextjs/server'
 import { fetchQuery } from 'convex/nextjs'
 import { api } from '../../../convex/_generated/api'
+import { authedFetchQuery } from '@/lib/convex-server'
 
 type LastVisitedModuleResult = {
     module: 'image' | 'carousel' | 'brand-kit'
@@ -18,7 +19,7 @@ export async function getLastVisitedModuleAction(clerkUserId: string) {
     }
 
     try {
-        const data = await fetchQuery(api.work_sessions.getLastVisitedModule, {
+        const data = await authedFetchQuery(api.work_sessions.getLastVisitedModule, {
             user_id: userId,
         })
 

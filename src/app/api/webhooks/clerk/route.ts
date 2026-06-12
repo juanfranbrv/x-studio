@@ -102,7 +102,10 @@ export async function POST(req: NextRequest) {
     }
 
     if (eventType === "user.deleted") {
-      await fetchMutation(api.users.deleteUserByClerkId, { clerk_id: clerkId });
+      await fetchMutation(api.users.deleteUserByClerkId, {
+        clerk_id: clerkId,
+        access_key: process.env.INTERNAL_ACCESS_KEY || process.env.STRIPE_INTERNAL_SECRET || "",
+      });
       log.success("API", "[CLERK_WEBHOOK] Usuario eliminado sincronizado", { clerkId });
       return NextResponse.json({ ok: true }, { status: 200 });
     }
@@ -117,6 +120,7 @@ export async function POST(req: NextRequest) {
       const sync = await fetchMutation(api.users.syncUserFromClerkWebhook, {
         clerk_id: clerkId,
         email,
+        access_key: process.env.INTERNAL_ACCESS_KEY || process.env.STRIPE_INTERNAL_SECRET || "",
       });
 
       const client = await clerkClient();

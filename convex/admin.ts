@@ -1,4 +1,5 @@
 import { v } from "convex/values";
+import { requireAdmin } from "./lib/authz";
 import { mutation, query } from "./_generated/server";
 
 // Admin emails - configurable, but this is the initial bootstrap list
@@ -16,6 +17,7 @@ export const getSettings = query({
     args: { admin_email: v.string() },
     handler: async (ctx, args) => {
         if (!isAdmin(args.admin_email)) throw new Error("Unauthorized");
+        await requireAdmin(ctx);
         return await ctx.db.query("app_settings").collect();
     },
 });
@@ -42,6 +44,7 @@ export const updateSetting = mutation({
     },
     handler: async (ctx, args) => {
         if (!isAdmin(args.admin_email)) throw new Error("Unauthorized");
+        await requireAdmin(ctx);
 
         const existing = await ctx.db
             .query("app_settings")
@@ -73,6 +76,7 @@ export const initializeSettings = mutation({
     args: { admin_email: v.string() },
     handler: async (ctx, args) => {
         if (!isAdmin(args.admin_email)) throw new Error("Unauthorized");
+        await requireAdmin(ctx);
 
         const defaults = [
             { key: "carousel_video_slide_duration_ms", value: 4000, description: "Duracion base en milisegundos para cada slide del video del carrusel" },
@@ -121,6 +125,7 @@ export const listUsers = query({
     args: { admin_email: v.string() },
     handler: async (ctx, args) => {
         if (!isAdmin(args.admin_email)) throw new Error("Unauthorized");
+        await requireAdmin(ctx);
         const users = await ctx.db.query("users").collect();
         return users.map(u => ({
             _id: u._id,
@@ -142,6 +147,7 @@ export const activateUser = mutation({
     },
     handler: async (ctx, args) => {
         if (!isAdmin(args.admin_email)) throw new Error("Unauthorized");
+        await requireAdmin(ctx);
 
         const user = await ctx.db.get(args.user_id);
         if (!user) throw new Error("User not found");
@@ -208,6 +214,7 @@ export const suspendUser = mutation({
     },
     handler: async (ctx, args) => {
         if (!isAdmin(args.admin_email)) throw new Error("Unauthorized");
+        await requireAdmin(ctx);
 
         const user = await ctx.db.get(args.user_id);
         if (!user) throw new Error("User not found");
@@ -226,6 +233,7 @@ export const deleteUser = mutation({
     },
     handler: async (ctx, args) => {
         if (!isAdmin(args.admin_email)) throw new Error("Unauthorized");
+        await requireAdmin(ctx);
 
         const user = await ctx.db.get(args.user_id);
         if (!user) throw new Error("User not found");
@@ -287,6 +295,7 @@ export const adjustCredits = mutation({
     },
     handler: async (ctx, args) => {
         if (!isAdmin(args.admin_email)) throw new Error("Unauthorized");
+        await requireAdmin(ctx);
 
         const user = await ctx.db.get(args.user_id);
         if (!user) throw new Error("User not found");
@@ -321,6 +330,7 @@ export const getUserTransactions = query({
     },
     handler: async (ctx, args) => {
         if (!isAdmin(args.admin_email)) throw new Error("Unauthorized");
+        await requireAdmin(ctx);
 
         return await ctx.db
             .query("credit_transactions")
@@ -338,6 +348,7 @@ export const getRecentTransactions = query({
     },
     handler: async (ctx, args) => {
         if (!isAdmin(args.admin_email)) throw new Error("Unauthorized");
+        await requireAdmin(ctx);
 
         const transactions = await ctx.db
             .query("credit_transactions")
@@ -364,6 +375,7 @@ export const getDashboardStats = query({
     args: { admin_email: v.string() },
     handler: async (ctx, args) => {
         if (!isAdmin(args.admin_email)) throw new Error("Unauthorized");
+        await requireAdmin(ctx);
 
         const users = await ctx.db.query("users").collect();
         const betaRequests = await ctx.db.query("beta_requests").collect();
@@ -476,6 +488,7 @@ export const listBetaRequests = query({
     args: { admin_email: v.string() },
     handler: async (ctx, args) => {
         if (!isAdmin(args.admin_email)) throw new Error("Unauthorized");
+        await requireAdmin(ctx);
 
         return await ctx.db
             .query("beta_requests")
@@ -492,6 +505,7 @@ export const approveBetaRequest = mutation({
     },
     handler: async (ctx, args) => {
         if (!isAdmin(args.admin_email)) throw new Error("Unauthorized");
+        await requireAdmin(ctx);
 
         const request = await ctx.db.get(args.request_id);
         if (!request) throw new Error("Request not found");
@@ -518,6 +532,7 @@ export const rejectBetaRequest = mutation({
     },
     handler: async (ctx, args) => {
         if (!isAdmin(args.admin_email)) throw new Error("Unauthorized");
+        await requireAdmin(ctx);
 
         const request = await ctx.db.get(args.request_id);
         if (!request) throw new Error("Request not found");
@@ -540,6 +555,7 @@ export const deleteBetaRequest = mutation({
     },
     handler: async (ctx, args) => {
         if (!isAdmin(args.admin_email)) throw new Error("Unauthorized");
+        await requireAdmin(ctx);
         await ctx.db.delete(args.request_id);
         return { success: true };
     },

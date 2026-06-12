@@ -1,5 +1,6 @@
 ﻿import { v } from "convex/values";
 import { mutation } from "./_generated/server";
+import { requireAdmin } from "./lib/authz";
 import { BASIC_CAROUSEL_TEMPLATES, NARRATIVE_CONTEXTS } from "../src/lib/carousel-structures";
 import { PROBLEMA_SOLUCION_COMPOSITIONS } from "../src/lib/prompts/carousel/problema-solucion";
 import { ANTES_DESPUES_COMPOSITIONS } from "../src/lib/prompts/carousel/antes-despues";
@@ -51,6 +52,7 @@ export const seedDefaults = mutation({
     args: { admin_email: v.string(), force: v.optional(v.boolean()) },
     handler: async (ctx, args) => {
         if (!isAdmin(args.admin_email)) throw new Error("Unauthorized");
+        await requireAdmin(ctx);
         const force = args.force ?? false;
 
         const existingStructures = await ctx.db.query("carousel_structures").collect();

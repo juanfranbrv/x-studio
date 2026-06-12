@@ -17,14 +17,25 @@
 
 ## Fase 2 — Autenticación real en Convex (crítico)
 
-- [ ] **2.1 Diagnóstico de cableado**: confirmar cómo se conecta el cliente (¿`ConvexProviderWithClerk`?) y las llamadas server-side (`fetchQuery`/`ConvexHttpClient`) para saber si el JWT de Clerk llega a Convex.
-  - Verificación: documentado aquí el estado real y el plan de migración exacto.
-- [ ] **2.2 Identidad en funciones de `users.ts`** (`consumeCredits`, `setCurrentBrand`, `upsertUser`, `deleteUserByClerkId`, …): la identidad sale de `ctx.auth`, no de argumentos.
-  - Verificación: llamada directa sin token falla con Unauthorized; la app funciona logueada (smoke test navegador).
-- [ ] **2.3 Identidad en `brands.ts` y `work_sessions.ts`** (datos de usuario).
-  - Verificación: ídem 2.2.
-- [ ] **2.4 Funciones admin (`billing.updatePack`, `seedDefaultPacks`, `economic.*`, `admin.ts`)**: rol admin verificado contra identidad real, nunca contra un argumento.
-  - Verificación: llamada con `admin_email` falsificado falla; panel admin funciona para Juanfran.
+- [x] **2.1 Diagnóstico de cableado**: confirmar cómo se conecta el cliente (¿`ConvexProviderWithClerk`?) y las llamadas server-side (`fetchQuery`/`ConvexHttpClient`) para saber si el JWT de Clerk llega a Convex.
+  - Verificación: ✅ 2026-06-12 — Estado real: cliente usa `ConvexProvider` plano (sin JWT → `ctx.auth` siempre null); ~115 hooks `useQuery/useMutation` en cliente y 96 llamadas server-side sin token. `CLERK_ISSUER_URL` **sí** está configurado en el deployment Convex y `convex/auth.config.ts` existe.
+  - **Plan de migración elegido**: (a) cliente → `ConvexProviderWithClerk`; (b) server → helper `authedFetchQuery/Mutation` que adjunta el JWT de Clerk (template `convex`); (c) funciones Convex → mantienen su firma (`clerk_id` como arg) pero un helper `requireSameUser(ctx, arg)` exige identidad real y que coincida; (d) admin → `requireAdmin(ctx)` contra la tabla `users`, nunca contra un argumento. Escape operativo: env `AUTH_ENFORCEMENT=off` en Convex desactiva la verificación si producción se rompiera (solo accesible por el operador).
+  - ⚠️ Requisito externo: debe existir el **JWT template `convex`** en el dashboard de Clerk (se valida en el smoke test de 2.2).
+- [x] **2.2 Identidad en funciones de `users.ts`** (`consumeCredits`, `setCurrentBrand`, `upsertUser`, `deleteUserByClerkId`, …): la identidad sale de `ctx.auth`, no de argumentos.
+  - Verificación: ✅ 2026-06-12 — `scripts/verify-convex-auth.mjs` contra el deployment dev real: sin token → rechazada; token propio → OK (créditos leídos); token con `clerk_id` ajeno → rechazada. Webhooks (`syncUserFromClerkWebhook`, `deleteUserByClerkId`) gateados por `access_key` interno.
+  - ⚠️ Pendiente UAT: smoke test visual con sesión real (el storage state de Playwright caducó — regenerar con `npm run playwright:auth:save`).
+- [x] **2.3 Identidad en `brands.ts` y `work_sessions.ts`** (datos de usuario).
+  - Verificación: ✅ 2026-06-12 — guards `requireSameUser` en las 16 funciones de brands + 9 de work_sessions; mismas aserciones del script (queries admin de brands sin token → rechazadas). `tsc` limpio; vitest sin fallos nuevos.
+- [x] **2.4 Funciones admin (60 checks en 11 módulos + `systemPrompts` que no tenía ninguno)**: rol admin verificado contra identidad real (`requireAdmin`), nunca contra un argumento.
+  - Verificación: ✅ 2026-06-12 — `debugBrandDNAStats` sin token → rechazada; con token de admin → OK. `systemPrompts.upsert/remove` ahora admin-only (el bootstrap del módulo Replace cae a su default en memoria si no es admin).
+
+### Infraestructura creada/configurada en F2
+- JWT template **`convex`** creado vía API en la instancia Clerk **dev** (en **prod ya existía**).
+- `CLERK_ISSUER_URL=https://clerk.adstudio.click` configurado en el deployment Convex de **producción** (estaba vacío: producción no tenía NINGUNA env var).
+- `STRIPE_INTERNAL_SECRET` generado y configurado en Convex **prod**; copia en `.tmp/prod-internal-secret.txt`.
+- ⚠️ Acción manual de Juanfran ANTES del próximo deploy a prod: añadir esa misma `STRIPE_INTERNAL_SECRET` a las env vars de **Vercel** (si no, el webhook de Clerk y el billing interno fallarán en prod).
+- Cliente migrado a `ConvexProviderWithClerk`; server actions/rutas migradas a `authedFetchQuery/Mutation` (`src/lib/convex-server.ts`).
+- Escape operativo: `npx convex env set AUTH_ENFORCEMENT off` desactiva los guards si producción se rompiera.
 
 ## Fase 3 — Endurecer rutas API
 

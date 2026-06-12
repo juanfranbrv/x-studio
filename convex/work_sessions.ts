@@ -1,4 +1,5 @@
 import { v } from "convex/values";
+import { requireSameUser, requireAdmin } from "./lib/authz";
 import { mutation, query } from "./_generated/server";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
 import type { Id } from "./_generated/dataModel";
@@ -894,6 +895,7 @@ export const getActiveSession = query({
     brand_id: v.optional(v.id("brand_dna")),
   },
   handler: async (ctx, args) => {
+    await requireSameUser(ctx, args.user_id);
     const moduleKey = ensureModule(args.module);
     const active = await getLatestForScope(ctx, {
       user_id: args.user_id,
@@ -928,6 +930,7 @@ export const listSessions = query({
     limit: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
+    await requireSameUser(ctx, args.user_id);
     const moduleKey = ensureModule(args.module);
     const limit = Math.max(1, Math.min(args.limit ?? 30, 200));
     const rows = await listLatestForScope(ctx, {
@@ -1027,6 +1030,7 @@ export const listRecentPromptIntents = query({
     limit: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
+    await requireSameUser(ctx, args.user_id);
     const moduleKey = ensureModule(args.module);
     const limit = Math.max(1, Math.min(args.limit ?? 6, 20));
     const rows = await listLatestForScope(ctx, {
@@ -1059,6 +1063,7 @@ export const getLastVisitedModule = query({
     user_id: v.string(),
   },
   handler: async (ctx, args) => {
+    await requireSameUser(ctx, args.user_id);
     const [imageRows, carouselRows, brandKitRows] = await Promise.all([
       ctx.db
         .query("work_sessions")
@@ -1100,6 +1105,7 @@ export const createSession = mutation({
     snapshot: v.optional(v.any()),
   },
   handler: async (ctx, args) => {
+    await requireSameUser(ctx, args.user_id);
     const moduleKey = ensureModule(args.module);
     const now = new Date().toISOString();
     const nowMs = Date.now();
@@ -1172,6 +1178,7 @@ export const upsertActiveSession = mutation({
     snapshot: v.any(),
   },
   handler: async (ctx, args) => {
+    await requireSameUser(ctx, args.user_id);
     const moduleKey = ensureModule(args.module);
     const now = new Date().toISOString();
     const sanitizedSnapshot = sanitizeSnapshot(args.snapshot);
@@ -1302,6 +1309,7 @@ export const activateSession = mutation({
     session_id: v.id("work_sessions"),
   },
   handler: async (ctx, args) => {
+    await requireSameUser(ctx, args.user_id);
     const session = await ctx.db.get(args.session_id);
     if (!session || session.user_id !== args.user_id) throw new Error("Session not found");
 
@@ -1339,6 +1347,7 @@ export const deleteSession = mutation({
     session_id: v.id("work_sessions"),
   },
   handler: async (ctx, args) => {
+    await requireSameUser(ctx, args.user_id);
     const session = await ctx.db.get(args.session_id);
     if (!session || session.user_id !== args.user_id) throw new Error("Session not found");
 
@@ -1375,6 +1384,7 @@ export const clearSessions = mutation({
     brand_id: v.optional(v.id("brand_dna")),
   },
   handler: async (ctx, args) => {
+    await requireSameUser(ctx, args.user_id);
     const moduleKey = ensureModule(args.module);
     const targets = args.brand_id
       ? await ctx.db
@@ -1402,6 +1412,7 @@ export const sanitizeSessions = mutation({
     dryRun: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
+    await requireAdmin(ctx);
     const rows = await ctx.db.query("work_sessions").collect();
     const dryRun = args.dryRun === true;
     const grouped = new Map<string, typeof rows>();
@@ -1505,6 +1516,7 @@ export const compactStoredSnapshots = mutation({
     module: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    await requireAdmin(ctx);
     if (!isAdmin(args.admin_email)) throw new Error("Unauthorized");
     const dryRun = args.dryRun === true;
     const takeLimit = Math.max(1, Math.min(args.limit ?? 200, 500));

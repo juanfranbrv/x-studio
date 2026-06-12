@@ -2,6 +2,7 @@
 import { mutation, query } from "./_generated/server";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
 import type { Doc, Id } from "./_generated/dataModel";
+import { requireSameUser, requireAdmin, assertInternalAccess } from "./lib/authz";
 
 const ADMIN_EMAILS = ["juanfranbrv@gmail.com"];
 
@@ -250,6 +251,7 @@ async function updateUserAccessAndCredits(
 export const getUser = query({
     args: { clerk_id: v.string() },
     handler: async (ctx, args) => {
+        await requireSameUser(ctx, args.clerk_id);
         return await ctx.db
             .query("users")
             .withIndex("by_clerk_id", (q) => q.eq("clerk_id", args.clerk_id))
@@ -260,6 +262,7 @@ export const getUser = query({
 export const setCurrentBrand = mutation({
     args: { clerk_id: v.string(), brandId: v.string() },
     handler: async (ctx, args) => {
+        await requireSameUser(ctx, args.clerk_id);
         const user = await ctx.db
             .query("users")
             .withIndex("by_clerk_id", (q) => q.eq("clerk_id", args.clerk_id))
@@ -285,6 +288,7 @@ export const setCurrentBrand = mutation({
 export const getCredits = query({
     args: { clerk_id: v.string() },
     handler: async (ctx, args) => {
+        await requireSameUser(ctx, args.clerk_id);
         const user = await ctx.db
             .query("users")
             .withIndex("by_clerk_id", (q) => q.eq("clerk_id", args.clerk_id))
@@ -311,6 +315,7 @@ export const consumeCredits = mutation({
         metadata: v.optional(v.any()),
     },
     handler: async (ctx, args) => {
+        await requireSameUser(ctx, args.clerk_id);
         const user = await ctx.db
             .query("users")
             .withIndex("by_clerk_id", (q) => q.eq("clerk_id", args.clerk_id))
@@ -347,6 +352,7 @@ export const upsertUser = mutation({
         email: v.string(),
     },
     handler: async (ctx, args) => {
+        await requireSameUser(ctx, args.clerk_id);
         const emailLower = args.email.toLowerCase().trim();
         const existing = await ctx.db
             .query("users")
@@ -431,8 +437,10 @@ export const syncUserFromClerkWebhook = mutation({
     args: {
         clerk_id: v.string(),
         email: v.string(),
+        access_key: v.optional(v.string()),
     },
     handler: async (ctx, args) => {
+        assertInternalAccess(args.access_key ?? "");
         const emailLower = args.email.toLowerCase().trim();
         const existing = await ctx.db
             .query("users")
@@ -501,8 +509,9 @@ export const syncUserFromClerkWebhook = mutation({
 });
 
 export const deleteUserByClerkId = mutation({
-    args: { clerk_id: v.string() },
+    args: { clerk_id: v.string(), access_key: v.optional(v.string()) },
     handler: async (ctx, args) => {
+        assertInternalAccess(args.access_key ?? "");
         const user = await ctx.db
             .query("users")
             .withIndex("by_clerk_id", (q) => q.eq("clerk_id", args.clerk_id))
@@ -531,9 +540,9 @@ export const reconcileUserByEmail = mutation({
         email: v.string(),
     },
     handler: async (ctx, args) => {
-        if (!ADMIN_EMAILS.includes(args.admin_email.toLowerCase().trim())) {
-            throw new Error("Unauthorized");
-        }
+        // El rol admin se verifica contra la identidad real del JWT,
+        // nunca contra el argumento admin_email (que se conserva por compatibilidad).
+        await requireAdmin(ctx);
 
         const emailLower = args.email.toLowerCase().trim();
         const matches = await findUsersByEmail(ctx, emailLower);
@@ -564,6 +573,7 @@ export const reconcileUserByEmail = mutation({
 export const completeOnboarding = mutation({
     args: { clerk_id: v.string() },
     handler: async (ctx, args) => {
+        await requireSameUser(ctx, args.clerk_id);
         const user = await ctx.db
             .query("users")
             .withIndex("by_clerk_id", (q) => q.eq("clerk_id", args.clerk_id))

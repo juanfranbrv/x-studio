@@ -1,4 +1,5 @@
 import { v } from "convex/values";
+import { requireAdmin } from "./lib/authz";
 import { query, mutation } from "./_generated/server";
 import {
     normalizeStudioDebugOverlaysEnabled,
@@ -122,6 +123,7 @@ export const saveAppSetting = mutation({
     },
     handler: async (ctx, args) => {
         if (!isAdmin(args.admin_email)) throw new Error("Unauthorized");
+        await requireAdmin(ctx);
 
         const existing = await ctx.db
             .query("app_settings")

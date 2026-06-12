@@ -2,6 +2,7 @@
 
 import { fetchMutation } from 'convex/nextjs';
 import { api } from '../../../convex/_generated/api';
+import { authedFetchQuery, authedFetchMutation } from '@/lib/convex-server';
 import { Id } from '../../../convex/_generated/dataModel';
 import { auth } from '@clerk/nextjs/server';
 
@@ -18,7 +19,7 @@ export async function deleteBrandKit(brandKitId: string): Promise<{
             return { success: false, error: 'No autorizado' };
         }
 
-        await fetchMutation(api.brands.deleteBrandDNA, {
+        await authedFetchMutation(api.brands.deleteBrandDNA, {
             id: brandKitId as Id<'brand_dna'>,
             clerk_user_id: userId,
         });

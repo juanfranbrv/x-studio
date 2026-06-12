@@ -1,5 +1,6 @@
 ﻿import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
+import { requireAdmin } from "./lib/authz";
 import { getCarouselCompositionRecommendation } from "../src/lib/carousel-composition-governance";
 
 const ADMIN_EMAILS = ["juanfranbrv@gmail.com"];
@@ -9,6 +10,7 @@ export const listStructures = query({
     args: { admin_email: v.string() },
     handler: async (ctx, args) => {
         if (!isAdmin(args.admin_email)) throw new Error("Unauthorized");
+        await requireAdmin(ctx);
         const rows = await ctx.db.query("carousel_structures").order("asc").collect();
         return rows.sort((a, b) => a.order - b.order);
     }
@@ -18,6 +20,7 @@ export const listCompositions = query({
     args: { admin_email: v.string() },
     handler: async (ctx, args) => {
         if (!isAdmin(args.admin_email)) throw new Error("Unauthorized");
+        await requireAdmin(ctx);
         const rows = await ctx.db.query("carousel_compositions").order("asc").collect();
         return rows.sort((a, b) => a.order - b.order);
     }
@@ -38,6 +41,7 @@ export const createStructure = mutation({
     },
     handler: async (ctx, args) => {
         if (!isAdmin(args.admin_email)) throw new Error("Unauthorized");
+        await requireAdmin(ctx);
         const existing = await ctx.db.query("carousel_structures")
             .withIndex("by_structure_id", q => q.eq("structure_id", args.structure_id))
             .first();
@@ -73,6 +77,7 @@ export const updateStructure = mutation({
     },
     handler: async (ctx, args) => {
         if (!isAdmin(args.admin_email)) throw new Error("Unauthorized");
+        await requireAdmin(ctx);
         const { admin_email, id, ...patch } = args;
         void admin_email;
         return await ctx.db.patch(id, { ...patch, updated_at: new Date().toISOString() });
@@ -83,6 +88,7 @@ export const removeStructure = mutation({
     args: { admin_email: v.string(), id: v.id("carousel_structures") },
     handler: async (ctx, args) => {
         if (!isAdmin(args.admin_email)) throw new Error("Unauthorized");
+        await requireAdmin(ctx);
         await ctx.db.delete(args.id);
         return { success: true };
     }
@@ -105,6 +111,7 @@ export const createComposition = mutation({
     },
     handler: async (ctx, args) => {
         if (!isAdmin(args.admin_email)) throw new Error("Unauthorized");
+        await requireAdmin(ctx);
         const existing = await ctx.db.query("carousel_compositions")
             .withIndex("by_composition_id", q => q.eq("composition_id", args.composition_id))
             .first();
@@ -144,6 +151,7 @@ export const updateComposition = mutation({
     },
     handler: async (ctx, args) => {
         if (!isAdmin(args.admin_email)) throw new Error("Unauthorized");
+        await requireAdmin(ctx);
         const { admin_email, id, ...patch } = args;
         void admin_email;
         return await ctx.db.patch(id, { ...patch, updated_at: new Date().toISOString() });
@@ -154,6 +162,7 @@ export const applyAutomaticCompositionClassification = mutation({
     args: { admin_email: v.string() },
     handler: async (ctx, args) => {
         if (!isAdmin(args.admin_email)) throw new Error("Unauthorized");
+        await requireAdmin(ctx);
 
         const rows = await ctx.db.query("carousel_compositions").collect();
         let updated = 0;
@@ -202,6 +211,7 @@ export const removeComposition = mutation({
     args: { admin_email: v.string(), id: v.id("carousel_compositions") },
     handler: async (ctx, args) => {
         if (!isAdmin(args.admin_email)) throw new Error("Unauthorized");
+        await requireAdmin(ctx);
         await ctx.db.delete(args.id);
         return { success: true };
     }

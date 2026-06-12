@@ -1,4 +1,5 @@
 import { v } from "convex/values";
+import { requireAdmin } from "./lib/authz";
 import { mutation, query, type MutationCtx, type QueryCtx } from "./_generated/server";
 
 const ADMIN_EMAILS = ["juanfranbrv@gmail.com"];
@@ -166,6 +167,7 @@ export const listLayoutRatings = query({
   },
   handler: async (ctx, args) => {
     if (!isAdmin(args.admin_email)) throw new Error("Unauthorized");
+    await requireAdmin(ctx);
 
     const store = await loadStore(ctx);
     const prefix = args.layoutIdPrefix?.trim();
@@ -193,6 +195,7 @@ export const upsertLayoutVote = mutation({
   },
   handler: async (ctx, args) => {
     if (!isAdmin(args.admin_email)) throw new Error("Unauthorized");
+    await requireAdmin(ctx);
 
     const score = Math.max(0, Math.min(5, Math.round(args.score)));
     const generationKey = normalizeGenerationKey(args.generationKey);
@@ -246,6 +249,7 @@ export const hasLayoutVoteForGeneration = query({
   },
   handler: async (ctx, args) => {
     if (!isAdmin(args.admin_email)) throw new Error("Unauthorized");
+    await requireAdmin(ctx);
     const generationKey = normalizeGenerationKey(args.generationKey);
     if (!generationKey) return false;
     const votesStore = await loadVotesStore(ctx);
@@ -271,6 +275,7 @@ export const migrateLegacyRatings = mutation({
   },
   handler: async (ctx, args) => {
     if (!isAdmin(args.admin_email)) throw new Error("Unauthorized");
+    await requireAdmin(ctx);
 
     const store = await loadStore(ctx);
 
@@ -311,6 +316,7 @@ export const resetLayoutRatings = mutation({
   },
   handler: async (ctx, args) => {
     if (!isAdmin(args.admin_email)) throw new Error("Unauthorized");
+    await requireAdmin(ctx);
 
     const store = await loadStore(ctx);
     const prefix = args.layoutIdPrefix?.trim();

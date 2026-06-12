@@ -1,4 +1,5 @@
 import { v } from "convex/values";
+import { requireAdmin } from "./lib/authz";
 import { mutation, query } from "./_generated/server";
 
 const ADMIN_EMAILS = ["juanfranbrv@gmail.com"];
@@ -11,6 +12,7 @@ export const listAllForAdmin = query({
     args: { admin_email: v.string() },
     handler: async (ctx, args) => {
         if (!isAdmin(args.admin_email)) throw new Error("Unauthorized");
+        await requireAdmin(ctx);
 
         const rows = await ctx.db.query("admin_audio_tracks").withIndex("by_sort_order").collect();
 
@@ -46,6 +48,7 @@ export const createTrack = mutation({
     },
     handler: async (ctx, args) => {
         if (!isAdmin(args.admin_email)) throw new Error("Unauthorized");
+        await requireAdmin(ctx);
 
         const rows = await ctx.db.query("admin_audio_tracks").withIndex("by_sort_order").collect();
         const nextSortOrder = rows.length > 0 ? Math.max(...rows.map((row) => row.sort_order)) + 1 : 1;
@@ -73,6 +76,7 @@ export const setTrackActive = mutation({
     },
     handler: async (ctx, args) => {
         if (!isAdmin(args.admin_email)) throw new Error("Unauthorized");
+        await requireAdmin(ctx);
 
         await ctx.db.patch(args.track_id, {
             is_active: args.is_active,
@@ -89,6 +93,7 @@ export const deleteTrack = mutation({
     },
     handler: async (ctx, args) => {
         if (!isAdmin(args.admin_email)) throw new Error("Unauthorized");
+        await requireAdmin(ctx);
 
         const row = await ctx.db.get(args.track_id);
         if (!row) return;

@@ -7,6 +7,7 @@ import { log } from '@/lib/logger'
 import { auth } from '@clerk/nextjs/server'
 import { ConvexHttpClient } from 'convex/browser'
 import { api } from '@/../convex/_generated/api'
+import { authedFetchQuery } from '@/lib/convex-server'
 
 const DEFAULT_INTELLIGENCE_MODEL = 'wisdom/gemini-3-flash-preview'
 
@@ -118,7 +119,7 @@ export async function POST(request: NextRequest) {
         try {
             if (convexUrl) {
                 const convex = new ConvexHttpClient(convexUrl)
-                const userRow = userId ? await convex.query(api.users.getUser, { clerk_id: userId }) : null
+                const userRow = userId ? await authedFetchQuery(api.users.getUser, { clerk_id: userId }) : null
                 await convex.mutation(api.economic.logEconomicEvent, {
                     flow_id: typeof auditFlowId === 'string' ? auditFlowId : undefined,
                     phase: 'analyze_style_image',

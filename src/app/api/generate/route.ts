@@ -5,6 +5,7 @@ import type { ImageGenerationOptions } from '@/lib/prompt-builder'
 import type { BrandDNA } from '@/lib/brand-types'
 import { ConvexHttpClient } from 'convex/browser'
 import { api } from '@/../convex/_generated/api'
+import { authedFetchQuery, authedFetchMutation } from '@/lib/convex-server'
 import { log } from '@/lib/logger'
 
 const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!)
@@ -50,7 +51,7 @@ export async function POST(request: NextRequest) {
         }
 
         // Check user credits before generation
-        let creditsData = await convex.query(api.users.getCredits, { clerk_id: userId })
+        let creditsData = await authedFetchQuery(api.users.getCredits, { clerk_id: userId })
 
         // If user doesn't exist in Convex, create them automatically
         if (!creditsData) {
@@ -58,13 +59,13 @@ export async function POST(request: NextRequest) {
             const clerkUser = await client.users.getUser(userId)
             const email = clerkUser.emailAddresses[0]?.emailAddress || ''
 
-            await convex.mutation(api.users.upsertUser, {
+            await authedFetchMutation(api.users.upsertUser, {
                 clerk_id: userId,
                 email: email
             })
 
             // Re-fetch credits data
-            creditsData = await convex.query(api.users.getCredits, { clerk_id: userId })
+            creditsData = await authedFetchQuery(api.users.getCredits, { clerk_id: userId })
         }
 
         if (!creditsData) {
@@ -165,7 +166,7 @@ export async function POST(request: NextRequest) {
 
         try {
             let userEmail: string | undefined
-            const userRow = await convex.query(api.users.getUser, { clerk_id: userId })
+            const userRow = await authedFetchQuery(api.users.getUser, { clerk_id: userId })
             if (userRow?.email) {
                 userEmail = userRow.email
             }
@@ -188,7 +189,7 @@ export async function POST(request: NextRequest) {
 
         // Consume credit after successful generation
         try {
-            await convex.mutation(api.users.consumeCredits, {
+            await authedFetchMutation(api.users.consumeCredits, {
                 clerk_id: userId,
                 metadata: { action: 'image_generation', prompt: prompt.substring(0, 100) }
             })

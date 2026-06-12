@@ -4,6 +4,7 @@ import { getGoogleTextGenerativeModel } from '@/lib/gemini'
 import { log } from '@/lib/logger'
 import { ConvexHttpClient } from 'convex/browser'
 import { api } from '@/../convex/_generated/api'
+import { authedFetchQuery } from '@/lib/convex-server'
 
 export async function POST(request: NextRequest) {
     const startedAt = Date.now()
@@ -45,7 +46,7 @@ export async function POST(request: NextRequest) {
             const convexUrl = process.env.NEXT_PUBLIC_CONVEX_URL
             if (convexUrl) {
                 const convex = new ConvexHttpClient(convexUrl)
-                const userRow = await convex.query(api.users.getUser, { clerk_id: userId })
+                const userRow = await authedFetchQuery(api.users.getUser, { clerk_id: userId })
                 await convex.mutation(api.economic.logEconomicEvent, {
                     phase: 'generate_text_copy',
                     model: 'google/gemini-2.0-flash-lite',

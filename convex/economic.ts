@@ -1,4 +1,5 @@
 import { v } from "convex/values";
+import { requireAdmin } from "./lib/authz";
 import { mutation, query } from "./_generated/server";
 
 const ADMIN_EMAILS = ["juanfranbrv@gmail.com"];
@@ -38,6 +39,7 @@ export const upsertModelCost = mutation({
     },
     handler: async (ctx, args) => {
         if (!isAdmin(args.admin_email)) throw new Error("Unauthorized");
+        await requireAdmin(ctx);
 
         const model = args.model.trim();
         const kind = normalizeKind(args.kind);
@@ -81,6 +83,7 @@ export const syncModelCatalog = mutation({
     },
     handler: async (ctx, args) => {
         if (!isAdmin(args.admin_email)) throw new Error("Unauthorized");
+        await requireAdmin(ctx);
 
         const now = new Date().toISOString();
         const ensureRows = async (models: string[], kind: "intelligence" | "image") => {
@@ -119,6 +122,7 @@ export const listModelCosts = query({
     args: { admin_email: v.string() },
     handler: async (ctx, args) => {
         if (!isAdmin(args.admin_email)) throw new Error("Unauthorized");
+        await requireAdmin(ctx);
         const rows = await ctx.db.query("model_costs").collect();
         const kindRank = (kind: string) => (kind === "image" ? 0 : 1);
         return rows.sort((a, b) => {
@@ -140,6 +144,7 @@ export const deleteModelCost = mutation({
     },
     handler: async (ctx, args) => {
         if (!isAdmin(args.admin_email)) throw new Error("Unauthorized");
+        await requireAdmin(ctx);
         await ctx.db.delete(args.id);
         return { success: true };
     },
@@ -216,6 +221,7 @@ export const clearEconomicEvents = mutation({
     },
     handler: async (ctx, args) => {
         if (!isAdmin(args.admin_email)) throw new Error("Unauthorized");
+        await requireAdmin(ctx);
 
         const rows = await ctx.db.query("economic_audit_events").collect();
         for (const row of rows) {
@@ -233,6 +239,7 @@ export const listEconomicEvents = query({
     },
     handler: async (ctx, args) => {
         if (!isAdmin(args.admin_email)) throw new Error("Unauthorized");
+        await requireAdmin(ctx);
 
         const events = await ctx.db
             .query("economic_audit_events")
@@ -265,6 +272,7 @@ export const getEconomicSummary = query({
     },
     handler: async (ctx, args) => {
         if (!isAdmin(args.admin_email)) throw new Error("Unauthorized");
+        await requireAdmin(ctx);
 
         const days = Math.max(1, Math.min(args.days ?? 30, 365));
         const cutoff = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();

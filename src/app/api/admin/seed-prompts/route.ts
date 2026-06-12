@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
 import { ConvexHttpClient } from 'convex/browser'
 import { api } from '@/../convex/_generated/api'
+import { authedFetchMutation } from '@/lib/convex-server'
 import { log } from '@/lib/logger'
 import { DEFAULT_REPLACE_SYSTEM_PROMPT } from '@/lib/replace-generation'
 
@@ -100,7 +101,7 @@ export async function POST() {
         const convex = new ConvexHttpClient(convexUrl)
 
         for (const prompt of DEFAULT_PROMPTS) {
-            await convex.mutation(api.systemPrompts.upsert, {
+            await authedFetchMutation(api.systemPrompts.upsert, {
                 key: prompt.key,
                 name: prompt.name,
                 body: prompt.body,

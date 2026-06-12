@@ -3,6 +3,7 @@ import { auth, clerkClient } from '@clerk/nextjs/server'
 import { ConvexHttpClient } from 'convex/browser'
 
 import { api } from '@/../convex/_generated/api'
+import { authedFetchQuery, authedFetchMutation } from '@/lib/convex-server'
 import { generateContentImageUnified } from '@/lib/gemini'
 import { log } from '@/lib/logger'
 import {
@@ -36,19 +37,19 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
         }
 
-        let creditsData = await convex.query(api.users.getCredits, { clerk_id: userId })
+        let creditsData = await authedFetchQuery(api.users.getCredits, { clerk_id: userId })
 
         if (!creditsData) {
             const client = await clerkClient()
             const clerkUser = await client.users.getUser(userId)
             const email = clerkUser.emailAddresses[0]?.emailAddress || ''
 
-            await convex.mutation(api.users.upsertUser, {
+            await authedFetchMutation(api.users.upsertUser, {
                 clerk_id: userId,
                 email,
             })
 
-            creditsData = await convex.query(api.users.getCredits, { clerk_id: userId })
+            creditsData = await authedFetchQuery(api.users.getCredits, { clerk_id: userId })
         }
 
         if (!creditsData) {
@@ -100,16 +101,22 @@ export async function POST(request: NextRequest) {
         ])
 
         if (!promptTemplate) {
-            await convex.mutation(api.systemPrompts.upsert, {
-                key: DEFAULT_REPLACE_SYSTEM_PROMPT.key,
-                name: DEFAULT_REPLACE_SYSTEM_PROMPT.name,
-                body: DEFAULT_REPLACE_SYSTEM_PROMPT.body,
-                description: DEFAULT_REPLACE_SYSTEM_PROMPT.description,
-                updated_by: 'system/replace-bootstrap',
-            })
-
-            promptTemplate = await convex.query(api.systemPrompts.getByKey, { key: REPLACE_IMAGE_PROMPT_KEY })
-            log.warn('REPLACE', 'System prompt missing in admin, created default replace prompt in system_prompts')
+            // Bootstrap defensivo: systemPrompts.upsert ahora exige rol admin, asi que
+            // este seed solo prosperara cuando lo dispare un admin; para el resto de
+            // usuarios seguimos con el fallback en memoria (DEFAULT_REPLACE_SYSTEM_PROMPT).
+            try {
+                await authedFetchMutation(api.systemPrompts.upsert, {
+                    key: DEFAULT_REPLACE_SYSTEM_PROMPT.key,
+                    name: DEFAULT_REPLACE_SYSTEM_PROMPT.name,
+                    body: DEFAULT_REPLACE_SYSTEM_PROMPT.body,
+                    description: DEFAULT_REPLACE_SYSTEM_PROMPT.description,
+                    updated_by: 'system/replace-bootstrap',
+                })
+                promptTemplate = await convex.query(api.systemPrompts.getByKey, { key: REPLACE_IMAGE_PROMPT_KEY })
+                log.warn('REPLACE', 'System prompt missing in admin, created default replace prompt in system_prompts')
+            } catch {
+                log.warn('REPLACE', 'System prompt missing; using in-memory default (seed requires admin)')
+            }
         }
 
         const prompt = buildReplaceGenerationPrompt(
@@ -152,7 +159,7 @@ export async function POST(request: NextRequest) {
         )
 
         try {
-            const userRow = await convex.query(api.users.getUser, { clerk_id: userId })
+            const userRow = await authedFetchQuery(api.users.getUser, { clerk_id: userId })
             await convex.mutation(api.economic.logEconomicEvent, {
                 phase: 'replace_generate_image',
                 model: aiConfig?.imageModel || 'unknown-image-model',
@@ -171,7 +178,7 @@ export async function POST(request: NextRequest) {
         }
 
         try {
-            await convex.mutation(api.users.consumeCredits, {
+            await authedFetchMutation(api.users.consumeCredits, {
                 clerk_id: userId,
                 metadata: {
                     action: 'replace_generation',

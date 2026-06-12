@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth, clerkClient } from "@clerk/nextjs/server";
 import { api } from "@/../convex/_generated/api";
+import { authedFetchMutation } from "@/lib/convex-server";
 import { serverConvex } from "@/lib/billing-server";
 
 const stripeAccessKey = process.env.STRIPE_INTERNAL_SECRET?.trim() || "";
@@ -25,7 +26,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Primary email missing", clearStoredCode: false }, { status: 400 });
     }
 
-    await serverConvex.mutation(api.users.upsertUser, {
+    await authedFetchMutation(api.users.upsertUser, {
       clerk_id: userId,
       email,
     });

@@ -2,6 +2,7 @@
 
 import { fetchQuery } from 'convex/nextjs';
 import { api } from '../../../convex/_generated/api';
+import { authedFetchQuery, authedFetchMutation } from '@/lib/convex-server';
 import type { BrandDNA, BrandKitSummary } from '@/lib/brand-types';
 import { auth } from '@clerk/nextjs/server';
 import type { Id } from '../../../convex/_generated/dataModel';
@@ -114,7 +115,7 @@ export async function getAllUserBrandKits(clerkUserId: string): Promise<{
             return { success: false, error: 'No autorizado' };
         }
 
-        const brands = await fetchQuery(api.brands.listSummariesByClerkId, { clerk_user_id: userId });
+        const brands = await authedFetchQuery(api.brands.listSummariesByClerkId, { clerk_user_id: userId });
 
         // Client-side sort by updated_at desc since we can't easily index sort in Convex yet
         const sortedBrands = (brands || []).sort((a: any, b: any) => {
@@ -158,7 +159,7 @@ export async function getUserBrandKitById(brandKitId: string): Promise<{
 
         // Robust path: resolve from the current user's own list to avoid
         // stale/legacy IDs and keep strict user isolation.
-        const data = await fetchQuery(api.brands.getBrandDNAById, {
+        const data = await authedFetchQuery(api.brands.getBrandDNAById, {
             id: brandKitId as Id<'brand_dna'>,
             clerk_user_id: userId,
         });
@@ -217,7 +218,7 @@ export async function getUserBrandKit(clerkUserId: string): Promise<{
             return { success: false, exists: false, error: 'No autorizado' };
         }
 
-        const brands = await fetchQuery(api.brands.listSummariesByClerkId, { clerk_user_id: userId });
+        const brands = await authedFetchQuery(api.brands.listSummariesByClerkId, { clerk_user_id: userId });
 
         if (!brands || brands.length === 0) {
             return { success: true, exists: false };
@@ -231,7 +232,7 @@ export async function getUserBrandKit(clerkUserId: string): Promise<{
         });
 
         const record = brands[0];
-        const fullRecord = await fetchQuery(api.brands.getBrandDNAById, {
+        const fullRecord = await authedFetchQuery(api.brands.getBrandDNAById, {
             id: record._id as Id<'brand_dna'>,
             clerk_user_id: userId,
         });

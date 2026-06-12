@@ -1,4 +1,5 @@
 import { v } from "convex/values";
+import { requireAdmin } from "./lib/authz";
 
 import { mutation, query } from "./_generated/server";
 
@@ -66,6 +67,7 @@ export const listAllForAdmin = query({
   },
   handler: async (ctx, args) => {
     if (!isAdmin(args.admin_email)) throw new Error("Unauthorized");
+    await requireAdmin(ctx);
 
     const rows = await ctx.db
       .query("replace_templates")
@@ -96,6 +98,7 @@ export const create = mutation({
   },
   handler: async (ctx, args) => {
     if (!isAdmin(args.admin_email)) throw new Error("Unauthorized");
+    await requireAdmin(ctx);
 
     const title = normalizeTitle(args.title);
     if (!title) throw new Error("El titulo de la plantilla es obligatorio.");
@@ -128,6 +131,7 @@ export const remove = mutation({
   },
   handler: async (ctx, args) => {
     if (!isAdmin(args.admin_email)) throw new Error("Unauthorized");
+    await requireAdmin(ctx);
     await ctx.db.delete(args.id);
     return { success: true };
   },

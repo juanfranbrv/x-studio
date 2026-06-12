@@ -1,4 +1,4 @@
-﻿'use server'
+'use server'
 
 import { generateContentImageUnified } from '@/lib/gemini'
 import { generateTextUnified } from '@/lib/gemini'
@@ -12,6 +12,7 @@ import { buildFinalPrompt, generateCarouselSeed, extractLogoPosition } from '@/l
 import { detectLanguageFromParts, resolveGenerationLanguage } from '@/lib/language-detection'
 import type { NarrativeStructure, CarouselComposition as NarrativeComposition } from '@/lib/carousel-structures'
 import { fetchMutation, fetchQuery } from 'convex/nextjs'
+import { authedFetchQuery, authedFetchMutation } from '@/lib/convex-server'
 import { auth, currentUser } from '@clerk/nextjs/server'
 import { log } from '@/lib/logger'
 import { api } from '../../../convex/_generated/api'
@@ -90,7 +91,7 @@ async function resolveEconomicAuditActor(): Promise<Pick<EconomicAuditContext, '
     try {
         const { userId } = await auth()
         if (!userId) return {}
-        const userRow = await fetchQuery(api.users.getUser, { clerk_id: userId }) as { email?: string } | null
+        const userRow = await authedFetchQuery(api.users.getUser, { clerk_id: userId }) as { email?: string } | null
         return {
             userClerkId: userId,
             userEmail: userRow?.email,
@@ -106,17 +107,17 @@ async function ensureUserHasCreditsForCarouselImage() {
         throw new Error('Unauthorized')
     }
 
-    let creditsData = await fetchQuery(api.users.getCredits, { clerk_id: userId })
+    let creditsData = await authedFetchQuery(api.users.getCredits, { clerk_id: userId })
 
     if (!creditsData) {
         const user = await currentUser()
         const email = user?.emailAddresses?.[0]?.emailAddress || ''
         if (email) {
-            await fetchMutation(api.users.upsertUser, {
+            await authedFetchMutation(api.users.upsertUser, {
                 clerk_id: userId,
                 email,
             })
-            creditsData = await fetchQuery(api.users.getCredits, { clerk_id: userId })
+            creditsData = await authedFetchQuery(api.users.getCredits, { clerk_id: userId })
         }
     }
 
@@ -141,7 +142,7 @@ async function ensureUserHasCreditsForCarouselImage() {
 
 async function consumeCarouselImageCredit(userId: string, metadata: Record<string, unknown>) {
     try {
-        await fetchMutation(api.users.consumeCredits, {
+        await authedFetchMutation(api.users.consumeCredits, {
             clerk_id: userId,
             metadata,
         })

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { ConvexHttpClient } from 'convex/browser';
 import { api } from '../../../../../convex/_generated/api';
+import { authedFetchQuery, authedFetchMutation } from '@/lib/convex-server';
 import { auth } from '@clerk/nextjs/server';
 
 const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
@@ -33,7 +34,7 @@ export async function POST(request: NextRequest) {
         }
 
         // Create empty brand kit via Convex mutation
-        const brandId = await convex.mutation(api.brands.createEmptyBrandKit, {
+        const brandId = await authedFetchMutation(api.brands.createEmptyBrandKit, {
             clerk_user_id,
             brand_name,
             source_url,

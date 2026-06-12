@@ -4,6 +4,7 @@ import { getGoogleTextGenerativeModel } from '@/lib/gemini'
 import { log } from '@/lib/logger'
 import { ConvexHttpClient } from 'convex/browser'
 import { api } from '@/../convex/_generated/api'
+import { authedFetchQuery } from '@/lib/convex-server'
 import { Id } from '@/../convex/_generated/dataModel'
 import { buildPromptDiversitySuffix } from './promptDiversity'
 import { buildForcedIntentInstruction, selectPromptIntent } from './intentRotation'
@@ -55,12 +56,12 @@ export async function POST(request: NextRequest) {
         // Fetch in parallel: system prompt template, brand kit, AI config
         const [promptTemplate, brandKit, aiConfig, recentIntents] = await Promise.all([
             convex.query(api.systemPrompts.getByKey, { key: `generate_user_prompt_${module}` }),
-            convex.query(api.brands.getBrandDNAById, {
+            authedFetchQuery(api.brands.getBrandDNAById, {
                 id: brandKitId as Id<'brand_dna'>,
                 clerk_user_id: userId,
             }),
             convex.query(api.settings.getAIConfig, {}),
-            convex.query(api.work_sessions.listRecentPromptIntents, {
+            authedFetchQuery(api.work_sessions.listRecentPromptIntents, {
                 user_id: userId,
                 module,
                 brand_id: brandKitId as Id<'brand_dna'>,
@@ -156,7 +157,7 @@ export async function POST(request: NextRequest) {
 
         // Log economic event
         try {
-            const userRow = await convex.query(api.users.getUser, { clerk_id: userId })
+            const userRow = await authedFetchQuery(api.users.getUser, { clerk_id: userId })
             await convex.mutation(api.economic.logEconomicEvent, {
                 phase: 'generate_user_prompt',
                 model: `google/${modelId}`,

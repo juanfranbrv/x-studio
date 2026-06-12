@@ -1,5 +1,6 @@
 import { clerkClient } from "@clerk/nextjs/server";
 import { ConvexHttpClient } from "convex/browser";
+import { authedFetchQuery, authedFetchMutation } from "@/lib/convex-server";
 import { api } from "@/../convex/_generated/api";
 import type { Doc } from "@/../convex/_generated/dataModel";
 import { BILLING_PACKS, getBillingPackDefinition } from "@/lib/billing";
@@ -23,7 +24,7 @@ function requireStripeAccessKey() {
 }
 
 export async function ensureConvexUser(clerkId: string) {
-  let user = await serverConvex.query(api.users.getUser, { clerk_id: clerkId });
+  let user = await authedFetchQuery(api.users.getUser, { clerk_id: clerkId });
   if (user) return user;
 
   const client = await clerkClient();
@@ -31,12 +32,12 @@ export async function ensureConvexUser(clerkId: string) {
   const email = clerkUser.emailAddresses[0]?.emailAddress;
   if (!email) throw new Error("Authenticated user has no email");
 
-  await serverConvex.mutation(api.users.upsertUser, {
+  await authedFetchMutation(api.users.upsertUser, {
     clerk_id: clerkId,
     email,
   });
 
-  user = await serverConvex.query(api.users.getUser, { clerk_id: clerkId });
+  user = await authedFetchQuery(api.users.getUser, { clerk_id: clerkId });
   if (!user) throw new Error("Could not provision user in Convex");
   return user;
 }

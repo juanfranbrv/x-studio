@@ -1,9 +1,11 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
+import { requireIdentity, requireSameUser, requireAdmin } from "./lib/authz";
 
 export const getBrands = query({
     args: { owner_id: v.string() },
     handler: async (ctx, args) => {
+        await requireSameUser(ctx, args.owner_id);
         return await ctx.db
             .query("brands")
             .withIndex("by_owner", (q) => q.eq("owner_id", args.owner_id))
@@ -14,7 +16,12 @@ export const getBrands = query({
 export const getBrandById = query({
     args: { brand_id: v.id("brands") },
     handler: async (ctx, args) => {
-        return await ctx.db.get(args.brand_id);
+        const identity = await requireIdentity(ctx);
+        const brand = await ctx.db.get(args.brand_id);
+        if (brand && identity && brand.owner_id !== identity.subject) {
+            throw new Error("Forbidden: not the brand owner");
+        }
+        return brand;
     },
 });
 
@@ -35,6 +42,7 @@ export const createBrand = mutation({
         }),
     },
     handler: async (ctx, args) => {
+        await requireSameUser(ctx, args.owner_id);
         return await ctx.db.insert("brands", {
             ...args,
             created_at: new Date().toISOString(),
@@ -57,6 +65,12 @@ export const updateBrandDNA = mutation({
         }),
     },
     handler: async (ctx, args) => {
+        const identity = await requireIdentity(ctx);
+        const existing = await ctx.db.get(args.brand_id);
+        if (!existing) throw new Error("Brand not found");
+        if (identity && existing.owner_id !== identity.subject) {
+            throw new Error("Forbidden: not the brand owner");
+        }
         await ctx.db.patch(args.brand_id, {
             brand_dna: args.brand_dna,
         });
@@ -69,6 +83,7 @@ export const getBrandDNA = query({
         if (!args.clerk_user_id) {
             return null;
         }
+        await requireSameUser(ctx, args.clerk_user_id);
 
         return await ctx.db
             .query("brand_dna")
@@ -107,6 +122,7 @@ export const upsertBrandDNA = mutation({
         updated_at: v.string(),
     },
     handler: async (ctx, args) => {
+        await requireSameUser(ctx, args.clerk_user_id);
         const existing = await ctx.db
             .query("brand_dna")
             .withIndex("by_url_user", (q) => q.eq("url", args.url).eq("clerk_user_id", args.clerk_user_id))
@@ -124,6 +140,7 @@ export const upsertBrandDNA = mutation({
 export const getBrandDNAByClerkId = query({
     args: { clerk_user_id: v.string() },
     handler: async (ctx, args) => {
+        await requireSameUser(ctx, args.clerk_user_id);
         const brands = await ctx.db
             .query("brand_dna")
             .withIndex("by_clerk_id", (q) => q.eq("clerk_user_id", args.clerk_user_id))
@@ -176,6 +193,7 @@ export const getBrandDNAByClerkId = query({
 export const listSummariesByClerkId = query({
     args: { clerk_user_id: v.string() },
     handler: async (ctx, args) => {
+        await requireSameUser(ctx, args.clerk_user_id);
         const brands = await ctx.db
             .query("brand_dna")
             .withIndex("by_clerk_id", (q) => q.eq("clerk_user_id", args.clerk_user_id))
@@ -234,6 +252,7 @@ export const listSummariesByClerkId = query({
 export const getBrandDNAById = query({
     args: { id: v.id("brand_dna"), clerk_user_id: v.string() },
     handler: async (ctx, args) => {
+        await requireSameUser(ctx, args.clerk_user_id);
         const brand = await ctx.db.get(args.id);
         if (!brand) return null;
         if (brand.clerk_user_id !== args.clerk_user_id) return null;
@@ -306,6 +325,7 @@ export const updateBrandDNADoc = mutation({
         }),
     },
     handler: async (ctx, args) => {
+        await requireSameUser(ctx, args.clerk_user_id);
         const existing = await ctx.db.get(args.id);
         if (!existing) throw new Error("Brand kit not found");
         if (existing.clerk_user_id !== args.clerk_user_id) throw new Error("Unauthorized");
@@ -316,6 +336,7 @@ export const updateBrandDNADoc = mutation({
 export const deleteBrandDNA = mutation({
     args: { id: v.id("brand_dna"), clerk_user_id: v.string() },
     handler: async (ctx, args) => {
+        await requireSameUser(ctx, args.clerk_user_id);
         const existing = await ctx.db.get(args.id);
         if (!existing) throw new Error("Brand kit not found");
         if (existing.clerk_user_id !== args.clerk_user_id) throw new Error("Unauthorized");
@@ -330,6 +351,7 @@ export const createEmptyBrandKit = mutation({
         source_url: v.optional(v.string()),
     },
     handler: async (ctx, args) => {
+        await requireSameUser(ctx, args.clerk_user_id);
         const now = new Date().toISOString();
 
         // Create a minimal brand_dna record with empty defaults
@@ -361,6 +383,7 @@ export const createEmptyBrandKit = mutation({
 export const listOrphanedBrandKits = query({
     args: {},
     handler: async (ctx) => {
+        await requireAdmin(ctx);
         const all = await ctx.db.query("brand_dna").collect();
         return all
             .filter((b) => !b.clerk_user_id || b.clerk_user_id === 'anonymous')
@@ -381,6 +404,7 @@ export const listOrphanedBrandKits = query({
 export const debugBrandDNAStats = query({
     args: {},
     handler: async (ctx) => {
+        await requireAdmin(ctx);
         const all = await ctx.db.query("brand_dna").collect();
         const idMap: Record<string, number> = {};
         for (const b of all) {
@@ -420,6 +444,7 @@ export const debugBrandDNAStats = query({
 export const claimOrphanedBrandKits = mutation({
     args: { clerk_user_id: v.string() },
     handler: async (ctx, args) => {
+        await requireAdmin(ctx);
         if (!args.clerk_user_id || args.clerk_user_id === 'anonymous') {
             throw new Error('Invalid clerk_user_id');
         }
@@ -442,6 +467,7 @@ export const cloneBrandDNAToUser = mutation({
         target_clerk_user_id: v.string(),
     },
     handler: async (ctx, args) => {
+        await requireAdmin(ctx);
         const source = await ctx.db.get(args.source_id);
         if (!source) throw new Error("Source brand kit not found");
 

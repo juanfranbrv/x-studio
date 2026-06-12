@@ -21,6 +21,7 @@ import type * as feedback from "../feedback.js";
 import type * as generations from "../generations.js";
 import type * as initPresets from "../initPresets.js";
 import type * as layoutRatings from "../layoutRatings.js";
+import type * as lib_authz from "../lib/authz.js";
 import type * as pipeline from "../pipeline.js";
 import type * as presets from "../presets.js";
 import type * as referrals from "../referrals.js";
@@ -52,6 +53,7 @@ declare const fullApi: ApiFromModules<{
   generations: typeof generations;
   initPresets: typeof initPresets;
   layoutRatings: typeof layoutRatings;
+  "lib/authz": typeof lib_authz;
   pipeline: typeof pipeline;
   presets: typeof presets;
   referrals: typeof referrals;

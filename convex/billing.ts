@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { v } from "convex/values";
+import { requireAdmin } from "./lib/authz";
 import { mutation, query } from "./_generated/server";
 import type { Doc } from "./_generated/dataModel";
 import { BILLING_PACKS } from "../src/lib/billing";
@@ -188,6 +189,7 @@ export const getAdminBillingSummary = query({
   args: { admin_email: v.string() },
   handler: async (ctx, args) => {
     if (!isAdmin(args.admin_email)) throw new Error("Unauthorized");
+    await requireAdmin(ctx);
 
     const [packs, purchases, customers] = await Promise.all([
       ctx.db.query("billing_packs").collect(),
@@ -215,6 +217,7 @@ export const seedDefaultPacks = mutation({
   args: { admin_email: v.string() },
   handler: async (ctx, args) => {
     if (!isAdmin(args.admin_email)) throw new Error("Unauthorized");
+    await requireAdmin(ctx);
     await ensureDefaultPacks(ctx);
     return { success: true };
   },
@@ -232,6 +235,7 @@ export const updatePack = mutation({
   },
   handler: async (ctx, args) => {
     if (!isAdmin(args.admin_email)) throw new Error("Unauthorized");
+    await requireAdmin(ctx);
 
     const patch: Record<string, unknown> = {
       updated_at: new Date().toISOString(),
@@ -700,6 +704,7 @@ export const syncPackCatalogSnapshot = mutation({
   args: { admin_email: v.string() },
   handler: async (ctx, args) => {
     if (!isAdmin(args.admin_email)) throw new Error("Unauthorized");
+    await requireAdmin(ctx);
     await ensureDefaultPacks(ctx);
     const packs = await ctx.db.query("billing_packs").collect();
     return packs.sort((a, b) => a.sort_order - b.sort_order);

@@ -1,5 +1,6 @@
 ﻿import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
+import { requireAdmin } from "./lib/authz";
 import { paginationOptsValidator } from "convex/server";
 
 const ADMIN_EMAILS = ["juanfranbrv@gmail.com"];
@@ -248,6 +249,7 @@ export const listAll = query({
   args: { admin_email: v.string() },
   handler: async (ctx, args) => {
     if (!isAdmin(args.admin_email)) throw new Error("Unauthorized");
+    await requireAdmin(ctx);
     const rows = await ctx.db
       .query("style_presets")
       .withIndex("by_sort_order")
@@ -266,6 +268,7 @@ export const listAllPaginated = query({
   },
   handler: async (ctx, args) => {
     if (!isAdmin(args.admin_email)) throw new Error("Unauthorized");
+    await requireAdmin(ctx);
     const page = await ctx.db
       .query("style_presets")
       .withIndex("by_sort_order")
@@ -285,6 +288,7 @@ export const listAllForAdmin = query({
   },
   handler: async (ctx, args) => {
     if (!isAdmin(args.admin_email)) throw new Error("Unauthorized");
+    await requireAdmin(ctx);
     const rows = await ctx.db
       .query("style_presets")
       .withIndex("by_sort_order")
@@ -302,6 +306,7 @@ export const getByIdForAdmin = query({
   },
   handler: async (ctx, args) => {
     if (!isAdmin(args.admin_email)) throw new Error("Unauthorized");
+    await requireAdmin(ctx);
     const preset = await ctx.db.get(args.id);
     if (!preset) throw new Error("Style preset not found");
 
@@ -347,6 +352,7 @@ export const getRawImageByIdForAdmin = query({
   },
   handler: async (ctx, args) => {
     if (!isAdmin(args.admin_email)) throw new Error("Unauthorized");
+    await requireAdmin(ctx);
     const preset = await ctx.db.get(args.id);
     if (!preset) throw new Error("Style preset not found");
     return {
@@ -373,6 +379,7 @@ export const create = mutation({
   },
   handler: async (ctx, args) => {
     if (!isAdmin(args.admin_email)) throw new Error("Unauthorized");
+    await requireAdmin(ctx);
     const now = new Date().toISOString();
     const highest = await ctx.db
       .query("style_presets")
@@ -418,6 +425,7 @@ export const update = mutation({
   },
   handler: async (ctx, args) => {
     if (!isAdmin(args.admin_email)) throw new Error("Unauthorized");
+    await requireAdmin(ctx);
     const preset = await ctx.db.get(args.id);
     if (!preset) throw new Error("Style preset not found");
 
@@ -456,6 +464,7 @@ export const remove = mutation({
   },
   handler: async (ctx, args) => {
     if (!isAdmin(args.admin_email)) throw new Error("Unauthorized");
+    await requireAdmin(ctx);
     await ctx.db.delete(args.id);
     return { success: true };
   },
@@ -469,6 +478,7 @@ export const updatePrompt = mutation({
   },
   handler: async (ctx, args) => {
     if (!isAdmin(args.admin_email)) throw new Error("Unauthorized");
+    await requireAdmin(ctx);
     const preset = await ctx.db.get(args.id);
     if (!preset) throw new Error("Style preset not found");
 
@@ -500,6 +510,7 @@ export const reorder = mutation({
   },
   handler: async (ctx, args) => {
     if (!isAdmin(args.admin_email)) throw new Error("Unauthorized");
+    await requireAdmin(ctx);
 
     const rows = await ctx.db
       .query("style_presets")

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { ConvexHttpClient } from "convex/browser";
 import { api } from "@/../convex/_generated/api";
+import { authedFetchQuery } from "@/lib/convex-server";
 import type { Id } from "@/../convex/_generated/dataModel";
 import type {
   BrandLock,
@@ -115,7 +116,7 @@ export async function POST(request: NextRequest) {
       }
     };
     try {
-      const userRow = await convex.query(api.users.getUser, { clerk_id: userId });
+      const userRow = await authedFetchQuery(api.users.getUser, { clerk_id: userId });
       userEmail = userRow?.email || undefined;
     } catch (error) {
       log.warn("ECONOMIC", "No se pudo resolver email de usuario para auditoria de carrusel pipeline", error);

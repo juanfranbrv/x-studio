@@ -1,5 +1,6 @@
 import { v } from "convex/values";
 import { query, mutation } from "./_generated/server";
+import { requireAdmin } from "./lib/authz";
 
 export const getByKey = query({
     args: { key: v.string() },
@@ -27,6 +28,7 @@ export const upsert = mutation({
         updated_by: v.optional(v.string()),
     },
     handler: async (ctx, args) => {
+        await requireAdmin(ctx);
         const existing = await ctx.db
             .query("system_prompts")
             .withIndex("by_key", (q) => q.eq("key", args.key))
@@ -59,6 +61,7 @@ export const upsert = mutation({
 export const remove = mutation({
     args: { id: v.id("system_prompts") },
     handler: async (ctx, { id }) => {
+        await requireAdmin(ctx);
         await ctx.db.delete(id);
     },
 });

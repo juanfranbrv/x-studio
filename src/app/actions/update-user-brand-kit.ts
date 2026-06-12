@@ -2,6 +2,7 @@
 
 import { fetchMutation } from 'convex/nextjs';
 import { api } from '../../../convex/_generated/api';
+import { authedFetchQuery, authedFetchMutation } from '@/lib/convex-server';
 import { Id } from '../../../convex/_generated/dataModel';
 import { BrandDNA } from '@/lib/brand-types';
 import { revalidatePath } from 'next/cache';
@@ -14,7 +15,7 @@ export async function updateUserBrandKit(brandKitId: string, brandData: BrandDNA
             return { success: false, error: 'No autorizado' };
         }
 
-        await fetchMutation(api.brands.updateBrandDNADoc, {
+        await authedFetchMutation(api.brands.updateBrandDNADoc, {
             id: brandKitId as Id<'brand_dna'>,
             clerk_user_id: userId,
             updates: {
