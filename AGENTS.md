@@ -46,7 +46,7 @@ Antes de tomar cualquier acción o responder:
     3.  Espera confirmación explícita (Vercel cuesta dinero y tiempo).
 -   **Verificación de Deployment**:
     -   Tras un push autorizado, **SIEMPRE** verifica el estado en Vercel.
-    -   Comando: `vercel list --token 2IlaVhRb2zFoA2EUn3b7VXoN`
+    -   Comando: `vercel list --token $env:VERCEL_TOKEN` (el token vive en la variable de entorno `VERCEL_TOKEN`, nunca en este fichero ni en el repo).
     -   Si falla, investiga inmediatamente.
     **Pero SIEMPRE preguntar al usuario si quiere hacer un deploy** cuando recibas una solicitud de realizar una tarea que implique cambios en el código fuente, antes de hacerlo.
 
@@ -103,8 +103,8 @@ Cuando Juanfran diga **"deploy"**, se considera **autorización explícita** par
 5.  `git merge $currentBranch`
 6.  `git push origin main`
 7.  Deploy a producción (Vercel) y verificar estado:
-    - `vercel --prod --yes --token 2IlaVhRb2zFoA2EUn3b7VXoN`
-    - `vercel list --token 2IlaVhRb2zFoA2EUn3b7VXoN`
+    - `vercel --prod --yes --token $env:VERCEL_TOKEN`
+    - `vercel list --token $env:VERCEL_TOKEN`
 8.  **Verificación estricta de build**:
     - Confirmar que el deployment en Vercel termina en estado `READY`.
     - Si el build/deploy falla, **iterar automáticamente**: diagnosticar, corregir código, commitear, push y redeploy hasta que el estado final sea `READY`.

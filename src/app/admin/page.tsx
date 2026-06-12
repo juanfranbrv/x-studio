@@ -1096,7 +1096,7 @@ export default function AdminPage() {
                         <CreditsBadge />
                         <UserButton
                             appearance={{
-                                baseTheme: resolvedTheme === 'dark' ? dark : undefined
+                                theme: resolvedTheme === 'dark' ? dark : undefined
                             }}
                         />
                     </div>
