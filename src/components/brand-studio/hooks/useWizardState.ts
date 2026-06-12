@@ -213,7 +213,7 @@ function wizardReducer(state: BrandStudioState, action: WizardAction): BrandStud
 
     case 'BACK': {
       // Skip transient steps (loading) when going back
-      let history = [...state.stepHistory]
+      const history = [...state.stepHistory]
       let prev: WizardStep | undefined
       while (history.length > 0) {
         prev = history.pop()

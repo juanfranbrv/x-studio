@@ -1378,7 +1378,7 @@ async function generateWisdomText(
         // or prepended to the user prompt if the model doesn't support it strictly.
         // For simplicity and broad compatibility, we'll prepend system prompt or use the config if strictly supported.
         // However, the unified flow often combines them. Let's prepend for now to ensure context.
-        let finalPrompt = prompt
+        const finalPrompt = prompt
 
         // Build contents array
         // Gemini expects: { role: 'user', parts: [...] }

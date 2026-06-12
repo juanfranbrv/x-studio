@@ -25,7 +25,6 @@ interface CanvasGhostOverlayProps {
  * Uses theme primary color for consistent branding.
  */
 export function CanvasGhostOverlay({ layoutId, className }: CanvasGhostOverlayProps) {
-    if (!layoutId) return null;
     const frameRef = useRef<HTMLDivElement>(null);
     const contentRef = useRef<HTMLDivElement>(null);
     const [normalizedScale, setNormalizedScale] = useState(1);
@@ -76,6 +75,10 @@ export function CanvasGhostOverlay({ layoutId, className }: CanvasGhostOverlayPr
             ro.disconnect();
         };
     }, [layoutId]);
+
+    // El early-return va despues de los hooks para no romper rules-of-hooks
+    // cuando layoutId alterna entre null y valor.
+    if (!layoutId) return null;
 
     return (
         <div className={cn(

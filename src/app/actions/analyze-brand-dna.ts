@@ -1130,7 +1130,7 @@ async function fetchHtmlAndExtractAssets(url: string, providedHtml?: string, for
         const logoCandidatesScored: LogoCandidate[] = [];
 
         // === FONT EXTRACTION (Robust) ===
-        let detectedFonts: string[] = extractFontsFromContent(html);
+        const detectedFonts: string[] = extractFontsFromContent(html);
         logToFile(`🔤 Fuentes iniciales extraídas: ${detectedFonts.length}`, detectedFonts);
 
         // Meta theme-color
@@ -2018,7 +2018,7 @@ async function fetchHtmlAndExtractAssets(url: string, providedHtml?: string, for
                             break;
                         }
                         const bgUrl = logoMatch[1];
-                        let score = 100; // Score fijo ya que sabemos que tiene "logo" en el selector
+                        const score = 100; // Score fijo ya que sabemos que tiene "logo" en el selector
 
                         try {
                             logoCandidatesScored.push({
@@ -2043,7 +2043,7 @@ async function fetchHtmlAndExtractAssets(url: string, providedHtml?: string, for
             // Estas variables típicamente contienen los colores oficiales de la marca
             const cssVarRegex = /(--[\w-]+)\s*:\s*(#[0-9A-Fa-f]{3,6}|rgb[a]?\([^)]+\))/gi;
             let varMatch;
-            let varsFound = 0;
+            const varsFound = 0;
             while ((varMatch = cssVarRegex.exec(content)) !== null) {
                 const varName = varMatch[1];
                 const value = varMatch[2];
@@ -2511,8 +2511,8 @@ export async function analyzeBrandDNA(url: string, forceRefresh: boolean = false
         // ANÁLISIS WEIGHTED: Usar análisis estático (Microlink weighted DOM desactivado - da 403)
         console.log('🎯 Ejecutando análisis weighted estático...');
         const staticWeighted = analyzeStaticWeightedDOM(htmlAssets.html, htmlAssets.rootColors);
-        let weightedFonts: string[] = staticWeighted.weightedFonts.map(f => f.font);
-        let weightedColors: string[] = staticWeighted.weightedColors.map(c => c.hex);
+        const weightedFonts: string[] = staticWeighted.weightedFonts.map(f => f.font);
+        const weightedColors: string[] = staticWeighted.weightedColors.map(c => c.hex);
         console.log(`✅ Weighted analysis: ${weightedColors.length} colores, ${weightedFonts.length} fuentes`);
 
         // Aplicar Colores del Weighted DOM

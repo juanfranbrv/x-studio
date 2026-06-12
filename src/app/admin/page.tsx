@@ -658,6 +658,33 @@ export default function AdminPage() {
         }))
     }
 
+    // Hooks siempre antes de cualquier early-return (rules-of-hooks).
+    const imageModelCosts = (modelCosts ?? []).filter((row) => row.kind === 'image')
+    const sortedImageModelCosts = useMemo(() => {
+        return [...imageModelCosts].sort((a, b) => {
+            let comparison = 0
+            if (imageModelSort.key === 'model') {
+                comparison = String(a.model || '').localeCompare(String(b.model || ''), 'es', {
+                    sensitivity: 'base',
+                    numeric: true,
+                })
+            } else if (imageModelSort.key === 'cost') {
+                comparison = Number(a.cost_eur || 0) - Number(b.cost_eur || 0)
+            } else {
+                comparison = new Date(a.updated_at || 0).getTime() - new Date(b.updated_at || 0).getTime()
+            }
+
+            if (comparison === 0) {
+                comparison = String(a.model || '').localeCompare(String(b.model || ''), 'es', {
+                    sensitivity: 'base',
+                    numeric: true,
+                })
+            }
+
+            return imageModelSort.direction === 'asc' ? comparison : -comparison
+        })
+    }, [imageModelCosts, imageModelSort])
+
     if (!isLoaded) {
         return (
             <div className="flex items-center justify-center h-screen">
@@ -957,31 +984,6 @@ export default function AdminPage() {
         return current !== saved
     })
 
-    const imageModelCosts = (modelCosts ?? []).filter((row) => row.kind === 'image')
-    const sortedImageModelCosts = useMemo(() => {
-        return [...imageModelCosts].sort((a, b) => {
-            let comparison = 0
-            if (imageModelSort.key === 'model') {
-                comparison = String(a.model || '').localeCompare(String(b.model || ''), 'es', {
-                    sensitivity: 'base',
-                    numeric: true,
-                })
-            } else if (imageModelSort.key === 'cost') {
-                comparison = Number(a.cost_eur || 0) - Number(b.cost_eur || 0)
-            } else {
-                comparison = new Date(a.updated_at || 0).getTime() - new Date(b.updated_at || 0).getTime()
-            }
-
-            if (comparison === 0) {
-                comparison = String(a.model || '').localeCompare(String(b.model || ''), 'es', {
-                    sensitivity: 'base',
-                    numeric: true,
-                })
-            }
-
-            return imageModelSort.direction === 'asc' ? comparison : -comparison
-        })
-    }, [imageModelCosts, imageModelSort])
     const intelligenceModelCosts = (modelCosts ?? []).filter((row) => row.kind === 'intelligence')
     const groupedEconomicEvents = (() => {
         type EconomicEventRow = NonNullable<typeof economicEvents>[number]
