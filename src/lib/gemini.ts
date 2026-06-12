@@ -3,6 +3,8 @@ import type { BrandDNA } from './brand-types'
 import { buildImagePrompt, ImageGenerationOptions } from './prompt-builder'
 import { mapGeminiAspectRatio } from './gemini-aspect-ratio'
 import { getOpenAIImageSizeForAspectRatio } from './openai-image-size'
+import { resolveOpenAICompatibleImageModel } from './openai-image-model-alias'
+import { extractOpenAIImageResult, summarizeOpenAIImageResponseShape } from './openai-image-response'
 import { log } from './logger'
 import { ConvexHttpClient } from 'convex/browser'
 import { api } from '@/../convex/_generated/api'
@@ -190,7 +192,6 @@ const ATLAS_API_KEY_CACHE_TTL_MS = 60_000
 const GOOGLE_API_KEY_CACHE_TTL_MS = 60_000
 const WISDOM_API_KEY_CACHE_TTL_MS = 60_000
 const OPENAI_API_KEY_CACHE_TTL_MS = 60_000
-const OPENAI_IMAGE_QUALITY = 'medium'
 let textCallSequence = 0
 
 function nextTextCallId(): string {
@@ -353,7 +354,9 @@ export const WISDOM_MODELS = {
     IMAGE: {
         'gemini-3-pro-image-preview': 'Gemini 3 Image (Wisdom)',
         'gemini-3.1-flash-image-preview': 'Gemini 3.1 Flash Image (Wisdom)',
-        'gpt-image-2': 'GPT Image 2 (Wisdom)',
+        'gpt-image-2': 'GPT Image 2 (Wisdom, legacy low)',
+        'gpt-image-2-low': 'GPT Image 2 Low (Wisdom)',
+        'gpt-image-2-medium': 'GPT Image 2 Medium (Wisdom)',
         'qwen-image': 'Qwen Image (Alibaba)',
         'kolors': 'Kolors (Kwai)',
         'wanx-v1': 'Wanx (Alibaba)',
@@ -363,19 +366,7 @@ export const WISDOM_MODELS = {
 
 // Helper to map aspect ratios to OpenAI-compatible sizes
 function getOpenAISize(aspectRatio?: string): string {
-    // Default to square
-    if (!aspectRatio) return "1024x1024"
-
-    switch (aspectRatio) {
-        case '16:9': return "1024x1024" // specific scaling might be needed, but 1024x1024 is safe default or 1792x1024 if supported
-        case '9:16': return "1024x1792"
-        case '1:1': return "1024x1024"
-        case '4:3': return "1024x1024"
-        case '3:4': return "1024x1024"
-        // Add more specific resolutions if the underlying models support exactly 1280x720 etc.
-        // For now, these models often default to 1024x1024 if size isn't strictly standard 
-        default: return "1024x1024"
-    }
+    return getOpenAIImageSizeForAspectRatio(aspectRatio)
 }
 
 async function generateWisdomChatImage(prompt: string, model: string): Promise<string> {
@@ -438,7 +429,12 @@ async function generateWisdomChatImage(prompt: string, model: string): Promise<s
     }
 }
 
-async function generateWisdomOpenAIImage(prompt: string, model: string, aspectRatio?: string): Promise<string> {
+async function generateWisdomOpenAIImage(
+    prompt: string,
+    model: string,
+    aspectRatio?: string,
+    referenceUrls: string[] = []
+): Promise<string> {
     try {
         const wisdomApiKey = await resolveWisdomApiKey()
         if (!wisdomApiKey) throw new Error('Wisdom API key no configurada en /admin.')
@@ -448,37 +444,73 @@ async function generateWisdomOpenAIImage(prompt: string, model: string, aspectRa
             return await generateWisdomChatImage(prompt, model)
         }
 
-        log.info('IMAGE', `OpenAI-compatible image model: ${model}`)
-        log.debug('IMAGE', `Endpoint: ${WISDOM_BASE_URL}/v1/images/generations`)
+        const resolvedModel = resolveOpenAICompatibleImageModel(model)
+        log.info('IMAGE', `OpenAI-compatible image model: ${resolvedModel.providerModel} quality=${resolvedModel.quality}`)
+        const hasReferences = resolvedModel.providerModel.toLowerCase() === 'gpt-image-2' && referenceUrls.length > 0
+        const endpointPath = hasReferences ? '/v1/images/edits' : '/v1/images/generations'
+        log.debug('IMAGE', `Endpoint: ${WISDOM_BASE_URL}${endpointPath}`)
 
         const size = getOpenAISize(aspectRatio)
 
         const requestBody = {
-            model: model,
+            model: resolvedModel.providerModel,
             prompt: prompt,
             n: 1,
             size: size,
+            quality: resolvedModel.quality,
             response_format: "b64_json"
         }
 
         // Wisdom Gate OpenAI-compatible endpoint
-        const endpoint = `${WISDOM_BASE_URL}/v1/images/generations`
+        const endpoint = `${WISDOM_BASE_URL}${endpointPath}`
         const maxRetries = 3
         const retryDelays = [1000, 2000, 4000]
         let lastError: Error | null = null
 
         for (let attempt = 0; attempt <= maxRetries; attempt++) {
             try {
-                log.info('IMAGE', `[${attempt + 1}/${maxRetries + 1}] Attempting Wisdom OpenAI image API call`)
+                log.info('IMAGE', `[${attempt + 1}/${maxRetries + 1}] Attempting Wisdom OpenAI image API call | quality=${resolvedModel.quality} aspect=${aspectRatio || 'default'} size=${size} refs=${referenceUrls.length}`)
 
-                const response = await fetchWithTimeout(endpoint, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${wisdomApiKey}`
-                    },
-                    body: JSON.stringify(requestBody)
-                }, IMAGE_PROVIDER_TIMEOUT_MS, `Wisdom OpenAI image request (${model})`)
+                let response: Response
+                if (hasReferences) {
+                    const formData = new FormData()
+                    formData.append('model', resolvedModel.providerModel)
+                    formData.append('prompt', prompt)
+                    formData.append('n', '1')
+                    formData.append('size', size)
+                    formData.append('quality', resolvedModel.quality)
+                    formData.append('response_format', 'b64_json')
+
+                    let appendedImages = 0
+                    for (const [index, url] of referenceUrls.entries()) {
+                        const blob = await imageUrlToBlob(url)
+                        if (!blob) continue
+                        const extension = blob.type.includes('jpeg') || blob.type.includes('jpg') ? 'jpg' : 'png'
+                        formData.append('image[]', blob, `reference-${index + 1}.${extension}`)
+                        appendedImages += 1
+                    }
+
+                    if (appendedImages === 0) {
+                        throw new Error('No se pudo preparar ninguna imagen de referencia para Wisdom GPT Image 2.')
+                    }
+
+                    response = await fetchWithTimeout(endpoint, {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': `Bearer ${wisdomApiKey}`
+                        },
+                        body: formData
+                    }, IMAGE_PROVIDER_TIMEOUT_MS, `Wisdom OpenAI image edit request (${resolvedModel.providerModel})`)
+                } else {
+                    response = await fetchWithTimeout(endpoint, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${wisdomApiKey}`
+                        },
+                        body: JSON.stringify(requestBody)
+                    }, IMAGE_PROVIDER_TIMEOUT_MS, `Wisdom OpenAI image request (${resolvedModel.providerModel})`)
+                }
 
                 if (!response.ok) {
                     const errorText = await response.text()
@@ -499,19 +531,13 @@ async function generateWisdomOpenAIImage(prompt: string, model: string, aspectRa
 
                 const data = await response.json()
 
-                if (data.data && data.data[0] && data.data[0].b64_json) {
-                    log.success('IMAGE', `[${attempt + 1}/${maxRetries + 1}] Wisdom OpenAI image API call succeeded`)
-                    return `data:image/png;base64,${data.data[0].b64_json}`
+                const imageResult = extractOpenAIImageResult(data)
+                if (imageResult) {
+                    log.success('IMAGE', `[${attempt + 1}/${maxRetries + 1}] Wisdom OpenAI image API call succeeded | source=${imageResult.source}`)
+                    return imageResult.value
                 }
 
-                if (data.data && data.data[0] && data.data[0].url) {
-                    log.success('IMAGE', `[${attempt + 1}/${maxRetries + 1}] Wisdom OpenAI image API call succeeded`)
-                    // If a URL is returned, we might need to fetch it to convert to base64 if consistency is needed,
-                    // but returning the URL is often fine if the frontend handles it.
-                    // However, app expects base64 or accessible URL.
-                    return data.data[0].url
-                }
-
+                log.error('IMAGE', 'Wisdom image response did not contain a recognized image payload', summarizeOpenAIImageResponseShape(data))
                 throw new Error('No image data found in Wisdom response')
             } catch (error) {
                 const errorMessage = error instanceof Error ? error.message : String(error)
@@ -544,6 +570,7 @@ async function generateOpenAIImage(
     const openaiApiKey = await resolveOpenAIApiKey()
     if (!openaiApiKey) throw new Error('OpenAI API key no configurada en Admin > Modelos y API Keys.')
 
+    const resolvedModel = resolveOpenAICompatibleImageModel(model)
     const size = getOpenAIImageSizeForAspectRatio(aspectRatio)
     const endpoint = referenceUrls.length > 0
         ? `${OPENAI_BASE_URL}/images/edits`
@@ -554,14 +581,14 @@ async function generateOpenAIImage(
 
     for (let attempt = 0; attempt <= maxRetries; attempt++) {
         try {
-            log.info('OPENAI', `[${attempt + 1}/${maxRetries + 1}] Image request | model=${model} quality=${OPENAI_IMAGE_QUALITY} aspect=${aspectRatio || 'default'} size=${size} refs=${referenceUrls.length}`)
+            log.info('OPENAI', `[${attempt + 1}/${maxRetries + 1}] Image request | model=${resolvedModel.providerModel} quality=${resolvedModel.quality} aspect=${aspectRatio || 'default'} size=${size} refs=${referenceUrls.length}`)
 
             let response: Response
             if (referenceUrls.length > 0) {
                 const formData = new FormData()
-                formData.append('model', model)
+                formData.append('model', resolvedModel.providerModel)
                 formData.append('prompt', prompt)
-                formData.append('quality', OPENAI_IMAGE_QUALITY)
+                formData.append('quality', resolvedModel.quality)
                 formData.append('size', size)
 
                 let appendedImages = 0
@@ -583,7 +610,7 @@ async function generateOpenAIImage(
                         'Authorization': `Bearer ${openaiApiKey}`,
                     },
                     body: formData,
-                }, IMAGE_PROVIDER_TIMEOUT_MS, `OpenAI image edit request (${model})`)
+                }, IMAGE_PROVIDER_TIMEOUT_MS, `OpenAI image edit request (${resolvedModel.providerModel})`)
             } else {
                 response = await fetchWithTimeout(endpoint, {
                     method: 'POST',
@@ -592,12 +619,12 @@ async function generateOpenAIImage(
                         'Content-Type': 'application/json',
                     },
                     body: JSON.stringify({
-                        model,
+                        model: resolvedModel.providerModel,
                         prompt,
-                        quality: OPENAI_IMAGE_QUALITY,
+                        quality: resolvedModel.quality,
                         size,
                     }),
-                }, IMAGE_PROVIDER_TIMEOUT_MS, `OpenAI image generation request (${model})`)
+                }, IMAGE_PROVIDER_TIMEOUT_MS, `OpenAI image generation request (${resolvedModel.providerModel})`)
             }
 
             if (!response.ok) {
@@ -616,18 +643,13 @@ async function generateOpenAIImage(
             }
 
             const data = await response.json()
-            const base64 = data.data?.[0]?.b64_json
-            if (base64) {
-                log.success('OPENAI', `[${attempt + 1}/${maxRetries + 1}] Image request succeeded`)
-                return `data:image/png;base64,${base64}`
+            const imageResult = extractOpenAIImageResult(data)
+            if (imageResult) {
+                log.success('OPENAI', `[${attempt + 1}/${maxRetries + 1}] Image request succeeded | source=${imageResult.source}`)
+                return imageResult.value
             }
 
-            const url = data.data?.[0]?.url
-            if (url) {
-                log.success('OPENAI', `[${attempt + 1}/${maxRetries + 1}] Image request succeeded`)
-                return url
-            }
-
+            log.error('OPENAI', 'OpenAI image response did not contain a recognized image payload', summarizeOpenAIImageResponseShape(data))
             throw new Error('No image data found in OpenAI response')
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : String(error)
@@ -1817,6 +1839,7 @@ export async function generateContentImageUnified(
 
         // Prepare parts similar to generateBrandImage to ensure parity
         const promptParts: any[] = [{ text: enhancedPrompt }]
+        const referenceUrls: string[] = []
 
         // Process Context Images/Logos (Fetch & convert to Base64)
         if (options.context && options.context.length > 0) {
@@ -1828,6 +1851,7 @@ export async function generateContentImageUnified(
                 log.info('IMAGE', `Context images: ${imageItems.length}`)
                 const imagePartsPromises = imageItems.map(async (item) => {
                     if (!item.value) return null
+                    referenceUrls.push(item.value)
                     // Use existing urlToPart helper
                     return await urlToPart(item.value)
                 })
@@ -1854,6 +1878,7 @@ export async function generateContentImageUnified(
             if (layoutPart) {
                 log.info('IMAGE', 'Layout reference added')
                 promptParts.push(layoutPart)
+                referenceUrls.push(layoutUrl)
             }
         }
 
@@ -1862,11 +1887,7 @@ export async function generateContentImageUnified(
             log.success('IMAGE', `Generation done in ${Date.now() - generationStart}ms`)
             return result
         } else {
-            // For Qwen, Kolors, Wanx, etc., use the OpenAI-compatible endpoint
-            // Note: Context images might not be supported easily in standard OpenAI text-to-image payload 
-            // without using specific image-to-image endpoints. 
-            // For now, we pass just the prompt for these models as they are primarily text-to-image in this flow.
-            const result = await generateWisdomOpenAIImage(enhancedPrompt, wisdomModel, options.aspectRatio)
+            const result = await generateWisdomOpenAIImage(enhancedPrompt, wisdomModel, options.aspectRatio, referenceUrls)
             log.success('IMAGE', `Generation done in ${Date.now() - generationStart}ms`)
             return result
         }
@@ -2010,6 +2031,10 @@ export async function generateImageFromPromptRaw(
     }
 
     const normalized = modelNameLower.startsWith('wisdom/') ? modelName.replace(/^wisdom\//i, '') : modelName
+    if (!normalized.toLowerCase().includes('gemini')) {
+        return await generateWisdomOpenAIImage(prompt, normalized, aspectRatio)
+    }
+
     const parts: any[] = [{ text: prompt }]
     return await generateWisdomImage(parts, normalized, aspectRatio)
 }

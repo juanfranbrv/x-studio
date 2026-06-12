@@ -161,17 +161,22 @@ Nota operativa:
 
 ### Modelo Wisdom GPT Image 2
 
-- `wisdom/gpt-image-2` esta disponible como modelo de imagen seleccionable en Admin > Modelos.
+- `wisdom/gpt-image-2-low` y `wisdom/gpt-image-2-medium` están disponibles como modelos de imagen seleccionables en Admin > Modelos.
+- `wisdom/gpt-image-2` queda como alias legacy compatible y se resuelve como `low`.
 - Wisdom lo expone como modelo OpenAI-compatible con identificador `gpt-image-2`.
-- En `src/lib/gemini.ts`, los modelos `wisdom/*` que no son Gemini se enrutan por `/v1/images/generations`.
+- En `src/lib/gemini.ts`, los modelos `wisdom/*` que no son Gemini se enrutan por la API OpenAI-compatible y los alias de calidad se normalizan antes de llamar al proveedor.
+- Para `wisdom/gpt-image-2-*`, si no hay referencias visuales se usa `/v1/images/generations`; si hay logos, imágenes de contexto o plantilla de layout, se usa `/v1/images/edits` con `image[]` para preservar el contexto visual.
+- El tamaño enviado a `wisdom/gpt-image-2-*` usa el mismo mapper que OpenAI directo (`getOpenAIImageSizeForAspectRatio`) y la calidad sale del sufijo del modelo (`low` o `medium`).
+- Las respuestas de imagen OpenAI-compatible se extraen con `src/lib/openai-image-response.ts`, tolerando `b64_json`, `url`, `image_url`, `result`, `output` e `images`; si no hay payload reconocido se registra solo la forma del JSON, sin volcar base64 completo.
 - El catalogo de costes de Admin > Economia se sincroniza desde `IMAGE_MODEL_OPTIONS`, por lo que este modelo debe aparecer como modelo de imagen registrable con coste editable.
 
 ### Proveedor OpenAI para imagen
 
 - Existe proveedor de imagen con prefijo `openai/*`.
-- `openai/gpt-image-2` esta disponible como modelo de imagen seleccionable en Admin > Modelos y registrable en Admin > Economia.
+- `openai/gpt-image-2-low` y `openai/gpt-image-2-medium` están disponibles como modelos de imagen seleccionables en Admin > Modelos y registrables en Admin > Economia.
+- `openai/gpt-image-2` queda como alias legacy compatible y se resuelve como `low`.
 - La API key se guarda en `app_settings.provider_openai_api_key` desde Admin > Modelos.
-- Las llamadas directas a OpenAI usan `quality: "medium"` por defecto.
+- Las llamadas directas a OpenAI resuelven `quality` desde el sufijo del modelo cuando existe; sin sufijo usan `low` por defecto.
 - Si no hay imagenes de referencia, se usa `POST https://api.openai.com/v1/images/generations`.
 - Si hay referencias visuales o plantilla de layout, se usa `POST https://api.openai.com/v1/images/edits` con `image[]` para conservar el contexto visual.
 - El tamano enviado a OpenAI se deriva del formato social con dimensiones validas multiplo de 16, por ejemplo `4:5 -> 1024x1280`, `9:16 -> 1024x1792` y `16:9 -> 1792x1024`.

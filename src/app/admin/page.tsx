@@ -1,7 +1,7 @@
 ﻿'use client'
 
 import { Loader2 } from '@/components/ui/spinner'
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { useUser, UserButton } from '@clerk/nextjs'
 import { useTheme } from 'next-themes'
 import { dark } from '@clerk/themes'
@@ -62,8 +62,10 @@ import { REPLACE_MODULE_ENABLED_SETTING_KEY, normalizeReplaceModuleEnabled } fro
 const IMAGE_MODEL_OPTIONS = [
     { value: 'wisdom/gemini-3-pro-image-preview', label: 'Wisdom · Gemini 3 Pro Image Preview' },
     { value: 'wisdom/gemini-3.1-flash-image-preview', label: 'Wisdom · Gemini 3.1 Flash Image Preview' },
-    { value: 'wisdom/gpt-image-2', label: 'Wisdom · GPT Image 2' },
-    { value: 'openai/gpt-image-2', label: 'OpenAI · GPT Image 2' },
+    { value: 'wisdom/gpt-image-2-low', label: 'Wisdom · GPT Image 2 · Low' },
+    { value: 'wisdom/gpt-image-2-medium', label: 'Wisdom · GPT Image 2 · Medium' },
+    { value: 'openai/gpt-image-2-low', label: 'OpenAI · GPT Image 2 · Low' },
+    { value: 'openai/gpt-image-2-medium', label: 'OpenAI · GPT Image 2 · Medium' },
     { value: 'google/gemini-3-pro-image-preview', label: 'Google · Gemini 3 Pro Image Preview' },
     { value: 'naga/seedream-5-lite', label: 'NagaAI · seedream-5-lite' },
     { value: 'naga/gpt-image-1.5-2025-12-16', label: 'NagaAI · gpt-image-1.5-2025-12-16' },
@@ -73,6 +75,12 @@ const IMAGE_MODEL_OPTIONS = [
     { value: 'replicate/google/nano-banana-2', label: 'Replicate · Google nano-banana-2' },
     { value: 'replicate/google/nano-banana-pro', label: 'Replicate · Google nano-banana-pro (2K)' },
 ]
+
+function normalizeImageModelSettingValue(value: string): string {
+    if (value === 'wisdom/gpt-image-2') return 'wisdom/gpt-image-2-low'
+    if (value === 'openai/gpt-image-2') return 'openai/gpt-image-2-low'
+    return value
+}
 
 const INTELLIGENCE_MODEL_OPTIONS = [
     { value: 'wisdom/gemini-3-flash-preview', label: 'Wisdom · Gemini 3 Flash Preview' },
@@ -97,6 +105,8 @@ const PROVIDER_COST_LINKS: Record<string, string> = {
 const ADMIN_TAB_STORAGE_KEY = 'x-studio-admin-active-tab'
 const ADMIN_TABS = ['requests', 'users', 'transactions', 'settings', 'models', 'styles', 'economics', 'billing', 'links', 'feedback', 'compositions', 'prompts'] as const
 type AdminTab = (typeof ADMIN_TABS)[number]
+type ImageModelSortKey = 'model' | 'cost' | 'updated'
+type SortDirection = 'asc' | 'desc'
 const DEFAULT_ADMIN_TAB: AdminTab = 'requests'
 const ADMIN_EMAILS = ['juanfranbrv@gmail.com']
 type ThemePreset = ThemePaletteDraft & {
@@ -404,6 +414,10 @@ export default function AdminPage() {
     const [newCostComment, setNewCostComment] = useState('')
     const [costDrafts, setCostDrafts] = useState<Record<string, string>>({})
     const [commentDrafts, setCommentDrafts] = useState<Record<string, string>>({})
+    const [imageModelSort, setImageModelSort] = useState<{ key: ImageModelSortKey; direction: SortDirection }>({
+        key: 'updated',
+        direction: 'desc',
+    })
     const [activatingModelId, setActivatingModelId] = useState<string | null>(null)
     const [savingModelSettings, setSavingModelSettings] = useState(false)
     const [syncingCatalog, setSyncingCatalog] = useState(false)
@@ -476,6 +490,9 @@ export default function AdminPage() {
             ...INTELLIGENCE_MODEL_OPTIONS.map((option) => option.value),
             ...IMAGE_MODEL_OPTIONS.map((option) => option.value),
         ])
+    )
+    const activeImageModel = normalizeImageModelSettingValue(
+        String(editingSettings.model_image_generation ?? 'wisdom/gemini-3-pro-image-preview')
     )
     const showStudioDebugOverlays = normalizeStudioDebugOverlaysEnabled(
         settings?.find((setting) => setting.key === STUDIO_DEBUG_OVERLAYS_ENABLED_SETTING_KEY)?.value
@@ -941,6 +958,30 @@ export default function AdminPage() {
     })
 
     const imageModelCosts = (modelCosts ?? []).filter((row) => row.kind === 'image')
+    const sortedImageModelCosts = useMemo(() => {
+        return [...imageModelCosts].sort((a, b) => {
+            let comparison = 0
+            if (imageModelSort.key === 'model') {
+                comparison = String(a.model || '').localeCompare(String(b.model || ''), 'es', {
+                    sensitivity: 'base',
+                    numeric: true,
+                })
+            } else if (imageModelSort.key === 'cost') {
+                comparison = Number(a.cost_eur || 0) - Number(b.cost_eur || 0)
+            } else {
+                comparison = new Date(a.updated_at || 0).getTime() - new Date(b.updated_at || 0).getTime()
+            }
+
+            if (comparison === 0) {
+                comparison = String(a.model || '').localeCompare(String(b.model || ''), 'es', {
+                    sensitivity: 'base',
+                    numeric: true,
+                })
+            }
+
+            return imageModelSort.direction === 'asc' ? comparison : -comparison
+        })
+    }, [imageModelCosts, imageModelSort])
     const intelligenceModelCosts = (modelCosts ?? []).filter((row) => row.kind === 'intelligence')
     const groupedEconomicEvents = (() => {
         type EconomicEventRow = NonNullable<typeof economicEvents>[number]
@@ -988,6 +1029,34 @@ export default function AdminPage() {
         } finally {
             setSavingModelSettings(false)
         }
+    }
+
+    const handleImageModelSort = (key: ImageModelSortKey) => {
+        setImageModelSort((prev) => ({
+            key,
+            direction: prev.key === key && prev.direction === 'asc' ? 'desc' : 'asc',
+        }))
+    }
+
+    const renderImageModelSortHead = (key: ImageModelSortKey, label: string) => {
+        const isActive = imageModelSort.key === key
+        const directionLabel = isActive && imageModelSort.direction === 'asc' ? 'ascendente' : 'descendente'
+
+        return (
+            <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-8 px-0 font-semibold text-foreground hover:bg-transparent"
+                onClick={() => handleImageModelSort(key)}
+                aria-label={`Ordenar por ${label} en orden ${directionLabel}`}
+            >
+                <span>{label}</span>
+                <IconChevronDown
+                    className={`ml-1.5 h-3.5 w-3.5 transition-transform ${isActive && imageModelSort.direction === 'asc' ? 'rotate-180' : ''} ${isActive ? 'opacity-100' : 'opacity-35'}`}
+                />
+            </Button>
+        )
     }
 
     return (
@@ -1756,18 +1825,18 @@ export default function AdminPage() {
                                         <Table>
                                             <TableHeader>
                                                 <TableRow>
-                                                    <TableHead>Modelo</TableHead>
-                                                    <TableHead>Coste</TableHead>
+                                                    <TableHead>{renderImageModelSortHead('model', 'Modelo')}</TableHead>
+                                                    <TableHead>{renderImageModelSortHead('cost', 'Coste')}</TableHead>
                                                     <TableHead>Comentario</TableHead>
-                                                    <TableHead>Actualizado</TableHead>
+                                                    <TableHead>{renderImageModelSortHead('updated', 'Actualizado')}</TableHead>
                                                     <TableHead className="text-right">Acciones</TableHead>
                                                 </TableRow>
                                             </TableHeader>
                                             <TableBody>
-                                                {imageModelCosts.map((row) => (
+                                                {sortedImageModelCosts.map((row) => (
                                                     <TableRow
                                                         key={row._id}
-                                                        className={row.model === String(editingSettings.model_image_generation ?? '') ? 'bg-primary/10' : undefined}
+                                                        className={row.model === activeImageModel ? 'bg-primary/10' : undefined}
                                                     >
                                                         <TableCell className="font-mono text-xs">
                                                             <div className="flex items-center gap-2">
@@ -1786,7 +1855,7 @@ export default function AdminPage() {
                                                                         </a>
                                                                     )
                                                                 })()}
-                                                                {row.model === String(editingSettings.model_image_generation ?? '') && (
+                                                                {row.model === activeImageModel && (
                                                                     <Badge variant="default">Activo</Badge>
                                                                 )}
                                                             </div>
@@ -1831,9 +1900,9 @@ export default function AdminPage() {
                                                         <TableCell className="text-right">
                                                             <Button
                                                                 size="sm"
-                                                                variant={row.model === String(editingSettings.model_image_generation ?? '') ? 'default' : 'secondary'}
+                                                                variant={row.model === activeImageModel ? 'default' : 'secondary'}
                                                                 className="mr-2"
-                                                                disabled={row.model === String(editingSettings.model_image_generation ?? '') || activatingModelId === String(row._id)}
+                                                                disabled={row.model === activeImageModel || activatingModelId === String(row._id)}
                                                                 onClick={() => void handleActivateModel('image', row.model, String(row._id))}
                                                                 title="Activar modelo"
                                                             >
@@ -2148,7 +2217,7 @@ export default function AdminPage() {
                                     </div>
                                     <div className="flex items-center gap-2">
                                         <Select
-                                            value={String(editingSettings.model_image_generation ?? 'wisdom/gemini-3-pro-image-preview')}
+                                            value={activeImageModel}
                                             onValueChange={(value) => setEditingSettings(prev => ({ ...prev, model_image_generation: value }))}
                                         >
                                             <SelectTrigger className="flex-1">
