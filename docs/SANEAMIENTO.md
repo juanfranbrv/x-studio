@@ -39,12 +39,12 @@
 
 ## Fase 3 — Endurecer rutas API
 
-- [ ] **3.1 Gating de admin real en `/api/admin/*`** (hoy basta cualquier usuario logueado).
-  - Verificación: petición de usuario no-admin recibe 403; test unitario que lo cubra.
-- [ ] **3.2 Allowlist robusta en `/api/proxy-image`** (cambiar `hostname.includes()` por sufijo de dominio exacto).
-  - Verificación: test unitario: `instagram.com.evil.com` → 403; `scontent-mad1-1.cdninstagram.com` → permitido.
-- [ ] **3.3 Desactivar `/api/dev/transactional-email` en producción** (hoy depende del header `Host`).
-  - Verificación: en build de producción la ruta devuelve 403/404 incondicionalmente salvo `NODE_ENV !== 'production'`.
+- [x] **3.1 Gating de admin real en `/api/admin/*`** (hoy basta cualquier usuario logueado).
+  - Verificación: ✅ 2026-06-12 — `src/lib/admin-guard.ts` (`getAdminUserIdOrNull`, email verificado contra la sesión Clerk) aplicado a `migrate-brand-kits` y `seed-prompts` → 403 para no-admins. Defensa en profundidad: las funciones Convex subyacentes ya exigen `requireAdmin` (F2.4), verificado e2e por `scripts/verify-convex-auth.mjs`.
+- [x] **3.2 Allowlist robusta en `/api/proxy-image`** (cambiar `hostname.includes()` por sufijo de dominio exacto).
+  - Verificación: ✅ 2026-06-12 — lógica extraída a `src/lib/proxy-image-allowlist.ts` (sufijo exacto + https obligatorio) con test unitario `proxy-image-allowlist.test.ts`: 3/3 en verde, incluye `instagram.com.evil.com` → rechazada y `scontent-mad1-1.cdninstagram.com` → permitida.
+- [x] **3.3 Desactivar `/api/dev/transactional-email` en producción** (hoy depende del header `Host`).
+  - Verificación: ✅ 2026-06-12 — la ruta devuelve 404 incondicional cuando `NODE_ENV === 'production'`; eliminado el check por header `Host` (controlable por el cliente).
 
 ## Fase 4 — Suite de tests en verde
 

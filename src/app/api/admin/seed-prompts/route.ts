@@ -3,6 +3,7 @@ import { auth } from '@clerk/nextjs/server'
 import { ConvexHttpClient } from 'convex/browser'
 import { api } from '@/../convex/_generated/api'
 import { authedFetchMutation } from '@/lib/convex-server'
+import { getAdminUserIdOrNull } from '@/lib/admin-guard'
 import { log } from '@/lib/logger'
 import { DEFAULT_REPLACE_SYSTEM_PROMPT } from '@/lib/replace-generation'
 
@@ -83,9 +84,9 @@ Return ONLY the concept description. No labels, no explanations, no quotes.`
 
 export async function POST() {
     try {
-        const { userId } = await auth()
+        const userId = await getAdminUserIdOrNull()
         if (!userId) {
-            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+            return NextResponse.json({ error: 'Forbidden: admin only' }, { status: 403 })
         }
 
         log.info('ADMIN', `Seed-prompts start | user=${userId}`)

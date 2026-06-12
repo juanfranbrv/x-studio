@@ -24,18 +24,11 @@ type TransactionalEmailRequest = {
   packName?: string;
 };
 
-function isLocalRequest(request: NextRequest) {
-  const host = request.headers.get("host") || "";
-  return (
-    process.env.NODE_ENV !== "production" ||
-    host.includes("localhost") ||
-    host.includes("127.0.0.1")
-  );
-}
-
 export async function POST(request: NextRequest) {
-  if (!isLocalRequest(request)) {
-    return NextResponse.json({ error: "Not available outside local/dev" }, { status: 403 });
+  // Ruta exclusiva de desarrollo: en produccion queda cerrada incondicionalmente.
+  // (El header Host lo controla el cliente, asi que no sirve como barrera.)
+  if (process.env.NODE_ENV === "production") {
+    return NextResponse.json({ error: "Not available in production" }, { status: 404 });
   }
 
   try {

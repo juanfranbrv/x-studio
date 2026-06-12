@@ -1,20 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 
-const ALLOWED_HOSTS = [
-  'cdninstagram.com',
-  'fbcdn.net',
-  'instagram.com',
-  'scontent',
-]
-
-function isAllowedUrl(url: string): boolean {
-  try {
-    const { hostname } = new URL(url)
-    return ALLOWED_HOSTS.some((h) => hostname.includes(h))
-  } catch {
-    return false
-  }
-}
+import { isAllowedProxyImageUrl as isAllowedUrl } from '@/lib/proxy-image-allowlist'
 
 export async function GET(request: NextRequest) {
   const url = request.nextUrl.searchParams.get('url')
