@@ -48,8 +48,8 @@
 
 ## Fase 4 — Suite de tests en verde
 
-- [ ] **4.1 Arreglar o retirar los 10 tests rotos** (`ControlsPanel`, `HeaderTypography`, `OnboardingBrandPrecedence`).
-  - Verificación: `npx vitest run` → 0 fallos.
+- [x] **4.1 Arreglar o retirar los 10 tests rotos** (`ControlsPanel`, `HeaderTypography`, `OnboardingBrandPrecedence`).
+  - Verificación: ✅ 2026-06-12 — `vitest run`: **165/165 en verde** (65 ficheros). Decisión: los 8 tests de `ControlsPanel` eran pins de clases Tailwind de un restyle anterior al canva-style → retirados (sin valor de regresión funcional); `HeaderTypography` y `OnboardingBrandPrecedence` protegían comportamiento → actualizados al código vigente (IconCoins01 deliberado; precedencia de módulo intacta con soporte brand-kit).
 
 ## Fase 5 — Higiene de código (progresivo)
 

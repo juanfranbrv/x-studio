@@ -17,7 +17,8 @@ describe('Header typography scale', () => {
         expect(creditsBadgeSource).toContain("const creditsShortLabel = i18n.language.startsWith('es') ? 'créditos' : 'credits'")
         expect(creditsBadgeSource).toContain("font-mono text-[clamp(1.02rem,0.97rem+0.18vw,1.12rem)]")
         expect(creditsBadgeSource).toContain("rounded-full bg-destructive/12 px-3 py-1.5 text-destructive ring-1 ring-destructive/20")
-        expect(creditsBadgeSource).not.toContain("<IconCoins")
+        // El rediseño canva-style reintrodujo deliberadamente el icono de créditos (IconCoins01).
+        expect(creditsBadgeSource).toContain("<IconCoins01")
         expect(headerDropdownStylesSource).toContain("text-[clamp(1rem,0.96rem+0.2vw,1.08rem)]")
         expect(headerDropdownStylesSource).toContain("text-[0.84rem] font-semibold")
         expect(headerSource).toContain("HEADER_DROPDOWN_ITEM_CLASS")
