@@ -369,7 +369,7 @@ export function ControlsPanel({
             : 'skip'
     )
     const { stylePresets } = useStylePresetImages()
-    const stylePresetsStatus: 'Exhausted' = 'Exhausted'
+    const stylePresetsStatus = 'Exhausted' as const
 
     const lastInitBrandId = useRef<string | null>(null)
 

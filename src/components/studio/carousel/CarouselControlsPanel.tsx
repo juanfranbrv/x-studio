@@ -551,7 +551,7 @@ export function CarouselControlsPanel({
     )
     const structuresData = useQuery(api.carousel.listStructures, { includeInactive: false }) as DbStructure[] | undefined
     const { stylePresets } = useStylePresetImages()
-    const stylePresetsStatus: 'Exhausted' = 'Exhausted'
+    const stylePresetsStatus = 'Exhausted' as const
     const structures: UiStructure[] = (structuresData || [])
         .map((s) => ({
             id: s.structure_id,

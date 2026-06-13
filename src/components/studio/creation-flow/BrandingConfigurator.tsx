@@ -102,7 +102,6 @@ function CustomColorPicker({
     const handleEyedropper = async () => {
         if ('EyeDropper' in window) {
             try {
-                // @ts-ignore
                 const eyeDropper = new window.EyeDropper()
                 const result = await eyeDropper.open()
                 if (result?.sRGBHex) {

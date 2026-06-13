@@ -4,6 +4,7 @@ import { generateObject } from 'ai';
 import { model } from '@/lib/ai';
 import { FileAnalysisSchema } from '@/lib/prompts/schemas/file-analysis-schema';
 import { FILE_ANALYSIS_PROMPT } from '@/lib/prompts/actions/file-analyst';
+import { getErrorMessage } from '@/lib/utils';
 
 export async function analyzeBrandFile(formData: FormData) {
     try {
@@ -66,8 +67,8 @@ export async function analyzeBrandFile(formData: FormData) {
 
         return { success: true, data: object };
 
-    } catch (error: any) {
+    } catch (error) {
         console.error('Error en analyzeBrandFile:', error);
-        return { success: false, error: error.message || 'Error al analizar el archivo.' };
+        return { success: false, error: getErrorMessage(error) || 'Error al analizar el archivo.' };
     }
 }

@@ -9,6 +9,7 @@ import { fetchMutation, fetchQuery } from "convex/nextjs";
 import { api } from "../../../convex/_generated/api";
 import { authedFetchQuery, authedFetchMutation } from '@/lib/convex-server';
 import { model, groqModel } from '@/lib/ai';
+import { getErrorMessage } from '@/lib/utils';
 import fs from 'fs';
 import path from 'path';
 import { clusterColors, deltaE, getHarmonyBonus, hexToHsl, hexToRgb } from '@/lib/color-utils';
@@ -2643,9 +2644,9 @@ export async function analyzeBrandDNA(url: string, forceRefresh: boolean = false
             addTrace('Analysis: Gemini', 'highlight', 'Análisis de Brand DNA completado con éxito');
             console.log('✅ Gemini generated Brand DNA successfully');
             logDebug('✅ Gemini Response:', brandDNA);
-        } catch (aiError: any) {
-            addTrace('Analysis: Gemini', 'fail', aiError.message);
-            console.error('❌ Gemini AI Error:', aiError.message);
+        } catch (aiError) {
+            addTrace('Analysis: Gemini', 'fail', getErrorMessage(aiError));
+            console.error('❌ Gemini AI Error:', getErrorMessage(aiError));
             logToFile(`⚠️ Gemini falló. Intentando con Groq (Llama 3.3)...`);
 
             try {
@@ -2657,9 +2658,9 @@ export async function analyzeBrandDNA(url: string, forceRefresh: boolean = false
                 brandDNA = object;
                 addTrace('Analysis: Groq', 'highlight', 'Análisis de Brand DNA completado con éxito');
                 console.log('✅ Groq generated Brand DNA successfully');
-            } catch (groqError: any) {
-                addTrace('Analysis: Groq', 'fail', groqError.message);
-                console.error('❌ Groq AI Error:', groqError.message);
+            } catch (groqError) {
+                addTrace('Analysis: Groq', 'fail', getErrorMessage(groqError));
+                console.error('❌ Groq AI Error:', getErrorMessage(groqError));
                 logToFile(`❌ Fallo total de IA (Gemini y Groq). Usando heurística.`);
 
                 addTrace('Analysis: Heuristic', 'highlight', 'Generando Brand DNA básico por fallo de IA');

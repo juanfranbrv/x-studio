@@ -322,7 +322,7 @@ function SpotlightGhost() {
 function TestimonialGhost() {
     return (
         <div className="w-full h-full flex flex-col items-center justify-center gap-6 p-8">
-            <div className="text-primary/25 text-8xl leading-none">"</div>
+            <div className="text-primary/25 text-8xl leading-none">&quot;</div>
             <div className="h-5 w-[80%] bg-primary/15 rounded-full" />
             <div className="h-5 w-[60%] bg-primary/15 rounded-full" />
             <div className="w-16 h-16 rounded-full bg-primary/20 mt-6" />

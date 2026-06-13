@@ -43,7 +43,7 @@ export function CompositionEditor({
     if (!composition && !isNew) {
         return (
             <div className="flex flex-col items-center justify-center h-full text-muted-foreground p-8 text-center border-l border-border bg-muted/10">
-                <p>Selecciona un diseño para editar o haz clic en "Nuevo diseño"</p>
+                <p>Selecciona un diseño para editar o haz clic en &quot;Nuevo diseño&quot;</p>
             </div>
         )
     }

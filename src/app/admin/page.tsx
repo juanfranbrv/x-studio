@@ -58,6 +58,7 @@ import {
 } from '@/lib/theme-colors'
 import { STUDIO_DEBUG_OVERLAYS_ENABLED_SETTING_KEY, normalizeStudioDebugOverlaysEnabled } from '@/lib/studio-debug-visibility'
 import { REPLACE_MODULE_ENABLED_SETTING_KEY, normalizeReplaceModuleEnabled } from '@/lib/replace-module-visibility'
+import { getErrorMessage } from '@/lib/utils'
 
 const IMAGE_MODEL_OPTIONS = [
     { value: 'wisdom/gemini-3-pro-image-preview', label: 'Wisdom · Gemini 3 Pro Image Preview' },
@@ -564,7 +565,7 @@ export default function AdminPage() {
         })
             .catch((error: any) => {
                 hasSyncedCatalogRef.current = false
-                toast({ title: 'Error sincronizando catálogo económico', description: error.message, variant: 'destructive' })
+                toast({ title: 'Error sincronizando catálogo económico', description: getErrorMessage(error), variant: 'destructive' })
             })
             .finally(() => setSyncingCatalog(false))
     }, [hasAdminAccess, userEmail, syncModelCatalog, syncingCatalog, toast])
@@ -604,8 +605,8 @@ export default function AdminPage() {
             toast({ title: 'Logs eliminados', description: `Se borraron ${result?.deleted ?? 0} registros.` })
             setExpandedEconomicFlows({})
             handleRefreshEconomicLog()
-        } catch (error: any) {
-            toast({ title: 'Error', description: error?.message || 'No se pudieron eliminar los logs.', variant: 'destructive' })
+        } catch (error) {
+            toast({ title: 'Error', description: getErrorMessage(error) || 'No se pudieron eliminar los logs.', variant: 'destructive' })
         } finally {
             setClearingEconomicLogs(false)
         }
@@ -644,8 +645,8 @@ export default function AdminPage() {
             document.body.removeChild(link)
             URL.revokeObjectURL(url)
             toast({ title: 'CSV descargado', description: `Se exportaron ${rows.length} eventos.` })
-        } catch (error: any) {
-            toast({ title: 'Error', description: error?.message || 'No se pudo generar el CSV.', variant: 'destructive' })
+        } catch (error) {
+            toast({ title: 'Error', description: getErrorMessage(error) || 'No se pudo generar el CSV.', variant: 'destructive' })
         } finally {
             setExportingEconomicCsv(false)
         }
@@ -709,8 +710,8 @@ export default function AdminPage() {
         try {
             await activateUser({ admin_email: userEmail, user_id: userId })
             toast({ title: 'Usuario activado', description: 'Se le asignaron los créditos iniciales.' })
-        } catch (error: any) {
-            toast({ title: 'Error', description: error.message, variant: 'destructive' })
+        } catch (error) {
+            toast({ title: 'Error', description: getErrorMessage(error), variant: 'destructive' })
         }
         setIsProcessing(false)
     }
@@ -720,8 +721,8 @@ export default function AdminPage() {
         try {
             await suspendUser({ admin_email: userEmail, user_id: userId })
             toast({ title: 'Usuario suspendido' })
-        } catch (error: any) {
-            toast({ title: 'Error', description: error.message, variant: 'destructive' })
+        } catch (error) {
+            toast({ title: 'Error', description: getErrorMessage(error), variant: 'destructive' })
         }
         setIsProcessing(false)
     }
@@ -734,8 +735,8 @@ export default function AdminPage() {
         try {
             await deleteUser({ admin_email: userEmail, user_id: userId })
             toast({ title: 'Usuario eliminado', description: `${email} ha sido eliminado permanentemente` })
-        } catch (error: any) {
-            toast({ title: 'Error', description: error.message, variant: 'destructive' })
+        } catch (error) {
+            toast({ title: 'Error', description: getErrorMessage(error), variant: 'destructive' })
         }
         setIsProcessing(false)
     }
@@ -755,8 +756,8 @@ export default function AdminPage() {
             setCreditAmount('')
             setCreditReason('')
             setSelectedUserId(null)
-        } catch (error: any) {
-            toast({ title: 'Error', description: error.message, variant: 'destructive' })
+        } catch (error) {
+            toast({ title: 'Error', description: getErrorMessage(error), variant: 'destructive' })
         }
         setIsProcessing(false)
     }
@@ -765,8 +766,8 @@ export default function AdminPage() {
         try {
             await updateSetting({ admin_email: userEmail, key, value })
             toast({ title: 'Configuración guardada' })
-        } catch (error: any) {
-            toast({ title: 'Error', description: error.message, variant: 'destructive' })
+        } catch (error) {
+            toast({ title: 'Error', description: getErrorMessage(error), variant: 'destructive' })
         }
     }
 
@@ -783,8 +784,8 @@ export default function AdminPage() {
                 )
             )
             toast({ title: 'Paleta global guardada', description: 'Toda la aplicación usará esta paleta completa desde Admin.' })
-        } catch (error: any) {
-            toast({ title: 'Error', description: error.message, variant: 'destructive' })
+        } catch (error) {
+            toast({ title: 'Error', description: getErrorMessage(error), variant: 'destructive' })
         } finally {
             setSavingTheme(false)
         }
@@ -856,8 +857,8 @@ export default function AdminPage() {
         try {
             await updateSetting({ admin_email: userEmail, key: 'theme_custom_presets', value: JSON.stringify(updated) })
             toast({ title: 'Paleta guardada', description: `"${name}" disponible como preset.` })
-        } catch (error: any) {
-            toast({ title: 'Error', description: error.message, variant: 'destructive' })
+        } catch (error) {
+            toast({ title: 'Error', description: getErrorMessage(error), variant: 'destructive' })
         }
     }
 
@@ -867,8 +868,8 @@ export default function AdminPage() {
         try {
             await updateSetting({ admin_email: userEmail, key: 'theme_custom_presets', value: JSON.stringify(updated) })
             toast({ title: 'Paleta eliminada' })
-        } catch (error: any) {
-            toast({ title: 'Error', description: error.message, variant: 'destructive' })
+        } catch (error) {
+            toast({ title: 'Error', description: getErrorMessage(error), variant: 'destructive' })
         }
     }
 
@@ -888,8 +889,8 @@ export default function AdminPage() {
                 active: true,
             })
             toast({ title: 'Coste guardado' })
-        } catch (error: any) {
-            toast({ title: 'Error', description: error.message, variant: 'destructive' })
+        } catch (error) {
+            toast({ title: 'Error', description: getErrorMessage(error), variant: 'destructive' })
         }
     }
 
@@ -906,8 +907,8 @@ export default function AdminPage() {
         try {
             await deleteModelCost({ admin_email: userEmail, id })
             toast({ title: 'Entrada eliminada' })
-        } catch (error: any) {
-            toast({ title: 'Error', description: error.message, variant: 'destructive' })
+        } catch (error) {
+            toast({ title: 'Error', description: getErrorMessage(error), variant: 'destructive' })
         }
     }
 
@@ -939,8 +940,8 @@ export default function AdminPage() {
             }))
             await updateSetting({ admin_email: userEmail, key: settingKey, value: model })
             toast({ title: 'Modelo activo actualizado' })
-        } catch (error: any) {
-            toast({ title: 'Error', description: error.message, variant: 'destructive' })
+        } catch (error) {
+            toast({ title: 'Error', description: getErrorMessage(error), variant: 'destructive' })
         } finally {
             setActivatingModelId(null)
         }
@@ -1026,8 +1027,8 @@ export default function AdminPage() {
                 }
             }
             toast({ title: 'Modelos y API keys guardados' })
-        } catch (error: any) {
-            toast({ title: 'Error', description: error.message, variant: 'destructive' })
+        } catch (error) {
+            toast({ title: 'Error', description: getErrorMessage(error), variant: 'destructive' })
         } finally {
             setSavingModelSettings(false)
         }
@@ -1232,8 +1233,8 @@ export default function AdminPage() {
                                                                     request_id: request._id
                                                                 })
                                                                 toast({ title: 'Acceso aprobado', description: `${request.email} ahora puede acceder` })
-                                                            } catch (e: any) {
-                                                                toast({ title: 'Error', description: e.message, variant: 'destructive' })
+                                                            } catch (e) {
+                                                                toast({ title: 'Error', description: getErrorMessage(e), variant: 'destructive' })
                                                             }
                                                         }}
                                                     >
@@ -1249,8 +1250,8 @@ export default function AdminPage() {
                                                                     request_id: request._id
                                                                 })
                                                                 toast({ title: 'Rechazado', description: `${request.email} ha sido rechazado` })
-                                                            } catch (e: any) {
-                                                                toast({ title: 'Error', description: e.message, variant: 'destructive' })
+                                                            } catch (e) {
+                                                                toast({ title: 'Error', description: getErrorMessage(e), variant: 'destructive' })
                                                             }
                                                         }}
                                                     >
@@ -1304,8 +1305,8 @@ export default function AdminPage() {
                                                                             admin_email: userEmail,
                                                                             request_id: request._id
                                                                         })
-                                                                    } catch (e: any) {
-                                                                        toast({ title: 'Error', description: e.message, variant: 'destructive' })
+                                                                    } catch (e) {
+                                                                        toast({ title: 'Error', description: getErrorMessage(e), variant: 'destructive' })
                                                                     }
                                                                 }}
                                                             >

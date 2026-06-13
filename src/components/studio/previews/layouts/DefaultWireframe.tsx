@@ -1,8 +1,7 @@
 import { LayoutProps } from './types'
 import { cn } from '@/lib/utils'
 
-interface DefaultWireframeProps extends LayoutProps {
-}
+type DefaultWireframeProps = LayoutProps
 
 export function DefaultWireframe({ image, texts, brandColors, isGhost }: DefaultWireframeProps) {
     const mainColor = isGhost ? '#f4f4f5' : (brandColors[0] || '#000000')

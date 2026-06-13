@@ -8,6 +8,7 @@ import { generateTextUnified } from '@/lib/gemini'
 import type { AnalyzeBrandDNAResponse, BrandDNA } from '@/lib/brand-types'
 import sharp from 'sharp'
 import { clusterColors } from '@/lib/color-utils'
+import { getErrorMessage } from '@/lib/utils'
 import { analyzeBrandDNA, assignStudioColorRolesAction } from './analyze-brand-dna'
 
 /**
@@ -298,10 +299,13 @@ Include 5 brand_values, 3 tone_of_voice adjectives, 3 visual_aesthetic adjective
     }
 
     return { success: true, data: brandData }
-  } catch (error: any) {
-    console.error('[analyze-brand-instagram] Error:', error.message)
+  } catch (error) {
+    console.error('[analyze-brand-instagram] Error:', getErrorMessage(error))
 
-    if (error instanceof InstagramAccountNotFoundError || error.code === 'INSTAGRAM_ACCOUNT_NOT_FOUND') {
+    const errorCode = typeof error === 'object' && error !== null && 'code' in error
+      ? (error as { code?: unknown }).code
+      : undefined
+    if (error instanceof InstagramAccountNotFoundError || errorCode === 'INSTAGRAM_ACCOUNT_NOT_FOUND') {
       return {
         success: false,
         error: 'INSTAGRAM_ACCOUNT_NOT_FOUND',
@@ -336,13 +340,13 @@ Include 5 brand_values, 3 tone_of_voice adjectives, 3 visual_aesthetic adjective
 
         return result
       }
-    } catch (fallbackError: any) {
-      console.error('[analyze-brand-instagram] Fallback also failed:', fallbackError.message)
+    } catch (fallbackError) {
+      console.error('[analyze-brand-instagram] Fallback also failed:', getErrorMessage(fallbackError))
     }
 
     return {
       success: false,
-      error: error.message || 'Failed to analyze Instagram profile',
+      error: getErrorMessage(error) || 'Failed to analyze Instagram profile',
     }
   }
 }

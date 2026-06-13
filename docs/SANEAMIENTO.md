@@ -53,9 +53,12 @@
 
 ## Fase 5 — Higiene de código (progresivo)
 
-- [~] **5.1 Eliminar los errores de ESLint** — PARCIAL (284 → 272).
-  - Hecho 2026-06-12: auto-fix (`prefer-const`, `prefer-as-const`) + **los 5 errores `react-hooks/rules-of-hooks` (bugs reales)**: early-return antes de hooks en `CanvasGhostOverlay.tsx` y `useMemo` condicional en `admin/page.tsx` → 0 restantes; `tsc` limpio y suite 165/165.
-  - Pendiente (progresivo): 189 `no-explicit-any` (tipado real en `ExtractionPreviewModal`, `analyze-brand-dna`, `gemini.ts`, `admin/page`…), ~40 `react-hooks/*` advisory, 16 `react/no-unescaped-entities`. Recomendación: reducir por fichero cuando se toque por otra razón; candidato a delegación con `/local-worker` para los casos mecánicos.
+- [~] **5.1 Eliminar los errores de ESLint** — PARCIAL (284 → **225**).
+  - Hecho 2026-06-12 (sesión 1): **5 errores `react-hooks/rules-of-hooks` (bugs reales)** — early-return antes de hooks en `CanvasGhostOverlay.tsx` y `useMemo` condicional en `admin/page.tsx`.
+  - Hecho 2026-06-12 (sesión 2, 272→225, todos verificados con tsc+165 tests+build):
+    - Triviales seguros (-24): 16 `react/no-unescaped-entities` (`&quot;`), 3 `ban-ts-comment` (tipos `EyeDropper` declarados en `src/types/eyedropper.d.ts`), 2 `prefer-const`, 2 `prefer-as-const`, 1 `no-empty-object-type`.
+    - `no-explicit-any` en manejo de errores (-23): helper `getErrorMessage(unknown)` en `src/lib/utils.ts`; convertidos los `catch (e: any)` de las 4 server actions de análisis de marca y los **17 de `admin/page.tsx`** a `catch (e)` + `getErrorMessage`.
+  - Pendiente (progresivo, 166 `no-explicit-any` + ~59 `react-hooks/*` advisory): tipado real en ficheros grandes (`gemini.ts` 19, `analyze-brand-dna` 14, `ExtractionPreviewModal` 12, `image/page`, `BrandDNABoard`…) y catch de UI dispersos. Los `react-hooks/*` (set-state-in-effect, static-components, refs, purity) son del react-compiler y requieren refactor con cuidado — **no tocar a ciegas**. Recomendación: reducir por fichero al tocarlo, o delegar los casos mecánicos a `/local-worker`.
 - [ ] **5.2 Migrar `console.*` a `src/lib/logger.ts` en los ficheros server-side más ruidosos** (`analyze-brand-dna.ts` con 176, `gemini.ts`, server actions).
   - Verificación: `grep console.` en `src/app/actions` y `src/lib/gemini.ts` ≈ 0; logs visibles con formato del logger.
   - Nota: no abordado en esta sesión — los logs usan formatos `%c` heterogéneos y la migración a ciegas rompería trazas; requiere pasada dedicada.

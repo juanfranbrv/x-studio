@@ -119,7 +119,6 @@ export function ColorPalette({
                 // Keep track of current state
                 const wasOpen = colorPickerOpen === index;
 
-                // @ts-ignore
                 const eyeDropper = new window.EyeDropper();
                 const result = await eyeDropper.open();
 

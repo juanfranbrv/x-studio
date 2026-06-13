@@ -244,7 +244,7 @@ export function BrandBoardStep({ draft, proposals, dispatch, onSave, onEditStep 
             <div className="flex-1 space-y-4">
               <div className="space-y-1">
                 <h2 className="text-3xl md:text-4xl font-bold">{draft.brand_name || t('brandBoard.sections.brand_name')}</h2>
-                <p className="text-xl text-primary font-medium italic opacity-80">"{draft.tagline || t('brandBoard.empty.tagline')}"</p>
+                <p className="text-xl text-primary font-medium italic opacity-80">&quot;{draft.tagline || t('brandBoard.empty.tagline')}&quot;</p>
               </div>
               <div className="flex flex-wrap gap-2 justify-center md:justify-start">
                 {[...brandValues, ...toneOfVoice].map((v, i) => (

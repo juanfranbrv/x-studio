@@ -95,10 +95,11 @@ export async function POST(request: NextRequest) {
 
         log.info('REPLACE', `Start | user=${userId} brand=${brandName || 'N/A'} template=${templateName || 'N/A'}`)
 
-        let [promptTemplate, aiConfig] = await Promise.all([
+        const [initialPromptTemplate, aiConfig] = await Promise.all([
             convex.query(api.systemPrompts.getByKey, { key: REPLACE_IMAGE_PROMPT_KEY }),
             convex.query(api.settings.getAIConfig, {}),
         ])
+        let promptTemplate = initialPromptTemplate
 
         if (!promptTemplate) {
             // Bootstrap defensivo: systemPrompts.upsert ahora exige rol admin, asi que

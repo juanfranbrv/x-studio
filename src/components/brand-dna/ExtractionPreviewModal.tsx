@@ -133,7 +133,7 @@ export function ExtractionPreviewModal({ open, onOpenChange, data, onConfirm }: 
                     <span className="text-sm font-medium text-foreground">{label}</span>
                     {sublabel ? <Badge variant="secondary" className="h-4 text-[10px]">{sublabel}</Badge> : null}
                 </div>
-                <p className="line-clamp-2 text-xs italic leading-relaxed text-muted-foreground">"{value}"</p>
+                <p className="line-clamp-2 text-xs italic leading-relaxed text-muted-foreground">&quot;{value}&quot;</p>
             </div>
         </label>
     );

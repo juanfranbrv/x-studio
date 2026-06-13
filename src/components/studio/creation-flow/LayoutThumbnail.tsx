@@ -869,7 +869,7 @@ function SpotlightLayout() {
 function TestimonialLayout() {
     return (
         <div className="w-full h-full flex flex-col items-center justify-center gap-1 p-2">
-            <div className="text-primary/40 text-lg leading-none">"</div>
+            <div className="text-primary/40 text-lg leading-none">&quot;</div>
             <div className="h-1 w-[80%] bg-primary/25 rounded-full" />
             <div className="h-1 w-[60%] bg-primary/20 rounded-full" />
             <div className="w-3 h-3 rounded-full bg-primary/35 mt-1" />
@@ -1117,7 +1117,7 @@ function EmojiLayout() {
 function CitaMinimalLayout() {
     return (
         <div className="w-full h-full flex flex-col items-center justify-center gap-1.5 p-2">
-            <div className="text-primary/60 text-3xl font-serif">"</div>
+            <div className="text-primary/60 text-3xl font-serif">&quot;</div>
             <div className="w-[85%] h-1 bg-primary/25 rounded-full" />
             <div className="w-[60%] h-1 bg-primary/15 rounded-full" />
         </div>
@@ -1129,7 +1129,7 @@ function CitaPortraitLayout() {
         <div className="w-full h-full flex gap-2 p-2">
             <div className="w-2/5 bg-primary/30 rounded-md" />
             <div className="flex-1 flex flex-col justify-center gap-1">
-                <div className="text-primary/50 text-base leading-none">"</div>
+                <div className="text-primary/50 text-base leading-none">&quot;</div>
                 <div className="h-1 w-full bg-primary/20 rounded-full" />
                 <div className="h-1 w-[80%] bg-primary/15 rounded-full" />
             </div>
@@ -1140,7 +1140,7 @@ function CitaPortraitLayout() {
 function CitaTypoLayout() {
     return (
         <div className="w-full h-full flex items-center justify-center">
-            <div className="text-primary/70 text-4xl font-black tracking-tighter">"Aa"</div>
+            <div className="text-primary/70 text-4xl font-black tracking-tighter">&quot;Aa&quot;</div>
         </div>
     );
 }
@@ -1149,7 +1149,7 @@ function CitaStickerLayout() {
     return (
         <div className="w-full h-full flex items-center justify-center p-1.5">
             <div className="w-full h-full border-2 border-dashed border-primary/40 rounded-xl flex items-center justify-center">
-                <div className="text-primary/50 text-2xl font-serif">"</div>
+                <div className="text-primary/50 text-2xl font-serif">&quot;</div>
             </div>
         </div>
     );
@@ -1158,7 +1158,7 @@ function CitaStickerLayout() {
 function CitaTextureLayout() {
     return (
         <div className="w-full h-full bg-primary/10 flex items-center justify-center p-2">
-            <div className="text-primary/60 text-4xl font-serif italic">"</div>
+            <div className="text-primary/60 text-4xl font-serif italic">&quot;</div>
         </div>
     );
 }
@@ -1179,7 +1179,7 @@ function CitaCarouselLayout() {
         <div className="w-full h-full flex items-center justify-center gap-1.5 p-1.5">
             <div className="flex-1 h-10 bg-primary/10 rounded-md" />
             <div className="w-12 h-14 bg-primary/40 rounded-lg flex items-center justify-center shadow-md">
-                <div className="text-primary/70 text-xl font-serif">"</div>
+                <div className="text-primary/70 text-xl font-serif">&quot;</div>
             </div>
             <div className="flex-1 h-10 bg-primary/10 rounded-md" />
         </div>
@@ -1202,7 +1202,7 @@ function CitaFloatLayout() {
         <div className="w-full h-full flex items-center justify-center p-1">
             <div className="relative">
                 <div className="w-12 h-12 bg-primary/15 rounded-full animate-pulse" />
-                <div className="absolute inset-0 flex items-center justify-center text-primary/60 text-2xl font-serif">"</div>
+                <div className="absolute inset-0 flex items-center justify-center text-primary/60 text-2xl font-serif">&quot;</div>
             </div>
         </div>
     );

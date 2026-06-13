@@ -4,6 +4,7 @@ import { z } from 'zod'
 import { fetchQuery } from 'convex/nextjs'
 import { api } from '../../../convex/_generated/api'
 import { assignStudioColorRoles } from '@/lib/color-utils'
+import { getErrorMessage } from '@/lib/utils'
 import { generateTextUnified } from '@/lib/gemini'
 import type { AnalyzeBrandDNAResponse, BrandDNA } from '@/lib/brand-types'
 
@@ -116,11 +117,11 @@ Requirements:
         text_assets: object.text_assets,
       },
     }
-  } catch (error: any) {
-    console.error('[generate-brand-from-scratch] Failed:', error.message)
+  } catch (error) {
+    console.error('[generate-brand-from-scratch] Failed:', getErrorMessage(error))
     return {
       success: false,
-      error: error.message || 'Failed to generate brand identity',
+      error: getErrorMessage(error) || 'Failed to generate brand identity',
     }
   }
 }

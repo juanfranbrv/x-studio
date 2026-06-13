@@ -586,7 +586,6 @@ export function BrandKitAssistantWizard({
   const handleEyedropperForIndex = async (index: number) => {
     if (!('EyeDropper' in window)) return
     try {
-      // @ts-ignore navegador compatible
       const eyeDropper = new window.EyeDropper()
       const result = await eyeDropper.open()
       if (result?.sRGBHex) {
