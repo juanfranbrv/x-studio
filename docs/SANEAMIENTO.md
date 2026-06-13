@@ -63,6 +63,40 @@
   - Verificación: `grep console.` en `src/app/actions` y `src/lib/gemini.ts` ≈ 0; logs visibles con formato del logger.
   - Nota: no abordado en esta sesión — los logs usan formatos `%c` heterogéneos y la migración a ciegas rompería trazas; requiere pasada dedicada.
 
+## Fase 6 — Troceo de ficheros gigantes (ronda 1)
+
+> Objetivo no funcional: reducir la superficie de los ficheros >2.000 líneas **sin cambiar
+> comportamiento**. Alcance de esta ronda: piloto (LayoutThumbnail) + server actions.
+> Plan: `~/.claude/plans/optimized-plotting-whisper.md`.
+
+- [x] **6.A LayoutThumbnail.tsx (3.875 → 537 líneas)**
+  - Verificación: ✅ 2026-06-12 — 272 componentes `*Layout` presentacionales puros extraídos a
+    `src/components/studio/creation-flow/layout-thumbnails/` en 8 ficheros temáticos (<555 líneas
+    c/u) + barrel; el componente público y los dispatchers permanecen e importan vía `import * as L`.
+    **Comprobado byte-idéntico al original** (script de comparación: 272/272 cuerpos JSX iguales →
+    render garantizado idéntico), `tsc` limpio, 165/165 tests, `next build` OK. Commit `3e91625`.
+- [x] **6.B1 generate-carousel.ts (2.836 → 2.367 líneas)**
+  - Verificación: ✅ 2026-06-12 — 12 helpers puros de texto/JSON/URL/ID → `src/lib/carousel/text-utils.ts`
+    con **24 tests nuevos**. `sanitizeUrl` resultó ser código muerto → conservado como util testeada.
+    `tsc` limpio, 189/189 tests, build OK. Commit `7cae6a7`.
+- [x] **6.B2 analyze-brand-dna.ts (−70 líneas)**
+  - Verificación: ✅ 2026-06-12 — 4 helpers de color **matemático puros** (`colorDistance`,
+    `deduplicateSimilarColors`, `rgbToHex`, `isColorful`) → `src/lib/brand-analysis/color-math.ts`
+    con **9 tests nuevos**. `tsc` limpio, 198/198 tests, build OK.
+  - ⚠️ **Acotado deliberadamente:** el resto de helpers de color (cluster de consenso +
+    `assignStudioColorRoles` local, que **difiere** del de `color-utils.ts`) están entrelazados con
+    lógica de negocio; extraerlos mecánicamente era arriesgado y se dejó intacto. El fichero sigue
+    >2.000 líneas. También se detectó un `relativeLuminance` local duplicado del de `color-utils.ts`
+    (no consolidado para no tocar el `assignStudioColorRoles` local).
+
+### Fuera de alcance (ronda futura de troceo)
+`image/page.tsx`, `carousel/page.tsx`, `useCreationFlow.ts`, `CarouselControlsPanel.tsx`,
+`admin/page.tsx` y la consolidación de duplicados de color: requieren extraer custom hooks /
+sub-componentes con props (refactor de estado real), mini-plan + revisión visual por fichero.
+
 ## Registro de decisiones
 
-- (vacío)
+- 2026-06-12: migración a Better-Auth **descartada por ahora** — reabriría el agujero de auth
+  recién cerrado y es un milestone propio; reevaluar tras estabilizar el saneamiento en producción.
+- 2026-06-12: troceo de páginas/hooks con estado **pospuesto** a ronda futura por riesgo (refactor
+  real, no movimiento mecánico).

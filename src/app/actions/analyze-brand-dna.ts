@@ -345,6 +345,7 @@ function mergeCloseConsensusColors(
 }
 
 import type { BrandDNA, AnalyzeBrandDNAResponse } from '@/lib/brand-types';
+import { colorDistance, deduplicateSimilarColors, rgbToHex, isColorful } from '@/lib/brand-analysis/color-math'
 
 
 
@@ -407,76 +408,6 @@ function discoverValuablePages(html: string, baseUrl: string): string[] {
         console.error('Error discovering valuable pages:', e);
         return [];
     }
-}
-
-/**
- * Calcular distancia Euclidiana entre dos colores RGB
- */
-function colorDistance(hex1: string, hex2: string): number {
-    const r1 = parseInt(hex1.slice(1, 3), 16);
-    const g1 = parseInt(hex1.slice(3, 5), 16);
-    const b1 = parseInt(hex1.slice(5, 7), 16);
-
-    const r2 = parseInt(hex2.slice(1, 3), 16);
-    const g2 = parseInt(hex2.slice(3, 5), 16);
-    const b2 = parseInt(hex2.slice(5, 7), 16);
-
-    return Math.sqrt(
-        Math.pow(r2 - r1, 2) +
-        Math.pow(g2 - g1, 2) +
-        Math.pow(b2 - b1, 2)
-    );
-}
-
-/**
- * Agrupar colores similares (elimina duplicados visuales)
- */
-function deduplicateSimilarColors(colors: string[], threshold = 30): string[] {
-    const unique: string[] = [];
-
-    for (const color of colors) {
-        const isSimilar = unique.some(existing =>
-            colorDistance(color, existing) < threshold
-        );
-
-        if (!isSimilar) {
-            unique.push(color);
-        }
-    }
-
-    return unique;
-}
-
-/**
- * Convierte RGB a HEX
- */
-function rgbToHex(r: number, g: number, b: number): string {
-    return '#' + [r, g, b].map(x => {
-        const hex = x.toString(16);
-        return hex.length === 1 ? '0' + hex : hex;
-    }).join('');
-}
-
-/**
- * Filtra colores poco saturados (grises, blancos, negros)
- */
-function isColorful(hex: string): boolean {
-    if (!hex || hex === 'transparent' || hex === 'null') return false;
-    const r = parseInt(hex.slice(1, 3), 16);
-    const g = parseInt(hex.slice(3, 5), 16);
-    const b = parseInt(hex.slice(5, 7), 16);
-
-    const max = Math.max(r, g, b);
-    const min = Math.min(r, g, b);
-    const delta = max - min;
-
-    // Aceptamos casi todo excepto blancos/negros puros y grises perfectos
-    // Antes delta < 15, ahora delta < 3 para ser mucho más permisivos con tonos sutiles
-    if (max > 252 && delta < 3) return false; // Blancos extremos
-    if (max < 8 && delta < 3) return false;   // Negros extremos
-    if (delta < 2) return false;              // Grises matemáticamente puros
-
-    return true;
 }
 
 /**
