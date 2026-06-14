@@ -117,11 +117,16 @@ tests (p.ej. `creation-flow-types`) deben usar imports RELATIVOS en lo extraído
 - Mover lógica a hooks/containers; las páginas quedan de orquestación.
 
 ### Fase 4 — Hooks y tipos
-- [ ] `useCreationFlow.ts` (2485)
-- [ ] `creation-flow-types.ts` (1383)
+- [ ] `useCreationFlow.ts` (2485) — hook, requiere QA visual
+- [x] `creation-flow-types.ts` — hecho en 2.4 (catálogo de layouts extraído)
 
 ### Fase 5 — Convex
-- [ ] `work_sessions.ts` (1430)
+- [ ] `work_sessions.ts` (1559) — CUIDADO: la región de "helpers" (7-890) NO es toda
+      pura; hay funciones que toman `QueryCtx`/`MutationCtx` y tocan `ctx.db`. Separar
+      primero los helpers puros (compactación/sanitización de snapshots: `compact*`,
+      `sanitizeSnapshot`, `safeStableStringify`, `summarize*`, `buildSessionFingerprint`,
+      `compareSessionsForKeep`) → `convex/lib/session-compaction.ts`, dejando los
+      ctx-dependientes en el fichero. Romper esto afecta persistencia de sesiones. Atender.
 - [ ] `billing.ts` (638)
 
 ### Fase 6 — Deuda de tipos y warnings reales
