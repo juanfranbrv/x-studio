@@ -1960,6 +1960,44 @@ async function generateContentImageWithRetry(
     throw lastError instanceof Error ? lastError : new Error('Image generation failed after retries')
 }
 
+/**
+ * Sube una imagen generada (data URL base64 o base64 crudo) a Convex storage y
+ * devuelve una URL publica corta. Si ya es una URL http(s), la devuelve tal cual.
+ *
+ * Motivo: regenerateSlideAction es una Server Action y devolver el data URL base64
+ * crudo (varios MB) revienta el limite de serializacion de React Flight en Next 16.2.x
+ * ("Maximum array nesting exceeded"). El modulo de imagen no sufre esto por usar una
+ * API route (JSON). Subir a storage tambien evita transferir MBs por la respuesta.
+ */
+async function persistGeneratedImageToStorage(imageUrl: string): Promise<string> {
+    if (!imageUrl || /^https?:\/\//i.test(imageUrl)) return imageUrl
+
+    let mime = 'image/png'
+    let base64 = imageUrl
+    const match = /^data:([^;]+);base64,([\s\S]*)$/.exec(imageUrl)
+    if (match) {
+        mime = match[1] || 'image/png'
+        base64 = match[2]
+    }
+
+    const buffer = Buffer.from(base64, 'base64')
+    const uploadUrl = await fetchMutation(api.assets.generateUploadUrl, {})
+    const res = await fetch(uploadUrl, {
+        method: 'POST',
+        body: new Blob([new Uint8Array(buffer)], { type: mime }),
+        headers: { 'Content-Type': mime },
+    })
+    if (!res.ok) {
+        throw new Error(`Slide image upload failed: ${res.status} ${res.statusText}`)
+    }
+    const { storageId } = (await res.json()) as { storageId: string }
+    const url = await fetchQuery(api.assets.getImageUrl, { storageId })
+    if (!url) {
+        throw new Error('No public URL returned for stored slide image')
+    }
+    return url
+}
+
 async function generateSlideImage(
     slideContent: SlideContent,
     totalSlides: number,
@@ -2106,7 +2144,7 @@ async function generateSlideImage(
         context.push({ type: 'logo', value: selectedLogoUrl, label: 'Logo', weight: 1.0 })
     }
 
-    const imageUrl = await generateContentImageWithRetry(brandWrapper, fullPrompt, {
+    const rawImageUrl = await generateContentImageWithRetry(brandWrapper, fullPrompt, {
         aspectRatio,
         model,
         context
@@ -2115,6 +2153,8 @@ async function generateSlideImage(
         phase: audit?.phase || 'carousel_slide_regeneration',
         slideIndex: slideContent.index,
     })
+    // Persistimos en storage y devolvemos URL corta (ver persistGeneratedImageToStorage).
+    const imageUrl = await persistGeneratedImageToStorage(rawImageUrl)
 
     const references: DebugImageReference[] = context.map(ref => ({
         type: ref.type,
