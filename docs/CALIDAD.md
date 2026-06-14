@@ -95,8 +95,11 @@ Verificable con TS + tests (sin QA visual). Commits atómicos.
       a `src/lib/carousel/visual-prompt-builders.ts`. TS 0, tests 198/198.
 - [x] `analyze-brand-dna.ts` 2953→2765 (2.2) → 7 funciones de consenso/roles de color
       a `src/lib/brand-analysis/color-consensus.ts`. TS 0, tests 198/198, lint 843→842.
-- [ ] `gemini.ts` (~1956)
-- [ ] `parse-intent.ts` (~1177)
+- [x] `parse-intent.ts` 1356→1138 (2.3) → 6 helpers de reparacion de JSON
+      a `src/lib/json-repair.ts`. TS 0, tests 198/198, lint 842 (sin cambio).
+- [ ] `gemini.ts` (~1956) — cliente central de IA. DECISIÓN: no trocear con migajas;
+      merece pasada dedicada que lo **divida por proveedor** (wisdom/openai/naga/replicate/
+      atlas/google → `lib/gemini/<provider>.ts`) dejando `gemini.ts` como fachada. Pendiente.
 - Pendiente: `visual-prompt-builders.ts` (427 líneas) podría sub-trocearse (locale/idioma
   vs distribución de detalles) para bajar de 300; opcional.
 
