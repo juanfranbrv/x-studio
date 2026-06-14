@@ -68,13 +68,23 @@
 - [x] Confirmar suite verde: **198/198 tests** (vitest), TS 0 errores.
 - **Entregable:** `npm run lint` con señal útil + límite de tamaño activo. ✅
 
-### Fase 1 — Paneles de UI gigantes (mayor impacto diario)
-- [ ] `CarouselControlsPanel.tsx` (3672)
-- [ ] `ControlsPanel.tsx` (1540)
-- [ ] `CarouselCanvasPanel.tsx` (1389)
-- [ ] `CanvasPanel.tsx` (1299)
-- Extraer secciones a subcomponentes + hooks (`useXxx`). Reutilizar componentes
-  existentes (AGENTS §19) antes de crear nuevos.
+### Fase 1 — Paneles de UI gigantes (mayor impacto diario) — EN CURSO
+Primera pasada **segura (comportamiento-cero)**: extraer preámbulo (tipos, helpers
+puros, constantes de estilo, subcomponentes presentacionales) a ficheros hermanos.
+Verificado con TS (0 errores) + suite (198/198) tras cada paso. Commits atómicos.
+- [x] `CarouselControlsPanel.tsx` 3922→3634 (1.1) → `.types.ts`, `.helpers.ts`, `CarouselColorSwatches.tsx`
+- [x] `ControlsPanel.tsx` 1621→1483 (1.2) → `.helpers.ts`, `.types.ts`, `ControlsColorSwatches.tsx`
+- [x] `CarouselCanvasPanel.tsx` 1482→1363 (1.3) → `.helpers.ts`, `.parts.tsx`
+- [x] `CanvasPanel.tsx` 1421→1299 (1.4) → `.helpers.ts`, `.parts.tsx`
+- Lint global: 845→842 (sin regresión; -2 constantes muertas).
+
+**Pendiente Fase 1 (requiere verificación VISUAL con login Clerk):**
+- [ ] Extraer secciones grandes del *cuerpo* de cada panel a subcomponentes + hooks
+      (`useXxx`). Es la parte que más reduce líneas pero exige QA visual (no se pudo
+      hacer en sesión autónoma: `/carousel` y `/studio` están tras login).
+- [ ] De-dup de `RoleColorSwatch`/`AddAccentSwatch` entre ControlsPanel y carousel:
+      hoy son variantes visuales distintas (hover:scale, sombras); unificar con un
+      componente compartido parametrizado SOLO con verificación visual.
 
 ### Fase 2 — Server actions / lógica core (continúa fase B)
 - [ ] `analyze-brand-dna.ts` (2558)
