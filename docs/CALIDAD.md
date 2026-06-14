@@ -93,7 +93,8 @@ Verificado con TS (0 errores) + suite (198/198) tras cada paso. Commits atómico
 Verificable con TS + tests (sin QA visual). Commits atómicos.
 - [x] `generate-carousel.ts` 2661→2201 (2.1) → cluster de 15 builders de prompt visual
       a `src/lib/carousel/visual-prompt-builders.ts`. TS 0, tests 198/198.
-- [ ] `analyze-brand-dna.ts` (~2558)
+- [x] `analyze-brand-dna.ts` 2953→2765 (2.2) → 7 funciones de consenso/roles de color
+      a `src/lib/brand-analysis/color-consensus.ts`. TS 0, tests 198/198, lint 843→842.
 - [ ] `gemini.ts` (~1956)
 - [ ] `parse-intent.ts` (~1177)
 - Pendiente: `visual-prompt-builders.ts` (427 líneas) podría sub-trocearse (locale/idioma
