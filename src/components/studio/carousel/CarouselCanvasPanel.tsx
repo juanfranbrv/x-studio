@@ -27,16 +27,22 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import type { ReferenceImageRole } from '@/lib/creation-flow-types'
 import { useTranslation } from 'react-i18next'
 import {
-    STUDIO_CANVAS_FLOATING_TOOLBAR_CLASS,
-    STUDIO_CANVAS_TOOL_BUTTON_CLASS,
-    STUDIO_CANVAS_TOOL_VALUE_CLASS,
-} from '@/components/studio/shared/canvasStyles'
-import {
     STUDIO_DECISION_DIALOG_CLASS,
     STUDIO_DECISION_DIALOG_HEADER_CLASS,
     STUDIO_DECISION_DIALOG_TITLE_CLASS,
 } from '@/components/studio/shared/dialogStyles'
 import type { PreviewLayoutMode } from '@/components/studio/previewLayoutMode'
+import {
+    DEFAULT_SLIDE_DURATION_MS,
+    DEFAULT_LAST_SLIDE_DURATION_MS,
+    formatDurationLabel,
+    splitVisualPromptForEditor,
+    CANVAS_FLOATING_TOOLBAR_CLASS,
+    CANVAS_TOOL_BUTTON_CLASS,
+    CANVAS_TOOL_VALUE_CLASS,
+    CANVAS_TOOL_ICON_CLASS,
+} from './CarouselCanvasPanel.helpers'
+import { renderCompositionGhostIcon, StyleReferenceCorner } from './CarouselCanvasPanel.parts'
 
 interface CarouselCanvasPanelProps {
     slides: CarouselSlide[]
@@ -69,131 +75,6 @@ interface CarouselCanvasPanelProps {
     isAdmin?: boolean
     showDebugTools?: boolean
     previewLayoutMode?: PreviewLayoutMode
-}
-
-const VISUAL_INTENT_MARKERS = [
-    'Objetivo visual de esta slide:',
-    'Objectiu visual d’aquesta slide:',
-    'Visual goal for this slide:',
-    'Objectif visuel de cette slide',
-    'Visuelles Ziel dieser Folie',
-    'Objetivo visual deste slide',
-    'Obiettivo visivo di questa slide',
-]
-
-const DEFAULT_SLIDE_DURATION_MS = 4000
-const DEFAULT_LAST_SLIDE_DURATION_MS = 6000
-
-function formatDurationLabel(durationMs: number) {
-    const seconds = durationMs / 1000
-    return `${Number.isInteger(seconds) ? seconds : seconds.toFixed(1)}s`
-}
-
-function splitVisualPromptForEditor(value: string): { editable: string; hiddenIntent: string } {
-    const normalized = String(value || '').trim()
-    if (!normalized) {
-        return { editable: '', hiddenIntent: '' }
-    }
-
-    const markerIndexes = VISUAL_INTENT_MARKERS
-        .map((marker) => normalized.indexOf(marker))
-        .filter((index) => index > 0)
-
-    const firstMarkerIndex = markerIndexes.length > 0 ? Math.min(...markerIndexes) : -1
-
-    if (firstMarkerIndex === -1) {
-        return {
-            editable: normalized,
-            hiddenIntent: '',
-        }
-    }
-
-    return {
-        editable: normalized.slice(0, firstMarkerIndex).trim(),
-        hiddenIntent: normalized.slice(firstMarkerIndex).trim(),
-    }
-}
-
-const CANVAS_FLOATING_TOOLBAR_CLASS = STUDIO_CANVAS_FLOATING_TOOLBAR_CLASS
-const CANVAS_TOOL_BUTTON_CLASS = STUDIO_CANVAS_TOOL_BUTTON_CLASS
-const CANVAS_TOOL_VALUE_CLASS = STUDIO_CANVAS_TOOL_VALUE_CLASS
-const CANVAS_TOOL_ICON_CLASS = '!h-8 !w-8'
-
-function renderCompositionGhostIcon(iconName: string) {
-    const trimmed = (iconName || '').trim()
-    if (!trimmed) return null
-
-    if (trimmed.startsWith('<svg')) {
-        return (
-            <div
-                className="w-[92%] h-[92%] max-w-[820px] max-h-[820px] text-primary/25 flex items-center justify-center [&>svg]:w-full [&>svg]:h-full [&>svg]:block"
-                dangerouslySetInnerHTML={{ __html: trimmed }}
-            />
-        )
-    }
-
-    return (
-        <span
-            className="material-symbols-outlined text-primary/25 leading-none"
-            style={{ fontSize: 'clamp(140px, 56cqw, 760px)' }}
-        >
-            {trimmed}
-        </span>
-    )
-}
-
-function StyleReferenceCorner({ url }: { url: string }) {
-    const { t } = useTranslation('common')
-    const containerRef = useRef<HTMLDivElement>(null)
-    const [boxSize, setBoxSize] = useState({ w: 0, h: 0 })
-    const [naturalSize, setNaturalSize] = useState({ w: 1, h: 1 })
-
-    useEffect(() => {
-        const el = containerRef.current
-        if (!el) return
-
-        const update = () => {
-            setBoxSize({ w: el.clientWidth, h: el.clientHeight })
-        }
-
-        update()
-        const ro = new ResizeObserver(update)
-        ro.observe(el)
-        return () => ro.disconnect()
-    }, [])
-
-    const ratio = naturalSize.w / naturalSize.h || 1
-    let renderW = boxSize.w
-    let renderH = renderW / ratio
-    if (renderH > boxSize.h) {
-        renderH = boxSize.h
-        renderW = renderH * ratio
-    }
-
-    const imgTop = Math.max(0, boxSize.h - renderH)
-    return (
-        <div
-            ref={containerRef}
-            className="absolute z-50 w-[24%] aspect-square overflow-visible -left-10 bottom-10 pointer-events-none"
-        >
-            <div
-                className="absolute left-0 group"
-                style={{ top: `${imgTop}px`, width: `${renderW}px`, height: `${renderH}px` }}
-            >
-                <img
-                    src={url}
-                    alt={t('styleImage.referenceTitle', { defaultValue: 'Style reference' })}
-                    className="w-full h-full object-contain object-left-bottom origin-bottom-left -rotate-[10deg] drop-shadow-[0_12px_22px_rgba(0,0,0,0.24)]"
-                    onLoad={(e) => {
-                        const target = e.currentTarget
-                        if (target.naturalWidth && target.naturalHeight) {
-                            setNaturalSize({ w: target.naturalWidth, h: target.naturalHeight })
-                        }
-                    }}
-                />
-            </div>
-        </div>
-    )
 }
 
 export function CarouselCanvasPanel({
