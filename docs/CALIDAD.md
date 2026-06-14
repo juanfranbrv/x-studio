@@ -89,12 +89,15 @@ Verificado con TS (0 errores) + suite (198/198) tras cada paso. Commits atómico
       hoy son variantes visuales distintas (hover:scale, sombras); unificar con un
       componente compartido parametrizado SOLO con verificación visual.
 
-### Fase 2 — Server actions / lógica core (continúa fase B)
-- [ ] `analyze-brand-dna.ts` (2558)
-- [ ] `generate-carousel.ts` (2404)
-- [ ] `gemini.ts` (1956)
-- [ ] `parse-intent.ts` (1177)
-- Extraer a `lib/` por responsabilidad (helpers puros, builders de prompt, etc.).
+### Fase 2 — Server actions / lógica core (continúa fase B) — EN CURSO
+Verificable con TS + tests (sin QA visual). Commits atómicos.
+- [x] `generate-carousel.ts` 2661→2201 (2.1) → cluster de 15 builders de prompt visual
+      a `src/lib/carousel/visual-prompt-builders.ts`. TS 0, tests 198/198.
+- [ ] `analyze-brand-dna.ts` (~2558)
+- [ ] `gemini.ts` (~1956)
+- [ ] `parse-intent.ts` (~1177)
+- Pendiente: `visual-prompt-builders.ts` (427 líneas) podría sub-trocearse (locale/idioma
+  vs distribución de detalles) para bajar de 300; opcional.
 
 ### Fase 3 — Páginas (route components)
 - [ ] `admin/page.tsx` (2586)
