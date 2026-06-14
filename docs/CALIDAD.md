@@ -89,19 +89,24 @@ Verificado con TS (0 errores) + suite (198/198) tras cada paso. Commits atómico
       hoy son variantes visuales distintas (hover:scale, sombras); unificar con un
       componente compartido parametrizado SOLO con verificación visual.
 
-### Fase 2 — Server actions / lógica core (continúa fase B) — EN CURSO
+### Fase 2 — Server actions / lógica core (continúa fase B) — CASI COMPLETA
 Verificable con TS + tests (sin QA visual). Commits atómicos.
+Nota: `vitest.config.ts` NO define alias `@/`; ficheros cargados en runtime por
+tests (p.ej. `creation-flow-types`) deben usar imports RELATIVOS en lo extraído.
 - [x] `generate-carousel.ts` 2661→2201 (2.1) → cluster de 15 builders de prompt visual
       a `src/lib/carousel/visual-prompt-builders.ts`. TS 0, tests 198/198.
 - [x] `analyze-brand-dna.ts` 2953→2765 (2.2) → 7 funciones de consenso/roles de color
       a `src/lib/brand-analysis/color-consensus.ts`. TS 0, tests 198/198, lint 843→842.
 - [x] `parse-intent.ts` 1356→1138 (2.3) → 6 helpers de reparacion de JSON
       a `src/lib/json-repair.ts`. TS 0, tests 198/198, lint 842 (sin cambio).
+- [x] `creation-flow-types.ts` 1486→979 (2.4) → catálogo de layouts
+      (`DEFAULT_LAYOUTS`+`LAB_ADVANCED_LAYOUTS`, ~510 líneas) a
+      `src/lib/creation-flow/layout-catalog.ts` (re-export, imports relativos). TS 0, tests 198/198.
 - [ ] `gemini.ts` (~1956) — cliente central de IA. DECISIÓN: no trocear con migajas;
       merece pasada dedicada que lo **divida por proveedor** (wisdom/openai/naga/replicate/
       atlas/google → `lib/gemini/<provider>.ts`) dejando `gemini.ts` como fachada. Pendiente.
-- Pendiente: `visual-prompt-builders.ts` (427 líneas) podría sub-trocearse (locale/idioma
-  vs distribución de detalles) para bajar de 300; opcional.
+- Pendiente menor (opcional): `visual-prompt-builders.ts` (427) y `layout-catalog.ts` (513)
+  superan 300; sub-trocear si se desea. `SOCIAL_FORMATS` no se mueve (test fija su fuente).
 
 ### Fase 3 — Páginas (route components)
 - [ ] `admin/page.tsx` (2586)
