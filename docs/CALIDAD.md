@@ -77,6 +77,9 @@ Verificado con TS (0 errores) + suite (198/198) tras cada paso. Commits atómico
 - [x] `CarouselCanvasPanel.tsx` 1482→1363 (1.3) → `.helpers.ts`, `.parts.tsx`
 - [x] `CanvasPanel.tsx` 1421→1299 (1.4) → `.helpers.ts`, `.parts.tsx`
 - Lint global: 845→842 (sin regresión; -2 constantes muertas).
+- **QA visual OK (2026-06-14)**: `/image` y `/carousel` verificados en sesión real
+  (los 4 paneles renderizan idénticos, swatches y toolbars funcionando).
+  Nota: usar `http://localhost:3000` (NO `127.0.0.1`) o Clerk dev devuelve 403 y el login no monta.
 
 **Pendiente Fase 1 (requiere verificación VISUAL con login Clerk):**
 - [ ] Extraer secciones grandes del *cuerpo* de cada panel a subcomponentes + hooks
