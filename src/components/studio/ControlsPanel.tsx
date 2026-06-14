@@ -15,8 +15,6 @@ import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
-import { HexColorPicker } from 'react-colorful'
 import { useMutation, useQuery } from 'convex/react'
 import { api } from '../../../convex/_generated/api'
 import { useToast } from '@/hooks/use-toast'
@@ -37,12 +35,6 @@ import { SectionHeader } from '@/components/studio/shared/SectionHeader'
 import {
     STUDIO_CONTROLS_SHELL_CLASS,
 } from '@/components/studio/shared/panelStyles'
-import {
-    STUDIO_SELECT_CONTENT_CLASS,
-    STUDIO_SELECT_ITEM_CLASS,
-    STUDIO_RICH_SELECT_TRIGGER_CLASS,
-    STUDIO_SELECT_TRIGGER_CLASS,
-} from '@/components/studio/shared/selectStyles'
 import { SuggestionsList } from '@/components/studio/shared/SuggestionsList'
 import {
     clearLegacyLayoutRatingStorage,
@@ -56,158 +48,28 @@ import {
 import type { CompositionSummary } from '@/lib/admin-compositions-actions'
 import { getDetectedIntentLabel } from '@/lib/intent-label'
 
-const RESET_USES4_FLAG = 'admin_layout_ratings_reset_uses4_done_v1'
-const PANEL_SECTION_HEADER_ICON_CLASS = "h-9 w-9 rounded-none border-0 bg-transparent text-foreground/72 shadow-none"
-const PANEL_SECTION_HEADER_TITLE_CLASS = "text-[0.94rem] font-bold uppercase tracking-[0.14em] text-foreground/92"
-const PANEL_SECTION_SELECT_TRIGGER_CLASS = STUDIO_SELECT_TRIGGER_CLASS
-const PANEL_SECTION_SELECT_CONTENT_CLASS = STUDIO_SELECT_CONTENT_CLASS
-const PANEL_SECTION_SELECT_ITEM_CLASS = STUDIO_SELECT_ITEM_CLASS
-const PANEL_SECTION_LABEL_CLASS = "text-[0.78rem] font-semibold text-foreground/90 uppercase tracking-[0.08em]"
-const PANEL_SECTION_HELPER_CLASS = "text-[0.84rem] text-muted-foreground leading-relaxed"
-const PANEL_TEXT_BUTTON_REVEAL_CLASS = "rounded-xl px-3 py-2 text-[clamp(0.9rem,0.86rem+0.12vw,0.98rem)] text-muted-foreground transition-all duration-200 hover:bg-muted/80 hover:text-foreground hover:shadow-[0_10px_24px_-18px_rgba(15,23,42,0.28)] disabled:opacity-50"
-const PANEL_SECONDARY_BUTTON_CLASS = "min-h-[42px] h-auto justify-center rounded-[1rem] px-4 py-2 text-center text-[clamp(0.93rem,0.89rem+0.12vw,1rem)] font-medium leading-tight whitespace-normal"
-const PANEL_RICH_SELECT_TRIGGER_CLASS = STUDIO_RICH_SELECT_TRIGGER_CLASS
-const PANEL_RICH_SELECT_CONTENT_STYLE = {
-    width: 'var(--radix-select-trigger-width)',
-    minWidth: 'var(--radix-select-trigger-width)',
-    maxWidth: 'var(--radix-select-trigger-width)',
-} as const
-const BRAND_KIT_GROUP_CLASS = "space-y-3"
-const BRAND_KIT_CONTACT_ROW_CLASS = "space-y-2 border-b border-border/40 py-2.5 last:border-b-0"
-const BRAND_KIT_SUBTLE_BUTTON_CLASS = "h-9 rounded-xl border border-border/65 bg-background/82 px-3 text-[0.9rem] font-medium text-foreground/88 transition-all duration-200 hover:border-border/90 hover:bg-background hover:shadow-[0_12px_28px_-24px_rgba(15,23,42,0.18)]"
-const PANEL_SECTION_DIVIDER_WRAP_CLASS = "relative py-5 first:pt-0 last:pb-0 before:absolute before:left-[-1rem] before:right-[-1rem] before:top-0 before:h-[2px] before:bg-border/35 before:shadow-[inset_0_1px_0_rgba(255,255,255,0.55),inset_0_-1px_0_rgba(15,23,42,0.04)] first:before:hidden md:before:left-[-1.25rem] md:before:right-[-1.25rem]"
-const PANEL_SECTION_STACK_CLASS = `${PANEL_SECTION_DIVIDER_WRAP_CLASS} space-y-[0.85rem]`
-const PANEL_SECTION_SURFACE_CLASS = "rounded-2xl border border-border/65 bg-background/72 px-4 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.72)]"
-const PANEL_SECTION_BODY_CLASS = "rounded-[1.5rem] border border-border/50 bg-[linear-gradient(180deg,rgba(255,255,255,0.9),rgba(255,255,255,0.74))] px-4 py-4 shadow-[0_16px_38px_-36px_rgba(15,23,42,0.18),inset_0_1px_0_rgba(255,255,255,0.74)] backdrop-blur-[8px]"
-
-type BrandColorRole = 'Texto' | 'Fondo' | 'Acento'
-type DraggedBrandColor = { role: BrandColorRole; color: string } | null
-
-function normalizeHexColor(color: string): string {
-    const base = (color || '').trim().toLowerCase()
-    if (!base) return '#000000'
-    const withHash = base.startsWith('#') ? base : `#${base}`
-    return /^#[0-9a-f]{6}$/i.test(withHash) ? withHash : '#000000'
-}
-
-function RoleColorSwatch({
-    color,
-    onCommit,
-    applyLabel,
-    draggable = false,
-    onDragStart,
-    onDragEnd,
-    sizeClass = "w-14 h-14 rounded-2xl",
-}: {
-    color: string
-    onCommit: (nextColor: string) => void
-    applyLabel: string
-    draggable?: boolean
-    onDragStart?: (event: React.DragEvent<HTMLButtonElement>) => void
-    onDragEnd?: (event: React.DragEvent<HTMLButtonElement>) => void
-    sizeClass?: string
-}) {
-    const initial = normalizeHexColor(color)
-    const [draft, setDraft] = useState(initial)
-    const [open, setOpen] = useState(false)
-
-    useEffect(() => {
-        setDraft(initial)
-    }, [initial])
-
-    return (
-        <Popover open={open} onOpenChange={setOpen}>
-            <PopoverTrigger asChild>
-                <button
-                    type="button"
-                    className={cn(sizeClass, "border border-border/70 shadow-[0_14px_28px_-24px_rgba(15,23,42,0.28)] transition-transform duration-200 hover:scale-[1.03]")}
-                    style={{ backgroundColor: initial }}
-                    title={initial}
-                    draggable={draggable}
-                    onDragStart={onDragStart}
-                    onDragEnd={onDragEnd}
-                />
-            </PopoverTrigger>
-            <PopoverContent className="w-56 p-3 space-y-3 bg-card border border-border/80 shadow-xl z-[140]" align="start">
-                <HexColorPicker
-                    color={draft}
-                    onChange={(next) => setDraft(normalizeHexColor(next))}
-                    className="!w-full !h-28"
-                />
-                <Input
-                    value={draft.toUpperCase()}
-                    onChange={(e) => setDraft(normalizeHexColor(e.target.value))}
-                    className="h-8 text-xs font-mono"
-                />
-                <Button
-                    type="button"
-                    size="sm"
-                    className="w-full h-8 text-xs"
-                    onClick={() => {
-                        onCommit(draft)
-                        setOpen(false)
-                    }}
-                >
-                    {applyLabel}
-                </Button>
-            </PopoverContent>
-        </Popover>
-    )
-}
-
-function AddAccentSwatch({
-    disabled,
-    onAdd,
-    label,
-}: {
-    disabled?: boolean
-    onAdd: (nextColor: string) => void
-    label: string
-}) {
-    const [open, setOpen] = useState(false)
-    const [draft, setDraft] = useState('#4f46e5')
-    return (
-        <Popover open={open} onOpenChange={setOpen}>
-            <PopoverTrigger asChild>
-                <button
-                    type="button"
-                    disabled={disabled}
-                    className={cn(
-                        "w-14 h-14 rounded-2xl border border-dashed border-border/80 flex items-center justify-center text-muted-foreground shadow-[0_14px_28px_-24px_rgba(15,23,42,0.2)]",
-                        "hover:text-primary hover:border-primary/60 transition-colors",
-                        disabled && "opacity-40 cursor-not-allowed"
-                    )}
-                    title={label}
-                >
-                    <IconPlus className="w-5 h-5" />
-                </button>
-            </PopoverTrigger>
-            <PopoverContent className="w-56 p-3 space-y-3 bg-card border border-border/80 shadow-xl z-[140]" align="start">
-                <HexColorPicker
-                    color={draft}
-                    onChange={(next) => setDraft(normalizeHexColor(next))}
-                    className="!w-full !h-28"
-                />
-                <Input
-                    value={draft.toUpperCase()}
-                    onChange={(e) => setDraft(normalizeHexColor(e.target.value))}
-                    className="h-8 text-xs font-mono"
-                />
-                <Button
-                    type="button"
-                    size="sm"
-                    className="w-full h-8 text-xs"
-                    onClick={() => {
-                        onAdd(draft)
-                        setOpen(false)
-                    }}
-                >
-                    {label}
-                </Button>
-            </PopoverContent>
-        </Popover>
-    )
-}
+import { RoleColorSwatch, AddAccentSwatch } from './ControlsColorSwatches'
+import {
+    RESET_USES4_FLAG,
+    PANEL_SECTION_HEADER_ICON_CLASS,
+    PANEL_SECTION_HEADER_TITLE_CLASS,
+    PANEL_SECTION_SELECT_CONTENT_CLASS,
+    PANEL_SECTION_SELECT_ITEM_CLASS,
+    PANEL_SECTION_LABEL_CLASS,
+    PANEL_SECTION_HELPER_CLASS,
+    PANEL_TEXT_BUTTON_REVEAL_CLASS,
+    PANEL_SECONDARY_BUTTON_CLASS,
+    PANEL_RICH_SELECT_TRIGGER_CLASS,
+    PANEL_RICH_SELECT_CONTENT_STYLE,
+    BRAND_KIT_GROUP_CLASS,
+    BRAND_KIT_CONTACT_ROW_CLASS,
+    BRAND_KIT_SUBTLE_BUTTON_CLASS,
+    PANEL_SECTION_DIVIDER_WRAP_CLASS,
+    PANEL_SECTION_STACK_CLASS,
+    PANEL_SECTION_SURFACE_CLASS,
+    normalizeHexColor,
+} from './ControlsPanel.helpers'
+import type { BrandColorRole, DraggedBrandColor } from './ControlsPanel.types'
 
 interface ControlsPanelProps {
     creationFlow: ReturnType<typeof useCreationFlow>
