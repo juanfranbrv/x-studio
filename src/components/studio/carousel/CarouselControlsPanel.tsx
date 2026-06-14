@@ -14,7 +14,6 @@ import {
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog'
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Textarea } from '@/components/ui/textarea'
 import { Switch } from '@/components/ui/switch'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -26,7 +25,6 @@ import { ContentImageCard } from '@/components/studio/creation-flow/ContentImage
 import { StyleImageCard } from '@/components/studio/creation-flow/StyleImageCard'
 import { AuxiliaryLogosCard } from '@/components/studio/creation-flow/AuxiliaryLogosCard'
 import { resizeImage } from '@/lib/image-utils'
-import { getAutomaticBasicComposition } from '@/lib/carousel-selection'
 import { CarouselCompositionSelector } from '@/components/studio/carousel/CarouselCompositionSelector'
 import { BrandingConfigurator } from '@/components/studio/creation-flow/BrandingConfigurator'
 import {
@@ -55,7 +53,6 @@ import { SuggestionsList } from '@/components/studio/shared/SuggestionsList'
 import { useStylePresetImages } from '@/hooks/useStylePresetImages'
 import { SessionTitleDialog } from '@/components/studio/shared/SessionTitleDialog'
 import { IndeterminateProgressBar } from '@/components/studio/shared/IndeterminateProgressBar'
-import { HexColorPicker } from 'react-colorful'
 import { useTranslation } from 'react-i18next'
 import {
     STUDIO_DECISION_BUTTON_CLASS,
@@ -67,233 +64,34 @@ import {
 } from '@/components/studio/shared/dialogStyles'
 import { buildAutomaticSessionTitle, getSessionDisplayTitle, normalizeCustomSessionTitle } from '@/lib/session-titles'
 
-export interface SlideConfig {
-    index: number
-    customText?: string
-}
+import { RoleColorSwatch, AddAccentSwatch } from './CarouselColorSwatches'
+import {
+    normalizeHexColor,
+    pickCompositionId,
+    STYLE_OPTIONS,
+    PANEL_SECTION_HEADER_ICON_CLASS,
+    PANEL_SECTION_HEADER_TITLE_CLASS,
+    PANEL_TEXT_BUTTON_REVEAL_CLASS,
+    PANEL_SECONDARY_BUTTON_CLASS,
+    PANEL_RICH_SELECT_CONTENT_STYLE,
+    PANEL_SECTION_STACK_CLASS,
+    ADVANCED_COMPOSITION_MODAL_CLASS,
+} from './CarouselControlsPanel.helpers'
+import type {
+    SlideConfig,
+    CarouselSettings,
+    BrandColorRole,
+    DraggedBrandColor,
+    CompositionMode,
+    DbStructure,
+    DbComposition,
+    UiStructure,
+    UiComposition,
+    SessionDecisionModalState,
+    CarouselWorkspaceSnapshot,
+} from './CarouselControlsPanel.types'
 
-export interface CarouselSettings {
-    prompt: string
-    slideCount: number
-    aspectRatio: '1:1' | '4:5' | '3:4'
-    style: string
-    slides: SlideConfig[]
-    compositionId: string
-    structureId: string
-    imageSourceMode: 'upload' | 'brandkit' | 'generate'
-    aiImageDescription?: string
-    aiStyleDirectives?: string
-    customStyleText?: string
-    applyStyleToTypography?: boolean
-    // Brand Kit Context
-    selectedLogoUrl?: string
-    selectedColors: { color: string; role: string }[]
-    selectedReferenceImages: Array<{ url: string; role: ReferenceImageRole }>
-    selectedImageUrls: string[]
-    includeLogoOnSlides: boolean
-    ctaUrlEnabled: boolean
-    ctaUrl?: string
-    selectedContactFields: Record<string, string>
-    finalContactLines: string[]
-}
-
-type BrandColorRole = 'Texto' | 'Fondo' | 'Acento'
-type DraggedBrandColor = { role: BrandColorRole; color: string } | null
-
-function normalizeHexColor(color: string): string {
-    const base = (color || '').trim().toLowerCase()
-    if (!base) return '#000000'
-    const withHash = base.startsWith('#') ? base : `#${base}`
-    return /^#[0-9a-f]{6}$/i.test(withHash) ? withHash : '#000000'
-}
-
-function RoleColorSwatch({
-    color,
-    onCommit,
-    applyLabel,
-    draggable = false,
-    onDragStart,
-    onDragEnd,
-    sizeClass = "w-14 h-14 rounded-2xl",
-}: {
-    color: string
-    onCommit: (nextColor: string) => void
-    applyLabel: string
-    draggable?: boolean
-    onDragStart?: (event: React.DragEvent<HTMLButtonElement>) => void
-    onDragEnd?: (event: React.DragEvent<HTMLButtonElement>) => void
-    sizeClass?: string
-}) {
-    const initial = normalizeHexColor(color)
-    const [draft, setDraft] = useState(initial)
-    const [open, setOpen] = useState(false)
-
-    useEffect(() => {
-        setDraft(initial)
-    }, [initial])
-
-    return (
-        <Popover open={open} onOpenChange={setOpen}>
-            <PopoverTrigger asChild>
-                <button
-                    type="button"
-                    className={cn(sizeClass, "border border-border/70 shadow-sm")}
-                    style={{ backgroundColor: initial }}
-                    title={initial}
-                    draggable={draggable}
-                    onDragStart={onDragStart}
-                    onDragEnd={onDragEnd}
-                />
-            </PopoverTrigger>
-            <PopoverContent className="z-[140] w-56 space-y-3 border border-border/80 bg-card p-3 shadow-xl" align="start">
-                <HexColorPicker
-                    color={draft}
-                    onChange={(next) => setDraft(normalizeHexColor(next))}
-                    className="!h-28 !w-full"
-                />
-                <Input
-                    value={draft.toUpperCase()}
-                    onChange={(e) => setDraft(normalizeHexColor(e.target.value))}
-                    className="h-8 font-mono text-xs"
-                />
-                <Button
-                    type="button"
-                    size="sm"
-                    className="h-8 w-full text-xs"
-                    onClick={() => {
-                        onCommit(draft)
-                        setOpen(false)
-                    }}
-                >
-                    {applyLabel}
-                </Button>
-            </PopoverContent>
-        </Popover>
-    )
-}
-
-function AddAccentSwatch({
-    disabled,
-    onAdd,
-    label,
-}: {
-    disabled?: boolean
-    onAdd: (nextColor: string) => void
-    label: string
-}) {
-    const [open, setOpen] = useState(false)
-    const [draft, setDraft] = useState('#4f46e5')
-
-    return (
-        <Popover open={open} onOpenChange={setOpen}>
-            <PopoverTrigger asChild>
-                <button
-                    type="button"
-                    disabled={disabled}
-                    className={cn(
-                        "flex h-14 w-14 items-center justify-center rounded-2xl border border-dashed border-border/80 text-muted-foreground transition-colors",
-                        "hover:border-primary/60 hover:text-primary",
-                        disabled && "cursor-not-allowed opacity-40"
-                    )}
-                    title={label}
-                >
-                    <IconPlus className="h-5 w-5" />
-                </button>
-            </PopoverTrigger>
-            <PopoverContent className="z-[140] w-56 space-y-3 border border-border/80 bg-card p-3 shadow-xl" align="start">
-                <HexColorPicker
-                    color={draft}
-                    onChange={(next) => setDraft(normalizeHexColor(next))}
-                    className="!h-28 !w-full"
-                />
-                <Input
-                    value={draft.toUpperCase()}
-                    onChange={(e) => setDraft(normalizeHexColor(e.target.value))}
-                    className="h-8 font-mono text-xs"
-                />
-                <Button
-                    type="button"
-                    size="sm"
-                    className="h-8 w-full text-xs"
-                    onClick={() => {
-                        onAdd(draft)
-                        setOpen(false)
-                    }}
-                >
-                    {label}
-                </Button>
-            </PopoverContent>
-        </Popover>
-    )
-}
-
-type CompositionMode = 'basic' | 'advanced'
-
-type DbStructure = {
-    structure_id: string
-    name: string
-    summary: string
-    order: number
-}
-
-type DbComposition = {
-    composition_id: string
-    structure_id?: string
-    scope: string
-    mode: string
-    name: string
-    description: string
-    layoutPrompt: string
-    icon?: string
-    iconPrompt?: string
-    order: number
-}
-
-type UiStructure = {
-    id: string
-    name: string
-    summary: string
-    order: number
-}
-
-type UiComposition = {
-    id: string
-    name: string
-    description: string
-    layoutPrompt: string
-    icon?: string
-    iconPrompt?: string
-    scope: 'global' | 'narrative'
-    mode: 'basic' | 'advanced'
-    order: number
-}
-
-type SessionDecisionButton = {
-    id: string
-    label: string
-    variant?: 'default' | 'outline' | 'destructive'
-}
-
-const PANEL_SECTION_HEADER_ICON_CLASS = 'h-9 w-9 rounded-none border-0 bg-transparent text-foreground/72 shadow-none'
-const PANEL_SECTION_HEADER_TITLE_CLASS = 'text-[0.94rem] font-bold uppercase tracking-[0.14em] text-foreground/92'
-const PANEL_TEXT_BUTTON_REVEAL_CLASS = 'rounded-xl px-3 py-2 text-[clamp(0.9rem,0.86rem+0.12vw,0.98rem)] text-muted-foreground transition-all duration-200 hover:bg-muted/80 hover:text-foreground hover:shadow-[0_10px_24px_-18px_rgba(15,23,42,0.28)] disabled:opacity-50'
-const PANEL_SECONDARY_BUTTON_CLASS = 'min-h-[42px] h-auto justify-center rounded-[1rem] px-4 py-2 text-center text-[clamp(0.93rem,0.89rem+0.12vw,1rem)] font-medium leading-tight whitespace-normal'
-const PANEL_RICH_SELECT_CONTENT_STYLE = {
-    width: 'var(--radix-select-trigger-width)',
-    minWidth: 'var(--radix-select-trigger-width)',
-    maxWidth: 'var(--radix-select-trigger-width)',
-} as const
-const PANEL_SECTION_DIVIDER_WRAP_CLASS = 'relative py-5 first:pt-0 last:pb-0 before:absolute before:left-[-1rem] before:right-[-1rem] before:top-0 before:h-[2px] before:bg-border/35 before:shadow-[inset_0_1px_0_rgba(255,255,255,0.55),inset_0_-1px_0_rgba(15,23,42,0.04)] first:before:hidden'
-const PANEL_SECTION_STACK_CLASS = `${PANEL_SECTION_DIVIDER_WRAP_CLASS} space-y-[0.85rem]`
-const PANEL_SECTION_SURFACE_CLASS = 'rounded-2xl border border-border/65 bg-background/72 px-4 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.72)]'
-const ADVANCED_COMPOSITION_MODAL_CLASS = 'h-[min(90vh,920px)] w-[min(94vw,1200px)] !max-w-[min(94vw,1200px)] overflow-hidden rounded-[1.9rem] border border-border/70 bg-background/98 p-0 shadow-[0_38px_100px_-56px_rgba(15,23,42,0.42)] data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=open]:fade-in-0 data-[state=closed]:fade-out-0 data-[state=open]:zoom-in-[0.985] data-[state=closed]:zoom-out-[0.985] data-[state=open]:slide-in-from-bottom-4 data-[state=closed]:slide-out-to-bottom-2 duration-200 flex flex-col'
-
-type SessionDecisionModalState = {
-    open: boolean
-    title: string
-    description: string
-    buttons: SessionDecisionButton[]
-}
+export type { SlideConfig, CarouselSettings } from './CarouselControlsPanel.types'
 
 interface CarouselControlsPanelProps {
     className?: string
@@ -390,92 +188,6 @@ interface CarouselControlsPanelProps {
     initialPrompt?: string
     registerUnsavedBrandChangeGuard?: (guard: ((brandId: string) => Promise<boolean>) | null) => void
     registerSettingsResolver?: (resolver: ((overrides?: Partial<CarouselSettings>) => CarouselSettings) | null) => void
-}
-
-type CarouselWorkspaceSnapshot = {
-    version: number
-    module: 'carousel'
-    prompt: string
-    slideCount: number
-    aspectRatio: '1:1' | '4:5' | '3:4'
-    style: string
-    structureId: string
-    compositionId: string
-    compositionMode: CompositionMode
-    basicSelectedCompositionId: string | null
-    imageSourceMode: 'upload' | 'brandkit' | 'generate'
-    aiImageDescription: string
-    aiStyleDirectives: string
-    customStyle: string
-    applyStyleToTypography: boolean
-    selectedStylePresetId: string | null
-    selectedStylePresetName: string | null
-    selectedLogoId: string | null
-    selectedColors: SelectedColor[]
-    selectedBrandKitImageIds: string[]
-    referenceImageRoles: Record<string, ReferenceImageRole>
-    uploadedImages: string[]
-    includeLogoOnSlides: boolean
-    ctaUrlEnabled: boolean
-    ctaUrl: string
-    selectedContactFields: Record<string, string>
-    suggestions: CarouselSuggestion[]
-    imagePromptSuggestions: string[]
-    slideVariantSelection: string[]
-    analysisHook?: string
-    analysisStructure?: { id?: string; name?: string }
-    analysisIntent?: string
-    originalAnalysis?: {
-        slides: CarouselSlide[]
-        scriptSlides: SlideContent[]
-        hook?: string
-        structure?: { id?: string; name?: string }
-        detectedIntent?: string
-        caption?: string
-    }
-    previewState: {
-        slides: CarouselSlide[]
-        scriptSlides?: SlideContent[]
-        caption?: string
-        currentIndex?: number
-        sessionHistory?: Array<{
-            id: string
-            createdAt: string
-            slides: CarouselSlide[]
-            caption?: string
-        }>
-    }
-}
-
-const STYLE_OPTIONS = [
-    { id: 'minimal', label: 'Minimalist' },
-    { id: 'gradient', label: 'Gradients' },
-    { id: 'photo', label: 'Photographic' },
-    { id: 'illustration', label: 'Illustration' },
-    { id: 'bold', label: 'Bold & Typographic' },
-    { id: 'elegant', label: 'Elegant' },
-]
-
-function pickCompositionId(
-    compositions: UiComposition[],
-    mode: CompositionMode,
-    selectedId: string | undefined,
-    seed: string
-): string {
-    if (!compositions.length) return 'free'
-
-    if (mode === 'basic') {
-        const picked = getAutomaticBasicComposition(compositions, seed, {
-            prompt: seed.split('|')[1] || '',
-            slideCount: Number(seed.split('|')[2] || 0) || 5
-        })
-        return picked?.id || compositions[0]?.id || 'free'
-    }
-
-    if (selectedId && compositions.some((composition) => composition.id === selectedId)) {
-        return selectedId
-    }
-    return compositions[0]?.id || 'free'
 }
 
 export function CarouselControlsPanel({
