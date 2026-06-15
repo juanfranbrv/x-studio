@@ -31,17 +31,20 @@ export default function LibraryPage() {
     const rawAssets = useQuery(api.contentLibrary.listAssets, user?.id ? { user_id: user.id, limit: 240 } : 'skip')
     const updateAnnotation = useMutation(api.contentLibrary.updateAnnotation)
     const bulkUpdateAnnotations = useMutation(api.contentLibrary.bulkUpdateAnnotations)
+    const bulkSetCampaign = useMutation(api.contentLibrary.bulkSetCampaign)
     const bulkDeleteAssets = useMutation(api.contentLibrary.bulkDeleteAssets)
     const [selectedAssetKey, setSelectedAssetKey] = useState<string | undefined>()
     const [selectedAssetKeys, setSelectedAssetKeys] = useState<Set<string>>(() => new Set())
     const [savingAssetKey, setSavingAssetKey] = useState<string | null>(null)
     const [bulkStatus, setBulkStatus] = useState<ContentAssetStatus>('ready')
+    const [bulkCampaign, setBulkCampaign] = useState('')
     const [bulkBusy, setBulkBusy] = useState(false)
     const [saveStateByAssetKey, setSaveStateByAssetKey] = useState<Record<string, 'saved' | 'error'>>({})
     const [filters, setFilters] = useState<ContentLibraryFilters>({
         module: 'all',
         status: 'all',
         platform: 'all',
+        campaign: 'all',
         planning: 'all',
         query: '',
     })
@@ -83,6 +86,10 @@ export default function LibraryPage() {
         return Array.from(new Set(assets.map((asset) => asset.platform).filter((value): value is string => Boolean(value)))).sort()
     }, [assets])
 
+    const campaigns = useMemo(() => {
+        return Array.from(new Set(assets.map((asset) => asset.campaign).filter((value): value is string => Boolean(value)))).sort()
+    }, [assets])
+
     const statusLabels = useMemo(() => {
         return STATUS_KEYS.reduce<Record<ContentAssetStatus, string>>((acc, status) => {
             acc[status] = t(`status.${status}`)
@@ -101,6 +108,7 @@ export default function LibraryPage() {
             planned_at: string
             platform: string
             format: string
+            campaign: string
             notes: string
         }
     ) => {
@@ -119,6 +127,7 @@ export default function LibraryPage() {
                 planned_at: draft.planned_at || undefined,
                 platform: draft.platform || undefined,
                 format: draft.format || undefined,
+                campaign: draft.campaign || undefined,
                 notes: draft.notes || undefined,
             })
             setSaveStateByAssetKey((prev) => ({ ...prev, [asset.asset_key]: 'saved' }))
@@ -174,6 +183,22 @@ export default function LibraryPage() {
         }
     }
 
+    const handleBulkCampaign = async () => {
+        if (!user?.id || selectedBulkKeys.length === 0) return
+        setBulkBusy(true)
+        try {
+            await bulkSetCampaign({
+                user_id: user.id,
+                asset_keys: selectedBulkKeys,
+                campaign: bulkCampaign.trim() || undefined,
+            })
+            setBulkCampaign('')
+            setSelectedAssetKeys(new Set())
+        } finally {
+            setBulkBusy(false)
+        }
+    }
+
     const handleBulkDelete = async () => {
         if (!user?.id || selectedBulkKeys.length === 0) return
         if (!window.confirm(selectedBulkKeys.length === 1 ? t('bulk.deleteConfirmOne') : t('bulk.deleteConfirmMany', { count: selectedBulkKeys.length }))) return
@@ -222,15 +247,19 @@ export default function LibraryPage() {
                             <ContentAssetFilters
                                 filters={filters}
                                 platforms={platforms}
+                                campaigns={campaigns}
                                 onChange={setFilters}
                                 labels={{
                                     search: t('filters.search'),
                                     module: t('filters.module'),
                                     status: t('filters.status'),
                                     platform: t('filters.platform'),
+                                    campaign: t('filters.campaign'),
                                     planning: t('filters.planning'),
                                     all: t('filters.all'),
                                     allPlatforms: t('filters.allPlatforms'),
+                                    allCampaigns: t('filters.allCampaigns'),
+                                    noCampaign: t('filters.noCampaign'),
                                     planned: t('filters.planned'),
                                     unplanned: t('filters.unplanned'),
                                     image: t('modules.image'),
@@ -242,9 +271,12 @@ export default function LibraryPage() {
                                 selectedCount={selectedBulkKeys.length}
                                 visibleCount={filteredAssets.length}
                                 status={bulkStatus}
+                                campaignValue={bulkCampaign}
                                 busy={bulkBusy}
                                 onStatusChange={setBulkStatus}
                                 onApplyStatus={handleBulkStatus}
+                                onCampaignValueChange={setBulkCampaign}
+                                onApplyCampaign={handleBulkCampaign}
                                 onDelete={handleBulkDelete}
                                 onSelectVisible={handleSelectVisible}
                                 onClearSelection={handleClearSelection}
@@ -254,6 +286,8 @@ export default function LibraryPage() {
                                     clear: t('bulk.clear'),
                                     status: t('bulk.status'),
                                     applyStatus: t('bulk.applyStatus'),
+                                    campaignInput: t('bulk.campaignInput'),
+                                    applyCampaign: t('bulk.applyCampaign'),
                                     delete: t('bulk.delete'),
                                     busy: t('bulk.busy'),
                                     statuses: statusLabels,
@@ -292,6 +326,8 @@ export default function LibraryPage() {
                                     plannedAt: t('detail.plannedAt'),
                                     platform: t('detail.platform'),
                                     format: t('detail.format'),
+                                    campaign: t('detail.campaign'),
+                                    campaignPlaceholder: t('detail.campaignPlaceholder'),
                                     notes: t('detail.notes'),
                                     notesPlaceholder: t('detail.notesPlaceholder'),
                                     status: t('detail.status'),

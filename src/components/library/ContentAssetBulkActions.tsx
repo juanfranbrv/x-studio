@@ -1,6 +1,7 @@
 'use client'
 
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import {
     Select,
     SelectContent,
@@ -15,9 +16,12 @@ interface ContentAssetBulkActionsProps {
     selectedCount: number
     visibleCount: number
     status: ContentAssetStatus
+    campaignValue: string
     busy: boolean
     onStatusChange: (status: ContentAssetStatus) => void
     onApplyStatus: () => void
+    onCampaignValueChange: (value: string) => void
+    onApplyCampaign: () => void
     onDelete: () => void
     onSelectVisible: () => void
     onClearSelection: () => void
@@ -27,6 +31,8 @@ interface ContentAssetBulkActionsProps {
         clear: string
         status: string
         applyStatus: string
+        campaignInput: string
+        applyCampaign: string
         delete: string
         busy: string
         statuses: Record<ContentAssetStatus, string>
@@ -37,9 +43,12 @@ export function ContentAssetBulkActions({
     selectedCount,
     visibleCount,
     status,
+    campaignValue,
     busy,
     onStatusChange,
     onApplyStatus,
+    onCampaignValueChange,
+    onApplyCampaign,
     onDelete,
     onSelectVisible,
     onClearSelection,
@@ -61,20 +70,35 @@ export function ContentAssetBulkActions({
                 </Button>
             </div>
 
-            <div className="grid gap-2 sm:grid-cols-[minmax(150px,200px)_auto_auto]">
-                <Select value={status} onValueChange={(value) => onStatusChange(value as ContentAssetStatus)} disabled={busy || selectedCount === 0}>
-                    <SelectTrigger className="h-9 rounded-xl">
-                        <SelectValue aria-label={labels.status} />
-                    </SelectTrigger>
-                    <SelectContent>
-                        {Object.entries(labels.statuses).map(([value, label]) => (
-                            <SelectItem key={value} value={value}>{label}</SelectItem>
-                        ))}
-                    </SelectContent>
-                </Select>
-                <Button type="button" size="sm" onClick={onApplyStatus} disabled={selectedCount === 0 || busy}>
-                    {busy ? labels.busy : labels.applyStatus}
-                </Button>
+            <div className="flex flex-wrap items-center gap-2">
+                <div className="flex items-center gap-2">
+                    <Select value={status} onValueChange={(value) => onStatusChange(value as ContentAssetStatus)} disabled={busy || selectedCount === 0}>
+                        <SelectTrigger className="h-9 w-[150px] rounded-xl">
+                            <SelectValue aria-label={labels.status} />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {Object.entries(labels.statuses).map(([value, label]) => (
+                                <SelectItem key={value} value={value}>{label}</SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                    <Button type="button" size="sm" onClick={onApplyStatus} disabled={selectedCount === 0 || busy}>
+                        {busy ? labels.busy : labels.applyStatus}
+                    </Button>
+                </div>
+                <div className="flex items-center gap-2">
+                    <Input
+                        value={campaignValue}
+                        onChange={(event) => onCampaignValueChange(event.target.value)}
+                        placeholder={labels.campaignInput}
+                        aria-label={labels.campaignInput}
+                        disabled={busy || selectedCount === 0}
+                        className="h-9 w-[160px] rounded-xl"
+                    />
+                    <Button type="button" size="sm" variant="secondary" onClick={onApplyCampaign} disabled={selectedCount === 0 || busy}>
+                        {labels.applyCampaign}
+                    </Button>
+                </div>
                 <Button type="button" variant="destructive" size="sm" onClick={onDelete} disabled={selectedCount === 0 || busy}>
                     <IconDelete className="mr-1 h-4 w-4" />
                     {labels.delete}

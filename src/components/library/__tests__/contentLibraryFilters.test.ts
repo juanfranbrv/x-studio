@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import { filterContentLibraryAssets } from '../contentLibraryFilters'
-import type { ContentLibraryAsset } from '../contentLibraryTypes'
+import { CAMPAIGN_NONE, type ContentLibraryAsset, type ContentLibraryFilters } from '../contentLibraryTypes'
 
 const baseAsset: ContentLibraryAsset = {
     asset_key: 'asset-1',
@@ -17,6 +17,15 @@ const baseAsset: ContentLibraryAsset = {
     status: 'draft',
 }
 
+const baseFilters: ContentLibraryFilters = {
+    module: 'all',
+    status: 'all',
+    platform: 'all',
+    campaign: 'all',
+    planning: 'all',
+    query: '',
+}
+
 describe('filterContentLibraryAssets', () => {
     it('filtra por modulo, estado, plataforma y planificacion', () => {
         const assets: ContentLibraryAsset[] = [
@@ -26,11 +35,11 @@ describe('filterContentLibraryAssets', () => {
         ]
 
         expect(filterContentLibraryAssets(assets, {
+            ...baseFilters,
             module: 'image',
             status: 'ready',
             platform: 'instagram',
             planning: 'planned',
-            query: '',
         })).toEqual([assets[0]])
     })
 
@@ -41,11 +50,39 @@ describe('filterContentLibraryAssets', () => {
         ]
 
         expect(filterContentLibraryAssets(assets, {
-            module: 'all',
-            status: 'all',
-            platform: 'all',
-            planning: 'all',
+            ...baseFilters,
             query: 'fidelizacion',
         })).toEqual([assets[1]])
+    })
+
+    it('filtra por una campaña concreta', () => {
+        const assets: ContentLibraryAsset[] = [
+            { ...baseAsset, asset_key: 'a', campaign: 'Verano 2026' },
+            { ...baseAsset, asset_key: 'b', campaign: 'Black Friday' },
+            { ...baseAsset, asset_key: 'c' },
+        ]
+
+        expect(filterContentLibraryAssets(assets, { ...baseFilters, campaign: 'Verano 2026' }))
+            .toEqual([assets[0]])
+    })
+
+    it('filtra los activos sin campaña con el sentinel CAMPAIGN_NONE', () => {
+        const assets: ContentLibraryAsset[] = [
+            { ...baseAsset, asset_key: 'a', campaign: 'Verano 2026' },
+            { ...baseAsset, asset_key: 'b' },
+        ]
+
+        expect(filterContentLibraryAssets(assets, { ...baseFilters, campaign: CAMPAIGN_NONE }))
+            .toEqual([assets[1]])
+    })
+
+    it('busca tambien por nombre de campaña', () => {
+        const assets: ContentLibraryAsset[] = [
+            { ...baseAsset, asset_key: 'a', campaign: 'Lanzamiento otoño' },
+            { ...baseAsset, asset_key: 'b', campaign: 'Black Friday' },
+        ]
+
+        expect(filterContentLibraryAssets(assets, { ...baseFilters, query: 'black friday' }))
+            .toEqual([assets[1]])
     })
 })

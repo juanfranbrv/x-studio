@@ -21,6 +21,7 @@ interface DraftState {
     planned_at: string
     platform: string
     format: string
+    campaign: string
     notes: string
 }
 
@@ -38,6 +39,8 @@ interface ContentAssetDetailPanelProps {
         plannedAt: string
         platform: string
         format: string
+        campaign: string
+        campaignPlaceholder: string
         notes: string
         notesPlaceholder: string
         status: string
@@ -76,6 +79,7 @@ export function ContentAssetDetailPanel({ asset, saving, saveState, onSave, labe
         planned_at: toDateInputValue(asset?.planned_at),
         platform: asset?.platform || '',
         format: asset?.format || '',
+        campaign: asset?.campaign || '',
         notes: asset?.notes || '',
     })
     const [copied, setCopied] = useState(false)
@@ -175,6 +179,16 @@ export function ContentAssetDetailPanel({ asset, saving, saveState, onSave, labe
                                 />
                             </label>
                         </div>
+
+                        <label className="grid gap-1.5">
+                            <span className="text-xs font-medium text-muted-foreground">{labels.campaign}</span>
+                            <Input
+                                value={draft.campaign}
+                                onChange={(event) => setDraft((prev) => ({ ...prev, campaign: event.target.value }))}
+                                placeholder={labels.campaignPlaceholder}
+                                className="h-10 rounded-xl"
+                            />
+                        </label>
 
                         <label className="grid gap-1.5">
                             <span className="text-xs font-medium text-muted-foreground">{labels.notes}</span>

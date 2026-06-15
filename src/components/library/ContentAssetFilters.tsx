@@ -8,20 +8,24 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select'
-import type { ContentAssetStatus, ContentLibraryFilters } from './contentLibraryTypes'
+import { CAMPAIGN_NONE, type ContentAssetStatus, type ContentLibraryFilters } from './contentLibraryTypes'
 
 interface ContentAssetFiltersProps {
     filters: ContentLibraryFilters
     platforms: string[]
+    campaigns: string[]
     onChange: (filters: ContentLibraryFilters) => void
     labels: {
         search: string
         module: string
         status: string
         platform: string
+        campaign: string
         planning: string
         all: string
         allPlatforms: string
+        allCampaigns: string
+        noCampaign: string
         planned: string
         unplanned: string
         image: string
@@ -30,11 +34,11 @@ interface ContentAssetFiltersProps {
     }
 }
 
-export function ContentAssetFilters({ filters, platforms, onChange, labels }: ContentAssetFiltersProps) {
+export function ContentAssetFilters({ filters, platforms, campaigns, onChange, labels }: ContentAssetFiltersProps) {
     const update = (patch: Partial<ContentLibraryFilters>) => onChange({ ...filters, ...patch })
 
     return (
-        <div className="grid gap-3 md:grid-cols-[minmax(220px,1.2fr)_repeat(4,minmax(150px,0.8fr))]">
+        <div className="grid gap-3 md:grid-cols-[minmax(220px,1.2fr)_repeat(5,minmax(150px,0.8fr))]">
             <Input
                 value={filters.query}
                 onChange={(event) => update({ query: event.target.value })}
@@ -74,6 +78,19 @@ export function ContentAssetFilters({ filters, platforms, onChange, labels }: Co
                     <SelectItem value="all">{labels.allPlatforms}</SelectItem>
                     {platforms.map((platform) => (
                         <SelectItem key={platform} value={platform}>{platform}</SelectItem>
+                    ))}
+                </SelectContent>
+            </Select>
+
+            <Select value={filters.campaign} onValueChange={(value) => update({ campaign: value })}>
+                <SelectTrigger className="h-10 w-full rounded-xl">
+                    <SelectValue aria-label={labels.campaign} />
+                </SelectTrigger>
+                <SelectContent>
+                    <SelectItem value="all">{labels.allCampaigns}</SelectItem>
+                    <SelectItem value={CAMPAIGN_NONE}>{labels.noCampaign}</SelectItem>
+                    {campaigns.map((campaign) => (
+                        <SelectItem key={campaign} value={campaign}>{campaign}</SelectItem>
                     ))}
                 </SelectContent>
             </Select>

@@ -1,4 +1,4 @@
-import type { ContentLibraryAsset, ContentLibraryFilters } from './contentLibraryTypes'
+import { CAMPAIGN_NONE, type ContentLibraryAsset, type ContentLibraryFilters } from './contentLibraryTypes'
 
 function normalizeSearch(value: string) {
     return value
@@ -18,6 +18,11 @@ export function filterContentLibraryAssets(
         if (filters.module !== 'all' && asset.module !== filters.module) return false
         if (filters.status !== 'all' && asset.status !== filters.status) return false
         if (filters.platform !== 'all' && asset.platform !== filters.platform) return false
+        if (filters.campaign === CAMPAIGN_NONE) {
+            if (asset.campaign) return false
+        } else if (filters.campaign !== 'all' && asset.campaign !== filters.campaign) {
+            return false
+        }
         if (filters.planning === 'planned' && !asset.planned_at) return false
         if (filters.planning === 'unplanned' && asset.planned_at) return false
 
@@ -28,6 +33,7 @@ export function filterContentLibraryAssets(
             asset.prompt,
             asset.platform,
             asset.format,
+            asset.campaign,
             asset.notes,
         ].filter(Boolean).join(' '))
 
