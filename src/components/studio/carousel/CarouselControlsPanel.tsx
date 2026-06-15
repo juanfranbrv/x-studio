@@ -46,6 +46,7 @@ import { useStylePresetImages } from '@/hooks/useStylePresetImages'
 import { SessionTitleDialog } from '@/components/studio/shared/SessionTitleDialog'
 import { UnsavedNavigationDialog, SessionDecisionDialog } from './CarouselSessionDialogs'
 import { AdvancedCompositionDialog } from './AdvancedCompositionDialog'
+import { FormatSection } from './CarouselControlSections'
 import { useTranslation } from 'react-i18next'
 import { buildAutomaticSessionTitle, getSessionDisplayTitle, normalizeCustomSessionTitle } from '@/lib/session-titles'
 
@@ -2911,74 +2912,7 @@ export function CarouselControlsPanel({
                 {/* Format */}
                 {isStepVisible(4) && (
                 <div ref={(el) => { stepRefs.current[4] = el }} className={PANEL_SECTION_STACK_CLASS}>
-                    <SectionHeader
-                        icon={IconLayers}
-                        title={t('ui.formatTitle')}
-                        iconContainerClassName={PANEL_SECTION_HEADER_ICON_CLASS}
-                        titleClassName={PANEL_SECTION_HEADER_TITLE_CLASS}
-                    />
-                    <div className="space-y-2">
-                        <button
-                            onClick={() => handleAspectRatioSelect('4:5')}
-                            className={cn(
-                                'feedback-action flex items-center gap-3 rounded-[1.2rem] border p-3.5 transition-all w-full text-left',
-                                aspectRatio === '4:5'
-                                    ? 'border-primary/35 bg-primary/8 shadow-[0_18px_38px_-30px_rgba(59,130,246,0.3)]'
-                                    : 'border-border/65 bg-background/74 hover:border-primary/20 hover:bg-[hsl(var(--surface-alt))]/75'
-                            )}
-                        >
-                            <div className="w-8 h-10 rounded bg-muted border border-border" />
-                            <div className="space-y-1">
-                                <div className="flex items-center gap-2">
-                                    <span className="text-xs font-semibold">{t('ui.formatVerticalTitle', { defaultValue: 'Standard vertical (portrait)' })}</span>
-                                    <span className="text-[10px] font-medium text-muted-foreground">4:5</span>
-                                </div>
-                                <p className="text-[11px] text-muted-foreground leading-snug">
-                                    {t('ui.formatVerticalDescription', { defaultValue: '1080x1350 · the safest standard to avoid cropping on older devices or Meta Ads.' })}
-                                </p>
-                            </div>
-                        </button>
-                        <button
-                            onClick={() => handleAspectRatioSelect('3:4')}
-                            className={cn(
-                                'feedback-action flex items-center gap-3 rounded-[1.2rem] border p-3.5 transition-all w-full text-left',
-                                aspectRatio === '3:4'
-                                    ? 'border-primary/35 bg-primary/8 shadow-[0_18px_38px_-30px_rgba(59,130,246,0.3)]'
-                                    : 'border-border/65 bg-background/74 hover:border-primary/20 hover:bg-[hsl(var(--surface-alt))]/75'
-                            )}
-                        >
-                            <div className="w-8 h-10 rounded bg-muted border border-border" />
-                            <div className="space-y-1">
-                                <div className="flex items-center gap-2">
-                                    <span className="text-xs font-semibold">{t('ui.formatTallTitle', { defaultValue: 'Tall / extended vertical (2026 trend)' })}</span>
-                                    <span className="text-[10px] font-medium text-muted-foreground">3:4</span>
-                                </div>
-                                <p className="text-[11px] text-muted-foreground leading-snug">
-                                    {t('ui.formatTallDescription', { defaultValue: '1080x1440 · +6.6% more screen space · dominates the feed and fits the new vertical grid.' })}
-                                </p>
-                            </div>
-                        </button>
-                        <button
-                            onClick={() => handleAspectRatioSelect('1:1')}
-                            className={cn(
-                                'feedback-action flex items-center gap-3 rounded-[1.2rem] border p-3.5 transition-all w-full text-left',
-                                aspectRatio === '1:1'
-                                    ? 'border-primary/35 bg-primary/8 shadow-[0_18px_38px_-30px_rgba(59,130,246,0.3)]'
-                                    : 'border-border/65 bg-background/74 hover:border-primary/20 hover:bg-[hsl(var(--surface-alt))]/75'
-                            )}
-                        >
-                            <div className="w-10 h-10 rounded bg-muted border border-border" />
-                            <div className="space-y-1">
-                                <div className="flex items-center gap-2">
-                                    <span className="text-xs font-semibold">{t('ui.formatSquareTitle', { defaultValue: 'Square (traditional)' })}</span>
-                                    <span className="text-[10px] font-medium text-muted-foreground">1:1</span>
-                                </div>
-                                <p className="text-[11px] text-muted-foreground leading-snug">
-                                    {t('ui.formatSquareDescription', { defaultValue: '1080x1080 · the original classic format for balanced layouts.' })}
-                                </p>
-                            </div>
-                        </button>
-                    </div>
+                    <FormatSection aspectRatio={aspectRatio} onSelect={handleAspectRatioSelect} />
                 </div>
                 )}
 
