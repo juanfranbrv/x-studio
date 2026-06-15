@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Switch } from '@/components/ui/switch'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { IconPlus, IconIdea, IconLayout, IconLayers, IconImageAdd, IconFingerprint, IconRotate, IconHistory, IconSave, IconCheck, IconAlertCircle, IconClose, IconPaintbrush02, IconWand, IconImage } from '@/components/ui/icons'
+import { IconPlus, IconIdea, IconLayers, IconImageAdd, IconFingerprint, IconRotate, IconHistory, IconSave, IconCheck, IconAlertCircle, IconClose, IconPaintbrush02, IconWand, IconImage } from '@/components/ui/icons'
 import { cn } from '@/lib/utils'
 import type { BrandDNA } from '@/lib/brand-types'
 import type { CarouselSuggestion, CarouselSlide, SlideContent } from '@/app/actions/generate-carousel'
@@ -17,7 +17,6 @@ import { ContentImageCard } from '@/components/studio/creation-flow/ContentImage
 import { StyleImageCard } from '@/components/studio/creation-flow/StyleImageCard'
 import { AuxiliaryLogosCard } from '@/components/studio/creation-flow/AuxiliaryLogosCard'
 import { resizeImage } from '@/lib/image-utils'
-import { CarouselCompositionSelector } from '@/components/studio/carousel/CarouselCompositionSelector'
 import { BrandingConfigurator } from '@/components/studio/creation-flow/BrandingConfigurator'
 import {
     localizeCarouselCompositionDescription,
@@ -46,7 +45,7 @@ import { useStylePresetImages } from '@/hooks/useStylePresetImages'
 import { SessionTitleDialog } from '@/components/studio/shared/SessionTitleDialog'
 import { UnsavedNavigationDialog, SessionDecisionDialog } from './CarouselSessionDialogs'
 import { AdvancedCompositionDialog } from './AdvancedCompositionDialog'
-import { FormatSection, SlideCountSection } from './CarouselControlSections'
+import { FormatSection, SlideCountSection, CompositionSection } from './CarouselControlSections'
 import { useTranslation } from 'react-i18next'
 import { buildAutomaticSessionTitle, getSessionDisplayTitle, normalizeCustomSessionTitle } from '@/lib/session-titles'
 
@@ -2809,85 +2808,20 @@ export function CarouselControlsPanel({
                 {/* Composition */}
                 {isStepVisible(3) && (
                 <div ref={(el) => { stepRefs.current[3] = el }} className={PANEL_SECTION_STACK_CLASS}>
-                    <SectionHeader
-                        icon={IconLayout}
-                        title={t('ui.designTitle')}
-                        iconContainerClassName={PANEL_SECTION_HEADER_ICON_CLASS}
-                        titleClassName={PANEL_SECTION_HEADER_TITLE_CLASS}
-                        extra={
-                            <div className="inline-flex items-center gap-2 rounded-full border border-border/60 bg-background/72 px-2.5 py-1 shadow-[inset_0_1px_0_rgba(255,255,255,0.72)]">
-                                <span className={cn('text-[clamp(0.88rem,0.84rem+0.1vw,0.94rem)] font-medium', compositionMode === 'advanced' ? 'text-primary/90' : 'text-muted-foreground')}>
-                                    {t('ui.advancedMode')}
-                                </span>
-                                <Switch
-                                    checked={compositionMode === 'advanced'}
-                                onCheckedChange={(checked) => {
-                                    const nextMode: CompositionMode = checked ? 'advanced' : 'basic'
-                                    setCompositionMode(nextMode)
-                                    setCompositionId(
-                                        pickCompositionId(
-                                            compositions,
-                                            nextMode,
-                                            compositionId,
-                                            `${structureId}|0`
-                                        )
-                                    )
-                                }}
-                                    aria-label={t('ui.designAdvancedAria')}
-                                />
-                            </div>
-                        }
+                    <CompositionSection
+                        compositionMode={compositionMode}
+                        setCompositionMode={setCompositionMode}
+                        compositions={compositions}
+                        advancedCompositions={advancedCompositions}
+                        compositionId={compositionId}
+                        setCompositionId={setCompositionId}
+                        structureId={structureId}
+                        setStructureId={setStructureId}
+                        structures={structures}
+                        setHasUserSelectedStructure={setHasUserSelectedStructure}
+                        markStructuralReanalysisNeeded={markStructuralReanalysisNeeded}
+                        setCurrentStep={setCurrentStep}
                     />
-                    <Select
-                        value={structureId}
-                        onValueChange={(value) => {
-                            setHasUserSelectedStructure(true)
-                            setStructureId(value)
-                            markStructuralReanalysisNeeded()
-                        }}
-                    >
-                        <SelectTrigger
-                            className={STUDIO_RICH_SELECT_TRIGGER_CLASS}
-                        >
-                            <SelectValue placeholder={t('ui.structurePlaceholder')} className="sr-only" />
-                            <span className="flex min-w-0 items-center gap-2">
-                                <span className="block truncate text-left text-[clamp(1rem,0.96rem+0.2vw,1.08rem)] font-medium leading-tight">
-                                    {structures.find((structure) => structure.id === structureId)?.name || t('ui.structurePlaceholder')}
-                                </span>
-                            </span>
-                        </SelectTrigger>
-                        <SelectContent className={STUDIO_SELECT_CONTENT_CLASS} position="popper" align="start" style={PANEL_RICH_SELECT_CONTENT_STYLE}>
-                            {structures.map((structure) => (
-                                <SelectItem key={structure.id} value={structure.id} className={STUDIO_SELECT_ITEM_CLASS}>
-                                    <span className="flex items-center justify-between w-full gap-2">
-                                        <span>{structure.name}</span>
-                                    </span>
-                                </SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
-                    {compositionMode === 'advanced' ? (
-                        <>
-                            <CarouselCompositionSelector
-                                key={`${structureId}-advanced`}
-                                compositions={advancedCompositions}
-                                selectedId={compositionId}
-                                onSelect={(id) => {
-                                    setCompositionId(id)
-                                    setCurrentStep(prev => (prev < 4 ? 4 : prev))
-                                }}
-                            />
-                            <p className="text-[11px] text-muted-foreground leading-snug">
-                                {t('ui.advancedModeDescription')}
-                            </p>
-                        </>
-                    ) : (
-                        <div className="rounded-xl border border-primary/20 bg-primary/5 px-3 py-2.5">
-                            <p className="text-[11px] text-primary font-medium leading-relaxed">
-                                {t('ui.basicModeDescription')}
-                            </p>
-                        </div>
-                    )}
                 </div>
                 )}
 
