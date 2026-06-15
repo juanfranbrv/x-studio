@@ -655,6 +655,7 @@ These values are editable from Admin and must remain the single source of truth 
 - Dominio principal de producto: `postlaboratory.com`
 - Dominio legado a redirigir: `adstudio.click`
 - Dominio frontend de Clerk en produccion: `clerk.postlaboratory.com`
+- Mientras `postlaboratory.com` siga apuntando al deployment Convex compartido `prestigious-pigeon-784`, ese deployment debe aceptar tambien el issuer Clerk dev usado por local: `https://supreme-chipmunk-83.clerk.accounts.dev`.
 
 ### Regla operativa
 
@@ -662,6 +663,7 @@ These values are editable from Admin and must remain the single source of truth 
 2. `CLERK_ISSUER_URL` debe apuntar siempre a `https://clerk.postlaboratory.com`.
 3. La `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` de produccion debe corresponder al frontend API `clerk.postlaboratory.com`.
 4. Cualquier dominio legado (`adstudio.click`, `adstudio.com` y variantes `www`) debe redirigir de forma permanente al dominio principal.
+5. `convex/auth.config.ts` acepta una variable opcional `CLERK_DEV_ISSUER_URL` para el issuer local. No sustituye a `CLERK_ISSUER_URL`; evita romper local cuando el deployment compartido se rehornea para produccion.
 
 ## Gobernanza del tema visual
 

@@ -1,8 +1,13 @@
+const issuerUrls = [
+    process.env.CLERK_ISSUER_URL,
+    process.env.CLERK_DEV_ISSUER_URL,
+]
+    .map((value) => value?.trim())
+    .filter((value): value is string => Boolean(value));
+
 export default {
-    providers: [
-        {
-            domain: process.env.CLERK_ISSUER_URL?.trim()!,
-            applicationID: "convex",
-        },
-    ],
+    providers: issuerUrls.map((domain) => ({
+        domain,
+        applicationID: "convex",
+    })),
 };
