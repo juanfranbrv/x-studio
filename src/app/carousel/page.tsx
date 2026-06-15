@@ -23,6 +23,7 @@ import {
     CarouselSuggestion
 } from '@/app/actions/generate-carousel'
 import { parseLazyIntentAction } from '@/app/actions/parse-intent'
+import { shouldApplyPrimaryLogoToSlide } from '@/lib/carousel/visual-prompt-builders'
 import { useMutation, useQuery } from 'convex/react'
 import { api } from '../../../convex/_generated/api'
 import { INTENT_CATALOG } from '@/lib/creation-flow-types'
@@ -65,17 +66,6 @@ import { normalizeStudioDebugOverlaysEnabled } from '@/lib/studio-debug-visibili
 
 const createAuditFlowId = (prefix: string) =>
     `flow_${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
-
-const shouldApplyPrimaryLogoToSlide = (
-    selectedLogoUrl: string | undefined,
-    includeLogoOnSlides: boolean | undefined,
-    slideIndex: number,
-    totalSlides: number
-) => {
-    if (!selectedLogoUrl) return false
-    if (includeLogoOnSlides !== false) return true
-    return slideIndex === Math.max(0, totalSlides - 1)
-}
 
 const getDebugReferenceWeight = (
     role: ReferenceImageRole,
