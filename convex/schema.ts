@@ -208,12 +208,14 @@ export default defineSchema({
     planned_at: v.optional(v.string()),
     platform: v.optional(v.string()),
     format: v.optional(v.string()),
+    campaign: v.optional(v.string()),
     notes: v.optional(v.string()),
     created_at: v.string(),
     updated_at: v.string(),
   }).index("by_user_asset", ["user_id", "asset_key"])
     .index("by_user_status", ["user_id", "status"])
-    .index("by_user_planned", ["user_id", "planned_at"]),
+    .index("by_user_planned", ["user_id", "planned_at"])
+    .index("by_user_campaign", ["user_id", "campaign"]),
 
   brands: defineTable({
     owner_id: v.string(), // clerk_id

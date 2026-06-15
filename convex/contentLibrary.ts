@@ -112,6 +112,7 @@ async function upsertAnnotation(
     planned_at?: string;
     platform?: string;
     format?: string;
+    campaign?: string;
     notes?: string;
   },
 ) {
@@ -123,6 +124,7 @@ async function upsertAnnotation(
     planned_at: limitText(args.planned_at, 40),
     platform: limitText(args.platform, 80),
     format: limitText(args.format, 80),
+    campaign: limitText(args.campaign, 80),
     notes: limitText(args.notes, 1200),
     updated_at: now,
   };
@@ -224,6 +226,7 @@ export const updateAnnotation = mutation({
     planned_at: v.optional(v.string()),
     platform: v.optional(v.string()),
     format: v.optional(v.string()),
+    campaign: v.optional(v.string()),
     notes: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
@@ -250,6 +253,41 @@ export const bulkUpdateAnnotations = mutation({
       }));
     }
     return { updated: results.length };
+  },
+});
+
+export const bulkSetCampaign = mutation({
+  args: {
+    user_id: v.string(),
+    asset_keys: v.array(v.string()),
+    campaign: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    await requireSameUser(ctx, args.user_id);
+    const assetKeys = normalizeAssetKeys(args.asset_keys);
+    const campaign = limitText(args.campaign, 80);
+    const now = new Date().toISOString();
+    let updated = 0;
+
+    // Merge-safe: solo toca el campo campaign, preserva estado/fecha/etc.
+    for (const assetKey of assetKeys) {
+      const existing = await findAnnotation(ctx, args.user_id, assetKey);
+      if (existing) {
+        await ctx.db.patch(existing._id, { campaign, updated_at: now });
+      } else {
+        await ctx.db.insert("content_asset_annotations", {
+          user_id: args.user_id,
+          asset_key: assetKey,
+          status: "draft",
+          campaign,
+          created_at: now,
+          updated_at: now,
+        });
+      }
+      updated += 1;
+    }
+
+    return { updated };
   },
 });
 

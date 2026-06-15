@@ -35,6 +35,7 @@ export type ContentAssetAnnotation = {
   planned_at?: string;
   platform?: string;
   format?: string;
+  campaign?: string;
   notes?: string;
   created_at: string;
   updated_at: string;
@@ -80,6 +81,7 @@ export type ContentLibraryAsset = {
   format?: string;
   status: ContentAssetStatus;
   planned_at?: string;
+  campaign?: string;
   notes?: string;
   slide_count?: number;
   slides?: ContentLibrarySlide[];
@@ -249,6 +251,7 @@ export function mergeContentAssetAnnotations(
       planned_at: stringValue(annotation.planned_at),
       platform: stringValue(annotation.platform) || asset.platform,
       format: stringValue(annotation.format) || asset.format,
+      campaign: stringValue(annotation.campaign),
       notes: stringValue(annotation.notes),
     };
   });

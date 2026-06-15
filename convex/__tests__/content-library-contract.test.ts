@@ -26,8 +26,14 @@ describe('content library contract', () => {
     expect(schemaSource).toContain('.index("by_user_planned", ["user_id", "planned_at"])')
   })
 
-  it('expone mutaciones bulk para estado y eliminacion editorial', () => {
+  it('soporta clasificacion por campaña (campo + indice)', () => {
+    expect(schemaSource).toContain('campaign: v.optional(v.string())')
+    expect(schemaSource).toContain('.index("by_user_campaign", ["user_id", "campaign"])')
+  })
+
+  it('expone mutaciones bulk para estado, campaña y eliminacion editorial', () => {
     expect(contentLibrarySource).toContain('export const bulkUpdateAnnotations = mutation({')
+    expect(contentLibrarySource).toContain('export const bulkSetCampaign = mutation({')
     expect(contentLibrarySource).toContain('export const bulkDeleteAssets = mutation({')
     expect(contentLibrarySource).toContain('asset_keys: v.array(v.string())')
     expect(contentLibrarySource).toContain('sessionGenerations')
