@@ -2,7 +2,8 @@
 
 import { useTranslation } from 'react-i18next'
 import { cn } from '@/lib/utils'
-import { IconLayers } from '@/components/ui/icons'
+import { IconLayers, IconCarousel, IconMinus, IconPlus } from '@/components/ui/icons'
+import { Button } from '@/components/ui/button'
 import { SectionHeader } from '@/components/studio/shared/SectionHeader'
 import {
     PANEL_SECTION_HEADER_ICON_CLASS,
@@ -10,6 +11,41 @@ import {
 } from './CarouselControlsPanel.helpers'
 
 type AspectRatio = '1:1' | '4:5' | '3:4'
+
+/** Selector del numero de diapositivas del carrusel. */
+export function SlideCountSection({
+    slideCount,
+    onChange,
+}: {
+    slideCount: number
+    onChange: (delta: number) => void
+}) {
+    const { t } = useTranslation('carousel')
+
+    return (
+        <>
+            <SectionHeader
+                icon={IconCarousel}
+                title={t('ui.slideCount')}
+                iconContainerClassName={PANEL_SECTION_HEADER_ICON_CLASS}
+                titleClassName={PANEL_SECTION_HEADER_TITLE_CLASS}
+            />
+            <div className="flex items-center gap-4">
+                <Button variant="outline" size="icon" onClick={() => onChange(-1)} disabled={slideCount <= 0}>
+                    <IconMinus className="w-4 h-4" />
+                </Button>
+                <div className="flex-1 text-center">
+                    <span className="text-3xl font-bold">{slideCount}</span>
+                    <span className="text-sm text-muted-foreground ml-2">{t('ui.slides')}</span>
+                </div>
+                <Button variant="outline" size="icon" onClick={() => onChange(1)} disabled={slideCount >= 15}>
+                    <IconPlus className="w-4 h-4" />
+                </Button>
+            </div>
+            <p className="text-xs text-muted-foreground">{t('ui.slideRange')}</p>
+        </>
+    )
+}
 
 /** Selector de formato (aspect ratio) del carrusel. */
 export function FormatSection({

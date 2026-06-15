@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Switch } from '@/components/ui/switch'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { IconPlus, IconMinus, IconIdea, IconLayout, IconLayers, IconImageAdd, IconFingerprint, IconCarousel, IconRotate, IconHistory, IconSave, IconCheck, IconAlertCircle, IconClose, IconPaintbrush02, IconWand, IconImage } from '@/components/ui/icons'
+import { IconPlus, IconIdea, IconLayout, IconLayers, IconImageAdd, IconFingerprint, IconRotate, IconHistory, IconSave, IconCheck, IconAlertCircle, IconClose, IconPaintbrush02, IconWand, IconImage } from '@/components/ui/icons'
 import { cn } from '@/lib/utils'
 import type { BrandDNA } from '@/lib/brand-types'
 import type { CarouselSuggestion, CarouselSlide, SlideContent } from '@/app/actions/generate-carousel'
@@ -46,7 +46,7 @@ import { useStylePresetImages } from '@/hooks/useStylePresetImages'
 import { SessionTitleDialog } from '@/components/studio/shared/SessionTitleDialog'
 import { UnsavedNavigationDialog, SessionDecisionDialog } from './CarouselSessionDialogs'
 import { AdvancedCompositionDialog } from './AdvancedCompositionDialog'
-import { FormatSection } from './CarouselControlSections'
+import { FormatSection, SlideCountSection } from './CarouselControlSections'
 import { useTranslation } from 'react-i18next'
 import { buildAutomaticSessionTitle, getSessionDisplayTitle, normalizeCustomSessionTitle } from '@/lib/session-titles'
 
@@ -2647,25 +2647,7 @@ export function CarouselControlsPanel({
                 {/* Slide Count */}
                 {isStepVisible(1) && (
                 <div ref={(el) => { stepRefs.current[1] = el }} className={PANEL_SECTION_STACK_CLASS}>
-                    <SectionHeader
-                        icon={IconCarousel}
-                        title={t('ui.slideCount')}
-                        iconContainerClassName={PANEL_SECTION_HEADER_ICON_CLASS}
-                        titleClassName={PANEL_SECTION_HEADER_TITLE_CLASS}
-                    />
-                    <div className="flex items-center gap-4">
-                        <Button variant="outline" size="icon" onClick={() => handleSlideCountChange(-1)} disabled={slideCount <= 0}>
-                            <IconMinus className="w-4 h-4" />
-                        </Button>
-                        <div className="flex-1 text-center">
-                            <span className="text-3xl font-bold">{slideCount}</span>
-                            <span className="text-sm text-muted-foreground ml-2">{t('ui.slides')}</span>
-                        </div>
-                        <Button variant="outline" size="icon" onClick={() => handleSlideCountChange(1)} disabled={slideCount >= 15}>
-                            <IconPlus className="w-4 h-4" />
-                        </Button>
-                    </div>
-                    <p className="text-xs text-muted-foreground">{t('ui.slideRange')}</p>
+                    <SlideCountSection slideCount={slideCount} onChange={handleSlideCountChange} />
                 </div>
                 )}
 
