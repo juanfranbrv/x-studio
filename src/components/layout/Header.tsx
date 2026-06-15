@@ -112,14 +112,14 @@ export function Header({
                         ) : null}
                         <h1 className={cn(
                             "font-heading text-[clamp(1.26rem,1.08rem+0.62vw,1.72rem)] font-semibold leading-none text-primary",
-                            variant === 'bar' && "ml-[25px]"
+                            variant === 'bar' && "md:ml-[25px]"
                         )}>
                             {t('app.name')}
                         </h1>
                     </div>
 
                     {brands.length > 0 ? (
-                        <div className={cn(variant === 'bar' && "ml-[40px]")}>
+                        <div className={cn("min-w-0", variant === 'bar' && "md:ml-[40px]")}>
                         <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                                 <Button variant="outline" size="sm" className={`${STUDIO_RICH_SELECT_TRIGGER_CLASS} w-[clamp(9.5rem,42vw,12.75rem)] min-w-0 md:w-72`}>
@@ -183,7 +183,7 @@ export function Header({
                     {onNewBrandKit ? (
                         <Button variant="outline" size="sm" onClick={onNewBrandKit} className={cn(
                             "hidden h-11 gap-2 rounded-2xl border-border/70 bg-[hsl(var(--surface-alt))]/90 px-4 text-[1rem] font-medium transition-all hover:border-primary/20 hover:bg-white md:flex md:h-[3.15rem]",
-                            variant === 'bar' && "ml-[15px]"
+                            variant === 'bar' && "md:ml-[15px]"
                         )}>
                             <IconPlus className="h-4 w-4" />
                             {t('actions.newBrandKit')}
@@ -198,7 +198,7 @@ export function Header({
                 </div>
 
                 <div className="ml-3 flex shrink-0 items-center gap-1 md:gap-2">
-                    <Link href="/settings#credits" className="origin-right scale-75 sm:scale-90 md:mr-2 md:scale-100">
+                    <Link href="/settings#credits" className="hidden origin-right scale-90 sm:block md:mr-2 md:scale-100">
                         <CreditsBadge />
                     </Link>
 

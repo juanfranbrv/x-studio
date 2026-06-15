@@ -1,0 +1,74 @@
+{
+  "meta": {
+    "title": "Biblioteca | Post laboratory"
+  },
+  "header": {
+    "title": "Biblioteca",
+    "description": "Activos generados en Imagen y Carrusel, reunidos para planificar publicaciones."
+  },
+  "filters": {
+    "search": "Buscar por sesión, copy o notas",
+    "module": "Módulo",
+    "status": "Estado",
+    "platform": "Red",
+    "planning": "Planificación",
+    "all": "Todos",
+    "allPlatforms": "Todas",
+    "planned": "Con fecha",
+    "unplanned": "Sin fecha"
+  },
+  "modules": {
+    "image": "Imagen",
+    "carousel": "Carrusel"
+  },
+  "status": {
+    "draft": "Borrador",
+    "selected": "Seleccionado",
+    "ready": "Listo",
+    "published_manual": "Publicado manual",
+    "discarded": "Descartado"
+  },
+  "card": {
+    "noCopy": "Sin copy guardado",
+    "slides": "{{count}} slides",
+    "plannedFor": "Previsto: {{date}}"
+  },
+  "bulk": {
+    "selectedOne": "1 seleccionado",
+    "selectedMany": "{{count}} seleccionados",
+    "selectVisible": "Seleccionar visibles ({{count}})",
+    "clear": "Limpiar",
+    "status": "Estado",
+    "applyStatus": "Cambiar estado",
+    "delete": "Eliminar",
+    "busy": "Aplicando...",
+    "deleteConfirmOne": "Vas a eliminar 1 activo de su sesión. Las imágenes se quitarán de la sesión de Imagen y los carruseles eliminarán su sesión completa.",
+    "deleteConfirmMany": "Vas a eliminar {{count}} activos de sus sesiones. Las imágenes se quitarán de la sesión de Imagen y los carruseles eliminarán su sesión completa."
+  },
+  "detail": {
+    "title": "Detalle del activo",
+    "copy": "Copy",
+    "metadata": "Metadatos",
+    "session": "Sesión",
+    "createdAt": "Creado",
+    "plannedAt": "Fecha prevista",
+    "platform": "Red social",
+    "format": "Formato",
+    "notes": "Notas",
+    "notesPlaceholder": "Añade indicaciones editoriales internas...",
+    "status": "Estado",
+    "copyButton": "Copiar copy",
+    "copied": "Copiado",
+    "download": "Descargar imagen",
+    "openSource": "Abrir origen",
+    "save": "Guardar cambios",
+    "saving": "Guardando...",
+    "saved": "Cambios guardados",
+    "saveError": "No se pudieron guardar los cambios"
+  },
+  "empty": {
+    "title": "No hay activos para estos filtros",
+    "description": "Cuando existan imágenes o carruseles guardados en sesiones, aparecerán aquí."
+  },
+  "loading": "Cargando biblioteca..."
+}

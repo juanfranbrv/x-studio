@@ -1,0 +1,74 @@
+{
+  "meta": {
+    "title": "Library | Post laboratory"
+  },
+  "header": {
+    "title": "Library",
+    "description": "Assets generated in Image and Carousel, collected for publication planning."
+  },
+  "filters": {
+    "search": "Search by session, copy, or notes",
+    "module": "Module",
+    "status": "Status",
+    "platform": "Network",
+    "planning": "Planning",
+    "all": "All",
+    "allPlatforms": "All",
+    "planned": "Planned",
+    "unplanned": "Unplanned"
+  },
+  "modules": {
+    "image": "Image",
+    "carousel": "Carousel"
+  },
+  "status": {
+    "draft": "Draft",
+    "selected": "Selected",
+    "ready": "Ready",
+    "published_manual": "Published manually",
+    "discarded": "Discarded"
+  },
+  "card": {
+    "noCopy": "No saved copy",
+    "slides": "{{count}} slides",
+    "plannedFor": "Planned: {{date}}"
+  },
+  "bulk": {
+    "selectedOne": "1 selected",
+    "selectedMany": "{{count}} selected",
+    "selectVisible": "Select visible ({{count}})",
+    "clear": "Clear",
+    "status": "Status",
+    "applyStatus": "Change status",
+    "delete": "Delete",
+    "busy": "Applying...",
+    "deleteConfirmOne": "You are about to delete 1 asset from its session. Images will be removed from the Image session and carousels will delete their full session.",
+    "deleteConfirmMany": "You are about to delete {{count}} assets from their sessions. Images will be removed from the Image session and carousels will delete their full session."
+  },
+  "detail": {
+    "title": "Asset detail",
+    "copy": "Copy",
+    "metadata": "Metadata",
+    "session": "Session",
+    "createdAt": "Created",
+    "plannedAt": "Planned date",
+    "platform": "Social network",
+    "format": "Format",
+    "notes": "Notes",
+    "notesPlaceholder": "Add internal editorial notes...",
+    "status": "Status",
+    "copyButton": "Copy text",
+    "copied": "Copied",
+    "download": "Download image",
+    "openSource": "Open source",
+    "save": "Save changes",
+    "saving": "Saving...",
+    "saved": "Changes saved",
+    "saveError": "Changes could not be saved"
+  },
+  "empty": {
+    "title": "No assets match these filters",
+    "description": "When saved image or carousel sessions exist, they will appear here."
+  },
+  "loading": "Loading library..."
+}
