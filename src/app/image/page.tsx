@@ -74,6 +74,11 @@ interface Generation {
     original_image_storage_id?: string
     created_at: string
     prompt_used?: string
+    caption?: string
+    headline?: string
+    cta?: string
+    platform?: string
+    format?: string
     request_payload?: Record<string, unknown>
     error_title?: string
     error_fallback?: string
@@ -105,7 +110,7 @@ type SessionDecisionModalState = {
     buttons: SessionDecisionButton[]
 }
 
-type CompactGeneration = Pick<Generation, 'id' | 'image_url' | 'image_storage_id' | 'preview_image_url' | 'preview_image_storage_id' | 'original_image_url' | 'original_image_storage_id' | 'created_at' | 'prompt_used' | 'error_title' | 'error_fallback'> & {
+type CompactGeneration = Pick<Generation, 'id' | 'image_url' | 'image_storage_id' | 'preview_image_url' | 'preview_image_storage_id' | 'original_image_url' | 'original_image_storage_id' | 'created_at' | 'prompt_used' | 'caption' | 'headline' | 'cta' | 'platform' | 'format' | 'error_title' | 'error_fallback'> & {
     request_payload?: {
         prompt?: string
         model?: string
@@ -492,6 +497,11 @@ export default function ImagePage() {
                 original_image_storage_id: generation.original_image_storage_id,
                 created_at: generation.created_at,
                 prompt_used: generation.prompt_used?.slice(0, 900),
+                caption: generation.caption?.slice(0, 1200),
+                headline: generation.headline?.slice(0, 300),
+                cta: generation.cta?.slice(0, 180),
+                platform: generation.platform?.slice(0, 80),
+                format: generation.format?.slice(0, 80),
                 error_title: generation.error_title,
                 error_fallback: generation.error_fallback,
                 request_payload: {
@@ -1234,6 +1244,11 @@ export default function ImagePage() {
                 original_image_url: result.imageUrl,
                 created_at: new Date().toISOString(),
                 prompt_used: typeof requestPayload.prompt === 'string' ? requestPayload.prompt : '',
+                caption: creationFlow.state.caption,
+                headline: creationFlow.state.headline,
+                cta: creationFlow.state.cta,
+                platform: creationFlow.state.selectedPlatform || undefined,
+                format: creationFlow.state.selectedFormat || undefined,
                 request_payload: { ...requestPayload },
                 error_title: errorTitle,
                 error_fallback: errorFallback
@@ -1904,6 +1919,11 @@ export default function ImagePage() {
                     original_image_url: result.imageUrl,
                     created_at: new Date().toISOString(),
                     prompt_used: typeof requestPayloadForApi.prompt === 'string' ? requestPayloadForApi.prompt : '',
+                    caption: creationFlow.state.caption,
+                    headline: creationFlow.state.headline,
+                    cta: creationFlow.state.cta,
+                    platform: creationFlow.state.selectedPlatform || undefined,
+                    format: creationFlow.state.selectedFormat || undefined,
                     request_payload: { ...requestPayloadForApi },
                     error_title: t('errors.generationTitle', { defaultValue: 'Generation error' }),
                     error_fallback: t('errors.generationDescription', { defaultValue: 'Error generating image' })
@@ -2039,6 +2059,11 @@ export default function ImagePage() {
                     original_image_url: result.imageUrl,
                     created_at: new Date().toISOString(),
                     prompt_used: typeof requestPayload.prompt === 'string' ? requestPayload.prompt : '',
+                    caption: creationFlow.state.caption,
+                    headline: creationFlow.state.headline,
+                    cta: creationFlow.state.cta,
+                    platform: creationFlow.state.selectedPlatform || undefined,
+                    format: creationFlow.state.selectedFormat || undefined,
                     request_payload: { ...requestPayload },
                     error_title: t('errors.editTitle', { defaultValue: 'Editing error' }),
                     error_fallback: t('errors.editDescription', { defaultValue: 'Error editing image' })
