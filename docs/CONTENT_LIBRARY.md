@@ -6,8 +6,8 @@
 
 ## Visión: 3 vistas
 
-1. **Biblioteca** — rejilla con todos los activos. ✅ **V1 hecha.**
-2. **Campañas** — agrupación por cliente / producto / promoción / tema. ⏳ pendiente.
+1. **Biblioteca** — rejilla con todos los activos. ✅ **V1 desplegada.**
+2. **Campañas** — agrupación por cliente / producto / promoción / tema. 🟡 **clasificación hecha** (campo `campaign` editable + filtro + asignación bulk); **vista agrupada pendiente**.
 3. **Calendario** — planificación por fecha. ⏳ pendiente.
 
 **Orden de construcción (con dependencia):** Biblioteca → Campañas → Calendario.
@@ -51,19 +51,21 @@ calendario. El campo `planned_at` ya está preparado para el calendario.
   `snapshot.sessionGenerations` (forma actual). Sesiones **antiguas** con otra
   forma no aparecen. En producción no afecta (tablas vacías → todo nuevo usa la
   forma correcta). Si se quiere mostrar contenido antiguo, extender el extractor.
-- **Campañas necesita dato nuevo:** las anotaciones NO tienen aún campo de
-  agrupación. Añadir `campaign` (o `tags`) a `content_asset_annotations` (+ índice)
-  es el primer paso de la vista Campañas.
+- **Campañas (clasificación) HECHA:** `content_asset_annotations` tiene `campaign`
+  (+ índice `by_user_campaign`); editable en el detalle, asignable en bulk
+  (`bulkSetCampaign`, merge-safe) y filtrable (con opción "sin campaña"). Falta la
+  **vista agrupada** (presentar la rejilla agrupada por campaña). **SIN desplegar**
+  todavía (requiere `convex deploy` por el nuevo índice/campo).
 - **Carruseles** se muestran como **una** pieza (no una card por slide).
 - **Sin publicación automática** a redes; `published_manual` es marcado manual.
 - No se migra ni duplica almacenamiento de imágenes.
 
 ## Próximos pasos
 
-1. **(hecho)** Biblioteca V1 commiteada en `develop`. Pendiente: deploy
-   (incluye `convex deploy` por la tabla nueva).
-2. **Campañas:** campo `campaign`/`tags` en anotaciones + agrupación y filtro por
-   campaña en la UI; mejora el filtrado y habilita el calendario.
+1. **(hecho + desplegado)** Biblioteca V1.
+2. **Campañas:** clasificación hecha (campo + filtro + bulk) en `develop`, **sin
+   desplegar**. Pendiente: (a) `convex deploy` por el índice/campo nuevo; (b) la
+   **vista agrupada por campaña** (toggle rejilla/campañas).
 3. **Calendario:** vista por fecha sobre `planned_at` + clasificación de Campañas.
 
 ## QA
