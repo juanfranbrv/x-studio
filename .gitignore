@@ -47,6 +47,8 @@ public/debug_log.txt
 # generated artifacts
 artifacts-*.png
 tools/.worker-results/
+/outputs/
+.playwright-mcp/
 
 # env files
 .env*
