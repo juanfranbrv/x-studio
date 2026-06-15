@@ -81,10 +81,16 @@ Verificado con TS (0 errores) + suite (198/198) tras cada paso. Commits atómico
   (los 4 paneles renderizan idénticos, swatches y toolbars funcionando).
   Nota: usar `http://localhost:3000` (NO `127.0.0.1`) o Clerk dev devuelve 403 y el login no monta.
 
-**Pendiente Fase 1 (requiere verificación VISUAL con login Clerk):**
-- [ ] Extraer secciones grandes del *cuerpo* de cada panel a subcomponentes + hooks
-      (`useXxx`). Es la parte que más reduce líneas pero exige QA visual (no se pudo
-      hacer en sesión autónoma: `/carousel` y `/studio` están tras login).
+**Fase 1b — Profundización del cuerpo de CarouselControlsPanel (EN MARCHA):**
+Secciones del render extraídas a subcomponentes (QA visual + funcional con login):
+- [x] 1.5 Diálogos de sesión → `CarouselSessionDialogs.tsx`
+- [x] 1.6 Modal composición avanzada → `AdvancedCompositionDialog.tsx`
+- [x] 1.7 FormatSection + 1.8 SlideCountSection + 1.9 CompositionSection → `CarouselControlSections.tsx`
+- Panel: **3634 → 3253 líneas**. Todo desplegado (Vercel READY). TS 0, tests 198/198, lint 843.
+- [ ] **Secciones restantes (Prompt ~25 props, Sessions, Image): DEMASIADO ACOPLADAS**
+      para extracción presentacional limpia. Requieren refactor basado en HOOK
+      (`useCarouselControls` que agrupe estado+handlers) antes de partir el JSX.
+      Cambio mayor → hacer ATENDIDO, no en sesión desatendida.
 - [ ] De-dup de `RoleColorSwatch`/`AddAccentSwatch` entre ControlsPanel y carousel:
       hoy son variantes visuales distintas (hover:scale, sombras); unificar con un
       componente compartido parametrizado SOLO con verificación visual.
