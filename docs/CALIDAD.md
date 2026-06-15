@@ -103,6 +103,9 @@ tests (p.ej. `creation-flow-types`) deben usar imports RELATIVOS en lo extraído
       a `src/lib/carousel/visual-prompt-builders.ts`. TS 0, tests 198/198.
 - [x] `analyze-brand-dna.ts` 2953→2765 (2.2) → 7 funciones de consenso/roles de color
       a `src/lib/brand-analysis/color-consensus.ts`. TS 0, tests 198/198, lint 843→842.
+- [x] `analyze-brand-dna.ts` 2765→2515 (2.5) → parsers puros de HTML/fuentes
+      (discoverValuablePages, extractFontsFromContent, analyzeStaticWeightedDOM)
+      a `src/lib/brand-analysis/html-extractors.ts`. TS 0, tests 198/198, lint 843.
 - [x] `parse-intent.ts` 1356→1138 (2.3) → 6 helpers de reparacion de JSON
       a `src/lib/json-repair.ts`. TS 0, tests 198/198, lint 842 (sin cambio).
 - [x] `creation-flow-types.ts` 1486→979 (2.4) → catálogo de layouts
