@@ -6,10 +6,10 @@
 > "troceo" (fases A/B ya commiteadas).
 
 ## ⏯️ ESTADO PARA RETOMAR (2026-06-15)
-- **Rama `develop`, git limpio.** Sin desplegar vs `main`: `fase 2.6 gemini` + `docs 1.10`. Todo lo demás en producción (Vercel READY).
-- **Hecho hoy:** Fase 0 ✓, Fase 1 (4 paneles) ✓, Fase 1b (CarouselControlsPanel 3634→3114, secciones 1.5–1.10) ✓, Fase 2 (2.1–2.6: generate-carousel, analyze-brand-dna ×2, parse-intent, creation-flow-types, gemini format mappers) ✓.
-- 🔴 **BUG URGENTE PREEXISTENTE (no del troceo):** generar IMAGEN con OpenAI + referencia (logo) → 500 "No se pudo preparar ninguna imagen de referencia para OpenAI" (`gemini.ts:595` en `generateOpenAIImage`, código INTACTO; confirmado por git diff). **Comprobar si afecta a PRODUCCIÓN o solo dev** antes de nada. La generación de TEXTO sí funciona.
-- **Deploy de 2.6 en pausa** hasta revisar ese 500.
+- **Rama `develop` == `main`, git limpio.** Todo desplegado (Vercel READY); 2.6 y docs ya mergeadas a `main`.
+- **Hecho:** Fase 0 ✓, Fase 1 (4 paneles) ✓, Fase 1b (CarouselControlsPanel 3634→3114, secciones 1.5–1.10) ✓, Fase 2 (2.1–2.6: generate-carousel, analyze-brand-dna ×2, parse-intent, creation-flow-types, gemini format mappers) ✓.
+- ✅ **INCIDENTE LOGIN PROD RESUELTO (2026-06-15):** usuarios no podían entrar a la zona privada → "This page couldn't load". Causa: desajuste de issuer Clerk. Frontend prod emite JWT con issuer `https://clerk.postlaboratory.com`, pero el proveedor de auth de Convex prod estaba horneado a una instancia DEV (`supreme-chipmunk-83.clerk.accounts.dev`) → `No auth provider found matching the given token` → `users:getUser` Unauthorized → crash React #310. Arreglo: (1) `convex env set CLERK_ISSUER_URL=https://clerk.postlaboratory.com --prod` + `convex deploy --prod`; (2) commit `cf8f885` generaliza `convex/auth.config.ts` a registrar DOS proveedores (prod `CLERK_ISSUER_URL` + dev `CLERK_DEV_ISSUER_URL`). Verificado: TS 0, tests 198/198, env prod+dev correctas, frontend prod OK.
+- 🔴 **BUG URGENTE PREEXISTENTE (no del troceo, sigue pendiente):** generar IMAGEN con OpenAI + referencia (logo) → 500 "No se pudo preparar ninguna imagen de referencia para OpenAI" (`gemini.ts:595` en `generateOpenAIImage`, código INTACTO; confirmado por git diff). **Comprobar si afecta a PRODUCCIÓN o solo dev.** La generación de TEXTO sí funciona.
 - **Próximos pasos troceo:** hook `useCarouselControls` (para Prompt/Image del panel, atendido con QA) · `gemini.ts` provider-split completo · `work_sessions.ts` (separar helpers puros de los que usan `ctx`) · Fase 3 páginas · Fase 6 `any` (196).
 - **QA:** usar `http://localhost:3000` (NO 127.0.0.1, Clerk da 403). `vitest.config` NO define alias `@/` → en ficheros que los tests cargan en runtime, usar imports RELATIVOS.
 
