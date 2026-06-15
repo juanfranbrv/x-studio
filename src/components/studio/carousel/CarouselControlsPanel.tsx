@@ -10,7 +10,6 @@ import {
     Dialog,
     DialogContent,
     DialogDescription,
-    DialogFooter,
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog'
@@ -52,16 +51,8 @@ import {
 import { SuggestionsList } from '@/components/studio/shared/SuggestionsList'
 import { useStylePresetImages } from '@/hooks/useStylePresetImages'
 import { SessionTitleDialog } from '@/components/studio/shared/SessionTitleDialog'
-import { IndeterminateProgressBar } from '@/components/studio/shared/IndeterminateProgressBar'
+import { UnsavedNavigationDialog, SessionDecisionDialog } from './CarouselSessionDialogs'
 import { useTranslation } from 'react-i18next'
-import {
-    STUDIO_DECISION_BUTTON_CLASS,
-    STUDIO_DECISION_DIALOG_CLASS,
-    STUDIO_DECISION_DIALOG_DESCRIPTION_CLASS,
-    STUDIO_DECISION_DIALOG_FOOTER_CLASS,
-    STUDIO_DECISION_DIALOG_HEADER_CLASS,
-    STUDIO_DECISION_DIALOG_TITLE_CLASS,
-} from '@/components/studio/shared/dialogStyles'
 import { buildAutomaticSessionTitle, getSessionDisplayTitle, normalizeCustomSessionTitle } from '@/lib/session-titles'
 
 import { RoleColorSwatch, AddAccentSwatch } from './CarouselColorSwatches'
@@ -3531,88 +3522,17 @@ export function CarouselControlsPanel({
                 ) : null}
                 </div>
             </div>
-            <Dialog
+            <UnsavedNavigationDialog
                 open={unsavedNavModalOpen}
-                onOpenChange={(open) => {
-                    if (!open && !isResolvingUnsavedNavigation) {
-                        handleUnsavedNavigateCancel()
-                    }
-                }}
-            >
-                <DialogContent
-                    className={STUDIO_DECISION_DIALOG_CLASS}
-                    showCloseButton={!isResolvingUnsavedNavigation}
-                    onEscapeKeyDown={(event) => {
-                        if (isResolvingUnsavedNavigation) event.preventDefault()
-                    }}
-                    onPointerDownOutside={(event) => {
-                        if (isResolvingUnsavedNavigation) event.preventDefault()
-                    }}
-                    onInteractOutside={(event) => {
-                        if (isResolvingUnsavedNavigation) event.preventDefault()
-                    }}
-                >
-                    <DialogHeader className={STUDIO_DECISION_DIALOG_HEADER_CLASS}>
-                        <DialogTitle className={STUDIO_DECISION_DIALOG_TITLE_CLASS}>{t('ui.unsavedDialogTitle')}</DialogTitle>
-                        <DialogDescription className={STUDIO_DECISION_DIALOG_DESCRIPTION_CLASS}>
-                            {t('ui.unsavedDialogDescription')}
-                        </DialogDescription>
-                    </DialogHeader>
-                    <DialogFooter className={STUDIO_DECISION_DIALOG_FOOTER_CLASS}>
-                        <Button
-                            variant="outline"
-                            className={STUDIO_DECISION_BUTTON_CLASS}
-                            onClick={handleUnsavedNavigateCancel}
-                            disabled={isResolvingUnsavedNavigation}
-                        >
-                            {t('ui.cancel')}
-                        </Button>
-                        <Button
-                            variant="destructive"
-                            className={STUDIO_DECISION_BUTTON_CLASS}
-                            onClick={handleUnsavedNavigateDiscard}
-                            disabled={isResolvingUnsavedNavigation}
-                        >
-                            {t('ui.discardLeave')}
-                        </Button>
-                        <Button
-                            className={STUDIO_DECISION_BUTTON_CLASS}
-                            onClick={() => void handleUnsavedNavigateSave()}
-                            disabled={isResolvingUnsavedNavigation}
-                        >
-                            {t('ui.saveLeave')}
-                        </Button>
-                    </DialogFooter>
-                    {isResolvingUnsavedNavigation ? <IndeterminateProgressBar className="mx-6 mb-6 mt-1" /> : null}
-                </DialogContent>
-            </Dialog>
-            <Dialog
-                open={sessionDecisionModal.open}
-                onOpenChange={(open) => {
-                    if (!open) {
-                        closeSessionDecisionModal(null)
-                    }
-                }}
-            >
-                <DialogContent className={STUDIO_DECISION_DIALOG_CLASS}>
-                    <DialogHeader className={STUDIO_DECISION_DIALOG_HEADER_CLASS}>
-                        <DialogTitle className={STUDIO_DECISION_DIALOG_TITLE_CLASS}>{sessionDecisionModal.title}</DialogTitle>
-                        <DialogDescription className={STUDIO_DECISION_DIALOG_DESCRIPTION_CLASS}>{sessionDecisionModal.description}</DialogDescription>
-                    </DialogHeader>
-                    <DialogFooter className={STUDIO_DECISION_DIALOG_FOOTER_CLASS}>
-                        {sessionDecisionModal.buttons.map((button) => (
-                            <Button
-                                key={button.id}
-                                variant={button.variant || 'default'}
-                                className={STUDIO_DECISION_BUTTON_CLASS}
-                                onClick={() => closeSessionDecisionModal(button.id)}
-                            >
-                                {button.label}
-                            </Button>
-                        ))}
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
+                isResolving={isResolvingUnsavedNavigation}
+                onCancel={handleUnsavedNavigateCancel}
+                onDiscard={handleUnsavedNavigateDiscard}
+                onSave={handleUnsavedNavigateSave}
+            />
+            <SessionDecisionDialog
+                state={sessionDecisionModal}
+                onClose={closeSessionDecisionModal}
+            />
             <SessionTitleDialog
                 open={sessionTitleDialogOpen}
                 title={t('ui.sessionDialogTitle')}
