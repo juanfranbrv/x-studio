@@ -3,6 +3,7 @@ import type { BrandDNA } from './brand-types'
 import { buildImagePrompt, ImageGenerationOptions } from './prompt-builder'
 import { mapGeminiAspectRatio } from './gemini-aspect-ratio'
 import { getOpenAIImageSizeForAspectRatio } from './openai-image-size'
+import { REPLICATE_MODEL_NANO_BANANA_PRO, getOpenAISize, getNagaImageSize, toReplicateAspectRatioForModel, toAtlasAspectRatio, resolveAtlasModel } from './gemini/image-format'
 import { resolveOpenAICompatibleImageModel } from './openai-image-model-alias'
 import { extractOpenAIImageResult, summarizeOpenAIImageResponseShape } from './openai-image-response'
 import { log } from './logger'
@@ -146,7 +147,6 @@ const NAGA_SETTING_KEY = 'provider_naga_api_key'
 const REPLICATE_BASE_URL = 'https://api.replicate.com/v1'
 const REPLICATE_SETTING_KEY = 'provider_replicate_api_key'
 const REPLICATE_MODEL_NANO_BANANA_2 = 'google/nano-banana-2'
-const REPLICATE_MODEL_NANO_BANANA_PRO = 'google/nano-banana-pro'
 const REPLICATE_TEXT_MODEL_GEMINI_3_FLASH = 'google/gemini-3-flash'
 const ATLAS_BASE_URL = 'https://api.atlascloud.ai'
 const IMAGE_PROVIDER_TIMEOUT_MS = 90_000
@@ -156,12 +156,6 @@ const ATLAS_IMAGE_ENDPOINTS = [
 ]
 const ATLAS_PREDICTION_PATH = '/api/v1/model/prediction'
 const ATLAS_SETTING_KEY = 'provider_atlas_api_key'
-const ATLAS_MODEL_ALIASES: Record<string, string> = {
-    'google/nano-banana-2': 'google/nano-banana-2/text-to-image',
-    'google/nano-banana': 'google/nano-banana/text-to-image-developer',
-    'google/nano-banana-2/text-to-image': 'google/nano-banana-2/text-to-image',
-    'bytedance/seedream-v5.0-lite': 'bytedance/seedream-v5.0-lite',
-}
 const NAGA_DEFAULT_PROMPT_LIMIT = 8192
 const NAGA_MODEL_ALIASES: Record<string, string> = {}
 const NAGA_UNSUPPORTED_MODELS = new Set([
@@ -365,9 +359,6 @@ export const WISDOM_MODELS = {
 }
 
 // Helper to map aspect ratios to OpenAI-compatible sizes
-function getOpenAISize(aspectRatio?: string): string {
-    return getOpenAIImageSizeForAspectRatio(aspectRatio)
-}
 
 async function generateWisdomChatImage(prompt: string, model: string): Promise<string> {
     try {
@@ -737,85 +728,6 @@ async function generateNagaImage(
     throw new Error('No image data found in NagaAI response')
 }
 
-function getNagaImageSize(model: string, aspectRatio?: string): string {
-    const normalizedModel = String(model || '').trim().toLowerCase()
-    const normalizedRatio = String(aspectRatio || '').trim()
-
-    // Naga GPT-Image 1.5 currently supports only:
-    // 1024x1024, 1024x1536, 1536x1024 and auto.
-    // We use the maximum available size per orientation.
-    if (normalizedModel.startsWith('gpt-image-1.5')) {
-        switch (normalizedRatio) {
-            case '9:16':
-            case '3:4':
-                return '1024x1536'
-            case '16:9':
-            case '4:3':
-                return '1536x1024'
-            case '1:1':
-            default:
-                return '1024x1024'
-        }
-    }
-
-    return getOpenAISize(aspectRatio)
-}
-
-function toReplicateAspectRatio(aspectRatio?: string): string {
-    if (!aspectRatio) return '1:1'
-
-    const normalized = aspectRatio.trim()
-    const supported = new Set([
-        'match_input_image',
-        '1:1',
-        '1:4',
-        '1:8',
-        '2:3',
-        '3:2',
-        '3:4',
-        '4:1',
-        '4:3',
-        '4:5',
-        '5:4',
-        '8:1',
-        '9:16',
-        '16:9',
-        '21:9',
-    ])
-
-    if (supported.has(normalized)) {
-        return normalized
-    }
-
-    if (normalized === '1.91:1') return '16:9'
-    if (normalized === '1.2:1') return '5:4'
-
-    return '1:1'
-}
-
-function toReplicateAspectRatioForModel(model: string, aspectRatio?: string): string {
-    const normalizedModel = String(model || '').trim().toLowerCase()
-    const mapped = toReplicateAspectRatio(aspectRatio)
-
-    if (normalizedModel === REPLICATE_MODEL_NANO_BANANA_PRO) {
-        const supported = new Set([
-            'match_input_image',
-            '1:1',
-            '2:3',
-            '3:2',
-            '3:4',
-            '4:3',
-            '4:5',
-            '5:4',
-            '9:16',
-            '16:9',
-            '21:9',
-        ])
-        return supported.has(mapped) ? mapped : '1:1'
-    }
-
-    return mapped
-}
 
 function collectReplicateImageInputs(options: ImageGenerationOptions): string[] {
     const urls: string[] = []
@@ -1045,20 +957,6 @@ async function generateReplicateText(
     throw new Error('Replicate text error: salida vacía')
 }
 
-function toAtlasAspectRatio(aspectRatio?: string): string {
-    if (!aspectRatio) return '1:1'
-    const normalized = aspectRatio.trim()
-    const supported = new Set(['1:1', '3:4', '4:3', '4:5', '5:4', '9:16', '16:9', '2:3', '3:2'])
-    if (supported.has(normalized)) return normalized
-    if (normalized === '1.91:1') return '16:9'
-    if (normalized === '1.2:1') return '5:4'
-    return '1:1'
-}
-
-function resolveAtlasModel(model: string): string {
-    const normalized = String(model || '').trim().toLowerCase()
-    return ATLAS_MODEL_ALIASES[normalized] || String(model || '').trim()
-}
 
 function extractAtlasImageUrl(payload: any): string {
     const direct = [
