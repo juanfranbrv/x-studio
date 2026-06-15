@@ -8,8 +8,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Switch } from '@/components/ui/switch'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { IconPlus, IconIdea, IconLayers, IconImageAdd, IconFingerprint, IconRotate, IconHistory, IconSave, IconCheck, IconAlertCircle, IconClose, IconPaintbrush02, IconWand, IconImage } from '@/components/ui/icons'
+import { IconPlus, IconIdea, IconLayers, IconImageAdd, IconFingerprint, IconRotate, IconAlertCircle, IconClose, IconPaintbrush02, IconWand, IconImage } from '@/components/ui/icons'
 import { cn } from '@/lib/utils'
 import type { BrandDNA } from '@/lib/brand-types'
 import type { CarouselSuggestion, CarouselSlide, SlideContent } from '@/app/actions/generate-carousel'
@@ -34,18 +33,12 @@ import { SectionHeader } from '@/components/studio/shared/SectionHeader'
 import {
     STUDIO_CONTROLS_SHELL_CLASS,
 } from '@/components/studio/shared/panelStyles'
-import {
-    STUDIO_RICH_SELECT_TRIGGER_CLASS,
-    STUDIO_SELECT_CONTENT_CLASS,
-    STUDIO_SELECT_ITEM_CLASS,
-    STUDIO_SELECT_TRIGGER_CLASS,
-} from '@/components/studio/shared/selectStyles'
 import { SuggestionsList } from '@/components/studio/shared/SuggestionsList'
 import { useStylePresetImages } from '@/hooks/useStylePresetImages'
 import { SessionTitleDialog } from '@/components/studio/shared/SessionTitleDialog'
 import { UnsavedNavigationDialog, SessionDecisionDialog } from './CarouselSessionDialogs'
 import { AdvancedCompositionDialog } from './AdvancedCompositionDialog'
-import { FormatSection, SlideCountSection, CompositionSection } from './CarouselControlSections'
+import { FormatSection, SlideCountSection, CompositionSection, SessionsSection } from './CarouselControlSections'
 import { useTranslation } from 'react-i18next'
 import { buildAutomaticSessionTitle, getSessionDisplayTitle, normalizeCustomSessionTitle } from '@/lib/session-titles'
 
@@ -58,7 +51,6 @@ import {
     PANEL_SECTION_HEADER_TITLE_CLASS,
     PANEL_TEXT_BUTTON_REVEAL_CLASS,
     PANEL_SECONDARY_BUTTON_CLASS,
-    PANEL_RICH_SELECT_CONTENT_STYLE,
     PANEL_SECTION_STACK_CLASS,
 } from './CarouselControlsPanel.helpers'
 import type {
@@ -2490,158 +2482,27 @@ export function CarouselControlsPanel({
             <div className="thin-scrollbar flex-1 overflow-y-auto pl-4 pr-0 -mr-[2px] pt-4 md:pl-5 md:pr-0 md:pt-5">
                 <div className="space-y-3 pr-4 pb-10 md:pr-5 md:pb-12">
                 {/* SECTION: Sessions */}
-                <div className={PANEL_SECTION_STACK_CLASS}>
-                    <SectionHeader
-                        icon={IconHistory}
-                        title={t('ui.history')}
-                        className="mb-2"
-                        iconContainerClassName={PANEL_SECTION_HEADER_ICON_CLASS}
-                        titleClassName={PANEL_SECTION_HEADER_TITLE_CLASS}
-                        extra={
-                            <div className="flex items-center gap-2">
-                                <span className="text-[clamp(0.88rem,0.84rem+0.1vw,0.94rem)] text-muted-foreground inline-flex items-center gap-1">
-                                    {isSavingSession ? (
-                                        <>
-                                            <Loader2 className="h-3 w-3" />
-                                            {t('ui.saving')}
-                                        </>
-                                    ) : saveError ? (
-                                        <>
-                                            <IconAlertCircle className="h-3 w-3" />
-                                            {t('ui.errorShort')}
-                                        </>
-                                    ) : hasUnsavedChanges ? (
-                                        t('ui.unsavedChanges')
-                                    ) : lastSavedAt ? (
-                                        <>
-                                            <IconCheck className="h-3 w-3" />
-                                            {t('ui.savedAt', {
-                                                time: new Date(lastSavedAt).toLocaleTimeString(i18n.language || t('ui.locale'), { hour: '2-digit', minute: '2-digit' })
-                                            })}
-                                        </>
-                                    ) : t('ui.noChanges')}
-                                </span>
-                                <Button
-                                    type="button"
-                                    size="icon"
-                                    variant="ghost"
-                                    className="h-9 w-9 rounded-[1rem] border border-border/65 bg-background/82 shadow-[inset_0_1px_0_rgba(255,255,255,0.72)]"
-                                    onClick={() => void handleSaveNow()}
-                                    disabled={!userId || !scopedBrandId || isHydratingSession || isSavingSession || !hasUnsavedChanges}
-                                    title={t('ui.saveSessionNow')}
-                                >
-                                    <IconSave
-                                        className={cn(
-                                            "h-3.5 w-3.5 transition-colors",
-                                            isSavingSession
-                                                ? "text-muted-foreground/40"
-                                                : hasUnsavedChanges
-                                                    ? "text-primary drop-shadow-[0_0_6px_hsl(var(--primary)/0.45)]"
-                                                    : "text-muted-foreground/55"
-                                        )}
-                                    />
-                                </Button>
-                            </div>
-                        }
-                    />
-                    <div className="space-y-3 pt-1.5">
-                        <Select
-                            value={selectedSessionToLoad || currentSessionId || ''}
-                            onValueChange={(id) => {
-                                setSelectedSessionToLoad(id)
-                                if (id && id !== currentSessionId) {
-                                    void handleLoadSession(id).then((loaded) => {
-                                        if (!loaded) {
-                                            setSelectedSessionToLoad(currentSessionId || '')
-                                        }
-                                    })
-                                }
-                            }}
-                        >
-                            <SelectTrigger className={STUDIO_RICH_SELECT_TRIGGER_CLASS}>
-                                <SelectValue
-                                    placeholder={t('ui.noSessions')}
-                                    className="sr-only"
-                                />
-                                <span className="flex min-w-0 items-center gap-2">
-                                    <span className="block truncate text-left text-[clamp(1rem,0.96rem+0.2vw,1.08rem)] font-medium leading-tight">
-                                        {buildDisplaySessionTitle(activeSessionMeta?.title || t('ui.noSessions'), Boolean(activeSessionMeta?.title_customized))}
-                                    </span>
-                                    {activeSessionMeta?.active ? (
-                                        <span className="whitespace-nowrap rounded-md border border-primary/20 bg-primary/10 px-1.5 py-0.5 text-[0.78rem] font-semibold text-primary">
-                                            {t('ui.activeSession')}
-                                        </span>
-                                    ) : null}
-                                    {activeSessionMeta?.updated_at ? (
-                                        <span className="shrink-0 text-[0.82rem] text-muted-foreground">
-                                            {new Date(activeSessionMeta.updated_at).toLocaleTimeString(i18n.language || t('ui.locale'), { hour: '2-digit', minute: '2-digit' })}
-                                        </span>
-                                    ) : null}
-                                </span>
-                            </SelectTrigger>
-                            <SelectContent className={STUDIO_SELECT_CONTENT_CLASS} position="popper" align="start" style={PANEL_RICH_SELECT_CONTENT_STYLE}>
-                                {(workSessions || []).length === 0 ? (
-                                    <SelectItem value="__none" disabled className={STUDIO_SELECT_ITEM_CLASS}>
-                                        {t('ui.noSessions')}
-                                    </SelectItem>
-                                ) : null}
-                                {(workSessions || []).map((session) => (
-                                    <SelectItem key={String(session._id)} value={String(session._id)} className={STUDIO_SELECT_ITEM_CLASS}>
-                                        <span className="flex min-w-0 items-center gap-2">
-                                            <span className="truncate">
-                                                {buildDisplaySessionTitle(session.title || t('ui.untitledSession'), Boolean(session.title_customized))}
-                                            </span>
-                                            {session.active ? (
-                                                <span className="rounded-md border border-primary/20 bg-primary/10 px-1.5 py-0.5 text-[0.78rem] font-semibold text-primary">
-                                                    {t('ui.activeSession')}
-                                                </span>
-                                            ) : null}
-                                            <span className="shrink-0 text-[0.82rem] text-muted-foreground">
-                                                {new Date(session.updated_at).toLocaleTimeString(i18n.language || t('ui.locale'), { hour: '2-digit', minute: '2-digit' })}
-                                            </span>
-                                        </span>
-                                    </SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
-                    </div>
-                    <div className="grid grid-cols-2 gap-2 pt-1">
-                        <Button
-                            variant="default"
-                            size="sm"
-                            className={PANEL_SECONDARY_BUTTON_CLASS}
-                            onClick={() => void createNewCarouselSession()}
-                        >
-                            <IconPlus className="mr-1.5 h-3.5 w-3.5" />
-                            {t('ui.newSession')}
-                        </Button>
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            className={PANEL_SECONDARY_BUTTON_CLASS}
-                            onClick={() => void handleRenameCurrentSession()}
-                            disabled={!currentSessionId}
-                        >
-                            {t('ui.renameSession')}
-                        </Button>
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            className={PANEL_SECONDARY_BUTTON_CLASS}
-                            onClick={() => void handleDeleteCurrentSession()}
-                        >
-                            {t('ui.deleteSession')}
-                        </Button>
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            className={PANEL_SECONDARY_BUTTON_CLASS}
-                            onClick={() => void handleClearAllSessions()}
-                        >
-                            {t('ui.deleteAllSessions', { defaultValue: 'Borrar todas las sesiones' })}
-                        </Button>
-                    </div>
-                </div>
+                <SessionsSection
+                    isSavingSession={isSavingSession}
+                    saveError={saveError}
+                    hasUnsavedChanges={hasUnsavedChanges}
+                    lastSavedAt={lastSavedAt}
+                    userId={userId}
+                    scopedBrandId={scopedBrandId}
+                    isHydratingSession={isHydratingSession}
+                    handleSaveNow={handleSaveNow}
+                    selectedSessionToLoad={selectedSessionToLoad}
+                    setSelectedSessionToLoad={setSelectedSessionToLoad}
+                    currentSessionId={currentSessionId}
+                    handleLoadSession={handleLoadSession}
+                    buildDisplaySessionTitle={buildDisplaySessionTitle}
+                    activeSessionMeta={activeSessionMeta}
+                    workSessions={workSessions}
+                    createNewCarouselSession={createNewCarouselSession}
+                    handleRenameCurrentSession={handleRenameCurrentSession}
+                    handleDeleteCurrentSession={handleDeleteCurrentSession}
+                    handleClearAllSessions={handleClearAllSessions}
+                />
 
                 {/* Slide Count */}
                 {isStepVisible(1) && (
