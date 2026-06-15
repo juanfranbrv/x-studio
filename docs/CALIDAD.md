@@ -6,12 +6,13 @@
 > "troceo" (fases A/B ya commiteadas).
 
 ## ⏯️ ESTADO PARA RETOMAR (2026-06-15)
-- **Rama `develop` == `main`, git limpio.** Todo desplegado (Vercel READY); 2.6 y docs ya mergeadas a `main`.
+- **Rama `develop`, git limpio. 5 commits SIN desplegar vs `main`** (sesión autónoma: red de tests + fix json-repair + alias vitest). Lo anterior está en producción (Vercel READY).
 - **Hecho:** Fase 0 ✓, Fase 1 (4 paneles) ✓, Fase 1b (CarouselControlsPanel 3634→3114, secciones 1.5–1.10) ✓, Fase 2 (2.1–2.6: generate-carousel, analyze-brand-dna ×2, parse-intent, creation-flow-types, gemini format mappers) ✓.
+- ✅ **RED DE TESTS + FIX (2026-06-15, sesión autónoma):** añadida cobertura a módulos puros antes sin tests (165→**275 tests**): `json-repair`, `brand-analysis/color-consensus`, `brand-analysis/html-extractors`, `color-utils`. **Bug real corregido** en `repairJsonString` (`json-repair.ts`): no reseteaba `expectingValue` al abrir un string-valor → inyectaba comillas vacías y rompía el JSON en el caso más común (valores entrecomillados); es fallback tras `JSON.parse`, así que el fix solo mejora la recuperación de intents. Además **resuelto el footgun del alias**: `vitest.config` ahora resuelve `@/` → `./src`.
 - ✅ **INCIDENTE LOGIN PROD RESUELTO (2026-06-15):** usuarios no podían entrar a la zona privada → "This page couldn't load". Causa: desajuste de issuer Clerk. Frontend prod emite JWT con issuer `https://clerk.postlaboratory.com`, pero el proveedor de auth de Convex prod estaba horneado a una instancia DEV (`supreme-chipmunk-83.clerk.accounts.dev`) → `No auth provider found matching the given token` → `users:getUser` Unauthorized → crash React #310. Arreglo: (1) `convex env set CLERK_ISSUER_URL=https://clerk.postlaboratory.com --prod` + `convex deploy --prod`; (2) commit `cf8f885` generaliza `convex/auth.config.ts` a registrar DOS proveedores (prod `CLERK_ISSUER_URL` + dev `CLERK_DEV_ISSUER_URL`). Verificado: TS 0, tests 198/198, env prod+dev correctas, frontend prod OK.
-- 🔴 **BUG URGENTE PREEXISTENTE (no del troceo, sigue pendiente):** generar IMAGEN con OpenAI + referencia (logo) → 500 "No se pudo preparar ninguna imagen de referencia para OpenAI" (`gemini.ts:595` en `generateOpenAIImage`, código INTACTO; confirmado por git diff). **Comprobar si afecta a PRODUCCIÓN o solo dev.** La generación de TEXTO sí funciona.
-- **Próximos pasos troceo:** hook `useCarouselControls` (para Prompt/Image del panel, atendido con QA) · `gemini.ts` provider-split completo · `work_sessions.ts` (separar helpers puros de los que usan `ctx`) · Fase 3 páginas · Fase 6 `any` (196).
-- **QA:** usar `http://localhost:3000` (NO 127.0.0.1, Clerk da 403). `vitest.config` NO define alias `@/` → en ficheros que los tests cargan en runtime, usar imports RELATIVOS.
+- ✅ **500 OpenAI+logo DIAGNOSTICADO (no es bug de código):** el 500 (`gemini.ts`, `generateOpenAIImage`, `appendedImages===0`) es defensa correcta. Causa = DATOS: los logos se guardan como URL absoluta de Convex storage; en dev apuntan a un deployment muerto (`warmhearted-schnauzer-446`) → 404 → ninguna referencia se descarga. **Prod no afectado hoy** (tablas brand vacías). Instrumentado (commit `843f777`). Fix de raíz pendiente: guardar `storageId` y resolver URL en runtime (tarea de fondo lanzada). Reprobar en dev = re-subir logos.
+- **Próximos pasos troceo:** hook `useCarouselControls` (para Prompt/Image del panel, atendido con QA) · `gemini.ts` provider-split completo · `work_sessions.ts` (separar helpers puros de los que usan `ctx`) · Fase 3 páginas · Fase 6 `any` (196) · más cobertura de tests (`visual-prompt-builders`, etc.).
+- **QA:** usar `http://localhost:3000` (NO 127.0.0.1, Clerk da 403). **`vitest.config` YA resuelve el alias `@/` → `./src`** (los ficheros source pueden usar `@/...` y ser testeados; ya no hace falta forzar imports relativos).
 
 ## Diagnóstico (baseline 2026-06-14)
 
@@ -107,8 +108,9 @@ Secciones del render extraídas a subcomponentes (QA visual + funcional con logi
 
 ### Fase 2 — Server actions / lógica core (continúa fase B) — CASI COMPLETA
 Verificable con TS + tests (sin QA visual). Commits atómicos.
-Nota: `vitest.config.ts` NO define alias `@/`; ficheros cargados en runtime por
-tests (p.ej. `creation-flow-types`) deben usar imports RELATIVOS en lo extraído.
+Nota (ACTUALIZADA 2026-06-15): `vitest.config.ts` YA define el alias `@/` → `./src`,
+así que lo extraído puede importar con `@/...` igual que el resto del código. (Los
+imports relativos previos siguen funcionando; ya no son obligatorios.)
 - [x] `generate-carousel.ts` 2661→2201 (2.1) → cluster de 15 builders de prompt visual
       a `src/lib/carousel/visual-prompt-builders.ts`. TS 0, tests 198/198.
 - [x] `analyze-brand-dna.ts` 2953→2765 (2.2) → 7 funciones de consenso/roles de color
