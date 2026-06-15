@@ -170,6 +170,9 @@ export function repairJsonString(raw: string): string {
 
         if (ch === '"') {
             inString = true
+            // Un string entrecomillado ES el valor: dejar de esperar valor para no
+            // inyectar comillas vacias espurias tras cerrar la cadena.
+            expectingValue = false
             result += ch
             continue
         }
