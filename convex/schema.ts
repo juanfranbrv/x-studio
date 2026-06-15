@@ -201,6 +201,20 @@ export default defineSchema({
     .index("by_user", ["user_id"])
     .index("by_last_used", ["last_used_at"]),
 
+  content_asset_annotations: defineTable({
+    user_id: v.string(),
+    asset_key: v.string(),
+    status: v.string(),
+    planned_at: v.optional(v.string()),
+    platform: v.optional(v.string()),
+    format: v.optional(v.string()),
+    notes: v.optional(v.string()),
+    created_at: v.string(),
+    updated_at: v.string(),
+  }).index("by_user_asset", ["user_id", "asset_key"])
+    .index("by_user_status", ["user_id", "status"])
+    .index("by_user_planned", ["user_id", "planned_at"]),
+
   brands: defineTable({
     owner_id: v.string(), // clerk_id
     name: v.string(),

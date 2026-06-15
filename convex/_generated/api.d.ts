@@ -16,6 +16,7 @@ import type * as brands from "../brands.js";
 import type * as carousel from "../carousel.js";
 import type * as carouselAdmin from "../carouselAdmin.js";
 import type * as carouselSeed from "../carouselSeed.js";
+import type * as contentLibrary from "../contentLibrary.js";
 import type * as economic from "../economic.js";
 import type * as feedback from "../feedback.js";
 import type * as generations from "../generations.js";
@@ -48,6 +49,7 @@ declare const fullApi: ApiFromModules<{
   carousel: typeof carousel;
   carouselAdmin: typeof carouselAdmin;
   carouselSeed: typeof carouselSeed;
+  contentLibrary: typeof contentLibrary;
   economic: typeof economic;
   feedback: typeof feedback;
   generations: typeof generations;
