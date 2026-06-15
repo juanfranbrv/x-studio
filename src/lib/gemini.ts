@@ -482,7 +482,8 @@ async function generateWisdomOpenAIImage(
                     }
 
                     if (appendedImages === 0) {
-                        throw new Error('No se pudo preparar ninguna imagen de referencia para Wisdom GPT Image 2.')
+                        log.error('IMAGE', `Wisdom GPT Image 2: ninguna de las ${referenceUrls.length} referencia(s) se pudo descargar`, referenceUrls.map(describeImageRef))
+                        throw new Error(`No se pudo preparar ninguna imagen de referencia para Wisdom GPT Image 2 (${referenceUrls.length} referencia(s) fallaron al descargar).`)
                     }
 
                     response = await fetchWithTimeout(endpoint, {
@@ -592,7 +593,8 @@ async function generateOpenAIImage(
                 }
 
                 if (appendedImages === 0) {
-                    throw new Error('No se pudo preparar ninguna imagen de referencia para OpenAI.')
+                    log.error('OPENAI', `Ninguna de las ${referenceUrls.length} referencia(s) se pudo descargar`, referenceUrls.map(describeImageRef))
+                    throw new Error(`No se pudo preparar ninguna imagen de referencia para OpenAI (${referenceUrls.length} referencia(s) fallaron al descargar).`)
                 }
 
                 response = await fetchWithTimeout(endpoint, {
@@ -1195,13 +1197,36 @@ async function fetchWithTimeout(
     }
 }
 
+// Describe una URL de referencia para logs sin exponer query strings ni secretos
+// (tokens de firma de storage, claves en query, etc.). Devuelve scheme://host/path.
+function describeImageRef(url: string): string {
+    if (!url) return '(vacía)'
+    if (url.startsWith('data:')) {
+        const semi = url.indexOf(';')
+        const mime = url.slice(5, semi > 0 ? semi : 16)
+        return `data:${mime}… (${url.length} chars)`
+    }
+    try {
+        const u = new URL(url)
+        return `${u.protocol}//${u.host}${u.pathname}`
+    } catch {
+        return `${url.slice(0, 64)} (no es URL absoluta)`
+    }
+}
+
 async function imageUrlToBlob(url: string): Promise<Blob | null> {
     try {
-        if (!url) return null
+        if (!url) {
+            log.warn('OPENAI', 'Referencia de imagen vacía, se omite')
+            return null
+        }
 
         if (url.startsWith('data:')) {
             const base64Index = url.indexOf(';base64,')
-            if (base64Index === -1) return null
+            if (base64Index === -1) {
+                log.warn('OPENAI', `Referencia data: sin ';base64,' → ${describeImageRef(url)}`)
+                return null
+            }
             const mimeType = url.substring(5, base64Index) || 'image/png'
             const base64 = url.substring(base64Index + 8)
             const bytes = Buffer.from(base64, 'base64')
@@ -1210,7 +1235,7 @@ async function imageUrlToBlob(url: string): Promise<Blob | null> {
 
         const response = await fetch(url)
         if (!response.ok) {
-            log.warn('OPENAI', `No se pudo descargar referencia de imagen (${response.status})`)
+            log.warn('OPENAI', `No se pudo descargar referencia de imagen: HTTP ${response.status} ${response.statusText} → ${describeImageRef(url)}`)
             return null
         }
 
@@ -1218,7 +1243,8 @@ async function imageUrlToBlob(url: string): Promise<Blob | null> {
         const arrayBuffer = await response.arrayBuffer()
         return new Blob([arrayBuffer], { type: mimeType })
     } catch (error) {
-        log.warn('OPENAI', 'No se pudo preparar una referencia de imagen para OpenAI', error)
+        const reason = error instanceof Error ? error.message : String(error)
+        log.warn('OPENAI', `No se pudo preparar una referencia de imagen para OpenAI: ${reason} → ${describeImageRef(url)}`)
         return null
     }
 }
