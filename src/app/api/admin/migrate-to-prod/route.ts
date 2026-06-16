@@ -1,14 +1,14 @@
 import { NextResponse } from 'next/server'
 import { currentUser } from '@clerk/nextjs/server'
 import { ConvexHttpClient } from 'convex/browser'
-import { internal } from '@/../convex/_generated/api'
+import { api } from '@/../convex/_generated/api'
 import { isAdminEmail } from '@/lib/auth-config'
 
 export const runtime = 'nodejs'
 
 // Puente local dev -> prod. Solo funciona en local (donde existen las dos
-// conexiones y la CONVEX_PROD_DEPLOY_KEY). Append-only: inserta sesiones nuevas
-// en prod, nunca borra ni sobrescribe.
+// conexiones, la URL de prod y el MIGRATION_SECRET). Append-only: inserta
+// sesiones nuevas en prod, nunca borra ni sobrescribe.
 
 interface IncomingSlide {
     title?: string
@@ -30,22 +30,13 @@ interface IncomingAsset {
     slides?: IncomingSlide[]
 }
 
-// ConvexHttpClient expone setAdminAuth y permite invocar funciones internal en
-// runtime, pero sus tipos publicos no lo reflejan. Vista minima para usarlo con
-// la deploy key contra produccion.
-type AdminClient = {
-    setAdminAuth: (token: string) => void
-    mutation: <T = unknown>(ref: unknown, args: Record<string, unknown>) => Promise<T>
-    query: <T = unknown>(ref: unknown, args: Record<string, unknown>) => Promise<T>
-}
-
-async function uploadToProd(prod: AdminClient, sourceUrl: string): Promise<string> {
+async function uploadToProd(prod: ConvexHttpClient, secret: string, sourceUrl: string): Promise<string> {
     const download = await fetch(sourceUrl)
     if (!download.ok) throw new Error(`No se pudo descargar la imagen origen (${download.status})`)
     const contentType = download.headers.get('content-type') || 'image/png'
     const bytes = await download.arrayBuffer()
 
-    const uploadUrl = await prod.mutation<string>(internal.migration.generateUploadUrl, {})
+    const uploadUrl = await prod.mutation(api.migration.generateUploadUrl, { secret })
     const uploaded = await fetch(uploadUrl, {
         method: 'POST',
         headers: { 'Content-Type': contentType },
@@ -67,10 +58,10 @@ export async function POST(request: Request) {
 
     // 2. Configuracion del puente (solo presente en local).
     const prodUrl = process.env.CONVEX_PROD_URL
-    const deployKey = process.env.CONVEX_PROD_DEPLOY_KEY
-    if (!prodUrl || !deployKey) {
+    const secret = process.env.MIGRATION_SECRET
+    if (!prodUrl || !secret) {
         return NextResponse.json(
-            { error: 'Migrador no configurado (faltan CONVEX_PROD_URL / CONVEX_PROD_DEPLOY_KEY). Disponible solo en local.' },
+            { error: 'Migrador no configurado (faltan CONVEX_PROD_URL / MIGRATION_SECRET). Disponible solo en local.' },
             { status: 400 }
         )
     }
@@ -81,11 +72,18 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: 'No se enviaron activos' }, { status: 400 })
     }
 
-    const prod = new ConvexHttpClient(prodUrl) as unknown as AdminClient
-    prod.setAdminAuth(deployKey)
+    const prod = new ConvexHttpClient(prodUrl)
 
     // 3. Resolver el clerk_id del mismo usuario en prod (por email).
-    const targetUserId = await prod.query<string | null>(internal.migration.findClerkIdByEmail, { email: email! })
+    let targetUserId: string | null
+    try {
+        targetUserId = await prod.query(api.migration.findClerkIdByEmail, { secret, email: email! })
+    } catch (e) {
+        const msg = e instanceof Error ? e.message : String(e)
+        console.error('[migrate-to-prod] fallo consultando prod:', msg)
+        return NextResponse.json({ error: `Fallo conectando a producción: ${msg}` }, { status: 500 })
+    }
+
     if (!targetUserId) {
         return NextResponse.json(
             { error: `No existe un usuario en produccion con el email ${email}. Inicia sesion una vez en produccion y reintenta.` },
@@ -101,7 +99,7 @@ export async function POST(request: Request) {
             if (asset.module === 'image') {
                 const source = asset.original_url || asset.preview_url
                 if (!source) throw new Error('La imagen no tiene URL de origen')
-                const storageId = await uploadToProd(prod, source)
+                const storageId = await uploadToProd(prod, secret, source)
                 const snapshot = {
                     module: 'image',
                     creationFlowState: {
@@ -121,7 +119,8 @@ export async function POST(request: Request) {
                         },
                     ],
                 }
-                await prod.mutation(internal.migration.createMigratedSession, {
+                await prod.mutation(api.migration.createMigratedSession, {
+                    secret,
                     user_id: targetUserId,
                     module: 'image',
                     title: asset.session_title,
@@ -135,7 +134,7 @@ export async function POST(request: Request) {
                 for (let i = 0; i < slides.length; i++) {
                     const source = slides[i].original_url || slides[i].preview_url
                     if (!source) continue
-                    const storageId = await uploadToProd(prod, source)
+                    const storageId = await uploadToProd(prod, secret, source)
                     migratedSlides.push({
                         index: i,
                         title: slides[i].title,
@@ -149,7 +148,8 @@ export async function POST(request: Request) {
                     caption: asset.copy,
                     previewState: { slides: migratedSlides },
                 }
-                await prod.mutation(internal.migration.createMigratedSession, {
+                await prod.mutation(api.migration.createMigratedSession, {
+                    secret,
                     user_id: targetUserId,
                     module: 'carousel',
                     title: asset.session_title,

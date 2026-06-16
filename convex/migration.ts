@@ -1,24 +1,33 @@
-// Funciones INTERNAS para migrar contenido entre deployments (dev -> prod).
-// Son internal: solo se pueden invocar con admin/deploy-key (no desde clientes
-// publicos). El puente vive en una ruta de servidor local que usa la
-// CONVEX_PROD_DEPLOY_KEY para llamarlas contra produccion. Append-only.
+// Funciones para migrar contenido entre deployments (dev -> prod), append-only.
+// Son PUBLICAS pero protegidas por un secreto compartido (MIGRATION_SECRET, env
+// del deployment) porque las funciones `internal` no se pueden invocar desde un
+// ConvexHttpClient externo. El puente (ruta de servidor local) envia el mismo
+// secreto que debe coincidir con el configurado en produccion.
 
 import { v } from "convex/values";
-import { internalMutation, internalQuery } from "./_generated/server";
+import { mutation, query } from "./_generated/server";
+
+function assertSecret(secret: string) {
+  const expected = process.env.MIGRATION_SECRET;
+  if (!expected || secret !== expected) {
+    throw new Error("unauthorized: MIGRATION_SECRET invalido o no configurado en el deployment destino");
+  }
+}
 
 // Genera una URL de subida al storage del deployment destino.
-export const generateUploadUrl = internalMutation({
-  args: {},
-  handler: async (ctx) => {
+export const generateUploadUrl = mutation({
+  args: { secret: v.string() },
+  handler: async (ctx, args) => {
+    assertSecret(args.secret);
     return await ctx.storage.generateUploadUrl();
   },
 });
 
-// Resuelve el clerk_id de un usuario por email (para asignar la propiedad
-// correcta en el deployment destino).
-export const findClerkIdByEmail = internalQuery({
-  args: { email: v.string() },
+// Resuelve el clerk_id de un usuario por email en el deployment destino.
+export const findClerkIdByEmail = query({
+  args: { secret: v.string(), email: v.string() },
   handler: async (ctx, args) => {
+    assertSecret(args.secret);
     const email = args.email.trim().toLowerCase();
     if (!email) return null;
     const user = await ctx.db
@@ -30,14 +39,16 @@ export const findClerkIdByEmail = internalQuery({
 });
 
 // Inserta (append-only) una work_session migrada. No toca nada existente.
-export const createMigratedSession = internalMutation({
+export const createMigratedSession = mutation({
   args: {
+    secret: v.string(),
     user_id: v.string(),
     module: v.string(),
     title: v.optional(v.string()),
     snapshot: v.any(),
   },
   handler: async (ctx, args) => {
+    assertSecret(args.secret);
     const now = new Date().toISOString();
     const id = await ctx.db.insert("work_sessions", {
       user_id: args.user_id,
