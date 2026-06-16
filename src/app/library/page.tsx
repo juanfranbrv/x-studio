@@ -6,6 +6,7 @@ import { useUser } from '@clerk/nextjs'
 import { useMutation, useQuery } from 'convex/react'
 import { useTranslation } from 'react-i18next'
 import { api } from '../../../convex/_generated/api'
+import type { Id } from '../../../convex/_generated/dataModel'
 import { DashboardLayout } from '@/components/layout/DashboardLayout'
 import { useBrandKit } from '@/contexts/BrandKitContext'
 import { useToast } from '@/hooks/use-toast'
@@ -13,8 +14,12 @@ import { ContentAssetDetailPanel } from '@/components/library/ContentAssetDetail
 import { ContentAssetBulkActions } from '@/components/library/ContentAssetBulkActions'
 import { ContentAssetFilters } from '@/components/library/ContentAssetFilters'
 import { ContentLibraryGrid } from '@/components/library/ContentLibraryGrid'
+import { ContentLibraryCampaignGroups } from '@/components/library/ContentLibraryCampaignGroups'
+import { CampaignManager } from '@/components/library/CampaignManager'
 import { filterContentLibraryAssets } from '@/components/library/contentLibraryFilters'
-import type { ContentAssetStatus, ContentLibraryAsset, ContentLibraryFilters } from '@/components/library/contentLibraryTypes'
+import type { ContentAssetStatus, ContentCampaign, ContentLibraryAsset, ContentLibraryFilters, LibraryView } from '@/components/library/contentLibraryTypes'
+import { Button } from '@/components/ui/button'
+import { IconFolderKanban, IconGrid, IconPlus } from '@/components/ui/icons'
 
 const STATUS_KEYS: ContentAssetStatus[] = ['draft', 'selected', 'ready', 'published_manual', 'discarded']
 
@@ -29,16 +34,23 @@ export default function LibraryPage() {
     const { toast } = useToast()
     const { activeBrandKit, brandKits, setActiveBrandKit, deleteBrandKitById } = useBrandKit()
     const rawAssets = useQuery(api.contentLibrary.listAssets, user?.id ? { user_id: user.id, limit: 240 } : 'skip')
+    const rawCampaigns = useQuery(api.contentLibrary.listCampaigns, user?.id ? { user_id: user.id } : 'skip')
     const updateAnnotation = useMutation(api.contentLibrary.updateAnnotation)
     const bulkUpdateAnnotations = useMutation(api.contentLibrary.bulkUpdateAnnotations)
     const bulkSetCampaign = useMutation(api.contentLibrary.bulkSetCampaign)
     const bulkDeleteAssets = useMutation(api.contentLibrary.bulkDeleteAssets)
+    const createCampaign = useMutation(api.contentLibrary.createCampaign)
+    const renameCampaign = useMutation(api.contentLibrary.renameCampaign)
+    const deleteCampaign = useMutation(api.contentLibrary.deleteCampaign)
     const [selectedAssetKey, setSelectedAssetKey] = useState<string | undefined>()
     const [selectedAssetKeys, setSelectedAssetKeys] = useState<Set<string>>(() => new Set())
     const [savingAssetKey, setSavingAssetKey] = useState<string | null>(null)
     const [bulkStatus, setBulkStatus] = useState<ContentAssetStatus>('ready')
     const [bulkCampaign, setBulkCampaign] = useState('')
     const [bulkBusy, setBulkBusy] = useState(false)
+    const [view, setView] = useState<LibraryView>('grid')
+    const [managerOpen, setManagerOpen] = useState(false)
+    const [campaignBusy, setCampaignBusy] = useState(false)
     const [saveStateByAssetKey, setSaveStateByAssetKey] = useState<Record<string, 'saved' | 'error'>>({})
     const [filters, setFilters] = useState<ContentLibraryFilters>({
         module: 'all',
@@ -86,9 +98,24 @@ export default function LibraryPage() {
         return Array.from(new Set(assets.map((asset) => asset.platform).filter((value): value is string => Boolean(value)))).sort()
     }, [assets])
 
-    const campaigns = useMemo(() => {
-        return Array.from(new Set(assets.map((asset) => asset.campaign).filter((value): value is string => Boolean(value)))).sort()
+    const campaignEntities = useMemo<ContentCampaign[]>(
+        () => (Array.isArray(rawCampaigns) ? rawCampaigns as ContentCampaign[] : []),
+        [rawCampaigns]
+    )
+
+    const campaignCounts = useMemo(() => {
+        return assets.reduce<Record<string, number>>((acc, asset) => {
+            if (asset.campaign) acc[asset.campaign] = (acc[asset.campaign] || 0) + 1
+            return acc
+        }, {})
     }, [assets])
+
+    const campaigns = useMemo(() => {
+        const names = new Set<string>()
+        campaignEntities.forEach((campaign) => names.add(campaign.name))
+        assets.forEach((asset) => { if (asset.campaign) names.add(asset.campaign) })
+        return Array.from(names).sort((a, b) => a.localeCompare(b))
+    }, [campaignEntities, assets])
 
     const statusLabels = useMemo(() => {
         return STATUS_KEYS.reduce<Record<ContentAssetStatus, string>>((acc, status) => {
@@ -199,6 +226,37 @@ export default function LibraryPage() {
         }
     }
 
+    const handleCreateCampaign = async (name: string) => {
+        if (!user?.id) return
+        setCampaignBusy(true)
+        try {
+            await createCampaign({ user_id: user.id, name })
+        } finally {
+            setCampaignBusy(false)
+        }
+    }
+
+    const handleRenameCampaign = async (id: string, name: string) => {
+        if (!user?.id) return
+        setCampaignBusy(true)
+        try {
+            await renameCampaign({ user_id: user.id, campaign_id: id as Id<'content_campaigns'>, name })
+        } finally {
+            setCampaignBusy(false)
+        }
+    }
+
+    const handleDeleteCampaign = async (campaign: ContentCampaign) => {
+        if (!user?.id) return
+        if (!window.confirm(t('campaigns.deleteConfirm', { name: campaign.name }))) return
+        setCampaignBusy(true)
+        try {
+            await deleteCampaign({ user_id: user.id, campaign_id: campaign.id as Id<'content_campaigns'> })
+        } finally {
+            setCampaignBusy(false)
+        }
+    }
+
     const handleBulkDelete = async () => {
         if (!user?.id || selectedBulkKeys.length === 0) return
         if (!window.confirm(selectedBulkKeys.length === 1 ? t('bulk.deleteConfirmOne') : t('bulk.deleteConfirmMany', { count: selectedBulkKeys.length }))) return
@@ -296,9 +354,43 @@ export default function LibraryPage() {
                         </div>
                     </section>
 
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                        <div className="inline-flex rounded-xl border border-border/60 bg-background/86 p-1">
+                            <Button type="button" size="sm" variant={view === 'grid' ? 'default' : 'ghost'} onClick={() => setView('grid')}>
+                                <IconGrid className="mr-1 h-4 w-4" />
+                                {t('view.grid')}
+                            </Button>
+                            <Button type="button" size="sm" variant={view === 'campaigns' ? 'default' : 'ghost'} onClick={() => setView('campaigns')}>
+                                <IconFolderKanban className="mr-1 h-4 w-4" />
+                                {t('view.campaigns')}
+                            </Button>
+                        </div>
+                        <Button type="button" variant="outline" size="sm" onClick={() => setManagerOpen(true)}>
+                            <IconPlus className="mr-1 h-4 w-4" />
+                            {t('campaigns.manage')}
+                        </Button>
+                    </div>
+
                     {rawAssets === undefined ? (
                         <div className="flex min-h-[18rem] items-center justify-center rounded-[1.45rem] border border-border/60 bg-background/86 text-sm text-muted-foreground">
                             {t('loading')}
+                        </div>
+                    ) : view === 'campaigns' ? (
+                        <div className="min-h-0 flex-1">
+                            <ContentLibraryCampaignGroups
+                                assets={filteredAssets}
+                                campaigns={campaignEntities}
+                                selectedAssetKey={selectedAsset?.asset_key}
+                                selectedAssetKeys={selectedAssetKeys}
+                                onSelectAsset={(asset) => setSelectedAssetKey(asset.asset_key)}
+                                onToggleAssetSelection={handleToggleAssetSelection}
+                                gridLabels={gridLabels}
+                                labels={{
+                                    noCampaign: t('filters.noCampaign'),
+                                    count: (count) => t('campaigns.count', { count }),
+                                    empty: t('campaigns.empty'),
+                                }}
+                            />
                         </div>
                     ) : (
                         <div className="grid min-h-0 flex-1 gap-4 xl:grid-cols-[minmax(0,1fr)_390px]">
@@ -347,6 +439,25 @@ export default function LibraryPage() {
                             </div>
                         </div>
                     )}
+
+                    <CampaignManager
+                        open={managerOpen}
+                        onOpenChange={setManagerOpen}
+                        campaigns={campaignEntities}
+                        counts={campaignCounts}
+                        busy={campaignBusy}
+                        onCreate={handleCreateCampaign}
+                        onRename={handleRenameCampaign}
+                        onDelete={handleDeleteCampaign}
+                        labels={{
+                            title: t('campaigns.title'),
+                            description: t('campaigns.description'),
+                            createPlaceholder: t('campaigns.createPlaceholder'),
+                            create: t('campaigns.create'),
+                            assetsCount: (count) => t('campaigns.assetsCount', { count }),
+                            empty: t('campaigns.managerEmpty'),
+                        }}
+                    />
                 </div>
             </main>
         </DashboardLayout>

@@ -77,5 +77,21 @@
     "title": "No assets match these filters",
     "description": "When saved image or carousel sessions exist, they will appear here."
   },
+  "view": {
+    "grid": "Grid",
+    "campaigns": "Campaigns"
+  },
+  "campaigns": {
+    "manage": "Manage campaigns",
+    "title": "Campaigns",
+    "description": "Create, rename, or delete campaigns. Deleting a campaign leaves its assets without a campaign.",
+    "createPlaceholder": "New campaign...",
+    "create": "Create",
+    "assetsCount": "{{count}} assets",
+    "managerEmpty": "No campaigns yet. Create the first one above.",
+    "deleteConfirm": "Delete the campaign \"{{name}}\"? Its assets will be left without a campaign.",
+    "count": "{{count}} assets",
+    "empty": "No assets grouped by campaign match these filters."
+  },
   "loading": "Loading library..."
 }

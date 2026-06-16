@@ -77,5 +77,21 @@
     "title": "No hay activos para estos filtros",
     "description": "Cuando existan imágenes o carruseles guardados en sesiones, aparecerán aquí."
   },
+  "view": {
+    "grid": "Rejilla",
+    "campaigns": "Campañas"
+  },
+  "campaigns": {
+    "manage": "Gestionar campañas",
+    "title": "Campañas",
+    "description": "Crea, renombra o elimina campañas. Al eliminar una campaña, sus activos quedan sin campaña.",
+    "createPlaceholder": "Nueva campaña...",
+    "create": "Crear",
+    "assetsCount": "{{count}} activos",
+    "managerEmpty": "Aún no hay campañas. Crea la primera arriba.",
+    "deleteConfirm": "¿Eliminar la campaña \"{{name}}\"? Sus activos quedarán sin campaña.",
+    "count": "{{count}} activos",
+    "empty": "No hay activos agrupados por campaña con estos filtros."
+  },
   "loading": "Cargando biblioteca..."
 }
