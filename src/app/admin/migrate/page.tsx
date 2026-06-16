@@ -7,6 +7,7 @@ import { useQuery } from 'convex/react'
 import { api } from '@/../convex/_generated/api'
 import { isAdminEmail } from '@/lib/auth-config'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import { Loader2 } from '@/components/ui/spinner'
 import { IconArrowLeft, IconUpload } from '@/components/ui/icons'
 import { ContentLibraryGrid } from '@/components/library/ContentLibraryGrid'
@@ -56,6 +57,7 @@ export default function AdminMigratePage() {
     const [busy, setBusy] = useState(false)
     const [result, setResult] = useState<MigrateResult | null>(null)
     const [error, setError] = useState<string | null>(null)
+    const [prodUserId, setProdUserId] = useState('')
 
     const toggle = (asset: ContentLibraryAsset) => {
         setSelected((prev) => {
@@ -79,7 +81,7 @@ export default function AdminMigratePage() {
             const res = await fetch('/api/admin/migrate-to-prod', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ assets: payload }),
+                body: JSON.stringify({ assets: payload, targetUserId: prodUserId.trim() || undefined }),
             })
             const data = await res.json()
             if (!res.ok) {
@@ -129,6 +131,21 @@ export default function AdminMigratePage() {
                         {busy ? 'Migrando...' : `Llevar a producción (${selected.size})`}
                     </Button>
                 </div>
+            </div>
+
+            <div className="mb-4 rounded-xl border border-border/60 bg-background/86 p-3">
+                <label className="text-xs font-medium text-muted-foreground">ID de usuario de prod (opcional)</label>
+                <Input
+                    value={prodUserId}
+                    onChange={(e) => setProdUserId(e.target.value)}
+                    placeholder="user_..."
+                    className="mt-1 h-10 max-w-md rounded-xl"
+                />
+                <p className="mt-1 text-xs text-muted-foreground">
+                    Si no se resuelve por email, pega aquí tu clerk id de producción. Lo obtienes en
+                    {' '}<strong>postlaboratory.com</strong> (logueado) → consola del navegador →
+                    {' '}<code className="rounded bg-[hsl(var(--surface-alt))] px-1">await window.Clerk.user.id</code>
+                </p>
             </div>
 
             {error ? (

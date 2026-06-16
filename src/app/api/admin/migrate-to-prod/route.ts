@@ -66,27 +66,30 @@ export async function POST(request: Request) {
         )
     }
 
-    const body = await request.json().catch(() => null) as { assets?: IncomingAsset[] } | null
+    const body = await request.json().catch(() => null) as { assets?: IncomingAsset[]; targetUserId?: string } | null
     const assets = Array.isArray(body?.assets) ? body!.assets : []
     if (assets.length === 0) {
         return NextResponse.json({ error: 'No se enviaron activos' }, { status: 400 })
     }
+    const overrideUserId = typeof body?.targetUserId === 'string' ? body.targetUserId.trim() : ''
 
     const prod = new ConvexHttpClient(prodUrl)
 
-    // 3. Resolver el clerk_id del mismo usuario en prod (por email).
-    let targetUserId: string | null
-    try {
-        targetUserId = await prod.query(api.migration.findClerkIdByEmail, { secret, email: email! })
-    } catch (e) {
-        const msg = e instanceof Error ? e.message : String(e)
-        console.error('[migrate-to-prod] fallo consultando prod:', msg)
-        return NextResponse.json({ error: `Fallo conectando a producción: ${msg}` }, { status: 500 })
+    // 3. Resolver el clerk_id del usuario en prod: id explicito o por email.
+    let targetUserId: string | null = overrideUserId || null
+    if (!targetUserId) {
+        try {
+            targetUserId = await prod.query(api.migration.findClerkIdByEmail, { secret, email: email! })
+        } catch (e) {
+            const msg = e instanceof Error ? e.message : String(e)
+            console.error('[migrate-to-prod] fallo consultando prod:', msg)
+            return NextResponse.json({ error: `Fallo conectando a producción: ${msg}` }, { status: 500 })
+        }
     }
 
     if (!targetUserId) {
         return NextResponse.json(
-            { error: `No existe un usuario en produccion con el email ${email}. Inicia sesion una vez en produccion y reintenta.` },
+            { error: `No se encontró tu usuario en produccion por email (${email}). Pega tu clerk id de producción en el campo "ID de usuario de prod" y reintenta.` },
             { status: 400 }
         )
     }
