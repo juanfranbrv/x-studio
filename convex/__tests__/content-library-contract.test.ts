@@ -31,6 +31,15 @@ describe('content library contract', () => {
     expect(schemaSource).toContain('.index("by_user_campaign", ["user_id", "campaign"])')
   })
 
+  it('declara campañas como entidad de primera clase con CRUD', () => {
+    expect(schemaSource).toContain('content_campaigns: defineTable({')
+    expect(schemaSource).toContain('.index("by_user_name", ["user_id", "name"])')
+    expect(contentLibrarySource).toContain('export const listCampaigns = query({')
+    expect(contentLibrarySource).toContain('export const createCampaign = mutation({')
+    expect(contentLibrarySource).toContain('export const renameCampaign = mutation({')
+    expect(contentLibrarySource).toContain('export const deleteCampaign = mutation({')
+  })
+
   it('expone mutaciones bulk para estado, campaña y eliminacion editorial', () => {
     expect(contentLibrarySource).toContain('export const bulkUpdateAnnotations = mutation({')
     expect(contentLibrarySource).toContain('export const bulkSetCampaign = mutation({')

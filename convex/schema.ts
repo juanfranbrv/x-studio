@@ -217,6 +217,15 @@ export default defineSchema({
     .index("by_user_planned", ["user_id", "planned_at"])
     .index("by_user_campaign", ["user_id", "campaign"]),
 
+  content_campaigns: defineTable({
+    user_id: v.string(),
+    name: v.string(),
+    color: v.optional(v.string()),
+    created_at: v.string(),
+    updated_at: v.string(),
+  }).index("by_user", ["user_id"])
+    .index("by_user_name", ["user_id", "name"]),
+
   brands: defineTable({
     owner_id: v.string(), // clerk_id
     name: v.string(),

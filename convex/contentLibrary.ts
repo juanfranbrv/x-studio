@@ -330,3 +330,99 @@ export const bulkDeleteAssets = mutation({
     return { deleted };
   },
 });
+
+// --- Campaigns CRUD (campaigns are first-class so they can exist without assets) ---
+
+async function annotationsByCampaign(ctx: MutationCtx, userId: string, campaign: string) {
+  return await ctx.db
+    .query("content_asset_annotations")
+    .withIndex("by_user_campaign", (q) => q.eq("user_id", userId).eq("campaign", campaign))
+    .collect();
+}
+
+export const listCampaigns = query({
+  args: { user_id: v.string() },
+  handler: async (ctx, args) => {
+    await requireSameUser(ctx, args.user_id);
+    const rows = await ctx.db
+      .query("content_campaigns")
+      .withIndex("by_user", (q) => q.eq("user_id", args.user_id))
+      .collect();
+    return rows
+      .map((row) => ({ id: String(row._id), name: row.name, color: row.color }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  },
+});
+
+export const createCampaign = mutation({
+  args: { user_id: v.string(), name: v.string(), color: v.optional(v.string()) },
+  handler: async (ctx, args) => {
+    await requireSameUser(ctx, args.user_id);
+    const name = limitText(args.name, 80);
+    if (!name) throw new Error("name required");
+
+    const existing = await ctx.db
+      .query("content_campaigns")
+      .withIndex("by_user_name", (q) => q.eq("user_id", args.user_id).eq("name", name))
+      .first();
+    if (existing) return existing;
+
+    const now = new Date().toISOString();
+    const id = await ctx.db.insert("content_campaigns", {
+      user_id: args.user_id,
+      name,
+      color: limitText(args.color, 16),
+      created_at: now,
+      updated_at: now,
+    });
+    return await ctx.db.get(id);
+  },
+});
+
+export const renameCampaign = mutation({
+  args: { user_id: v.string(), campaign_id: v.id("content_campaigns"), name: v.string() },
+  handler: async (ctx, args) => {
+    await requireSameUser(ctx, args.user_id);
+    const row = await ctx.db.get(args.campaign_id);
+    if (!row || row.user_id !== args.user_id) throw new Error("campaign not found");
+    const newName = limitText(args.name, 80);
+    if (!newName) throw new Error("name required");
+
+    const now = new Date().toISOString();
+    const oldName = row.name;
+    await ctx.db.patch(args.campaign_id, { name: newName, updated_at: now });
+
+    if (oldName && oldName !== newName) {
+      const annotations = await annotationsByCampaign(ctx, args.user_id, oldName);
+      for (const annotation of annotations) {
+        await ctx.db.patch(annotation._id, { campaign: newName, updated_at: now });
+      }
+    }
+
+    return await ctx.db.get(args.campaign_id);
+  },
+});
+
+export const deleteCampaign = mutation({
+  args: { user_id: v.string(), campaign_id: v.id("content_campaigns") },
+  handler: async (ctx, args) => {
+    await requireSameUser(ctx, args.user_id);
+    const row = await ctx.db.get(args.campaign_id);
+    if (!row || row.user_id !== args.user_id) return { deleted: 0, unassigned: 0 };
+
+    const now = new Date().toISOString();
+    const name = row.name;
+    await ctx.db.delete(args.campaign_id);
+
+    let unassigned = 0;
+    if (name) {
+      const annotations = await annotationsByCampaign(ctx, args.user_id, name);
+      for (const annotation of annotations) {
+        await ctx.db.patch(annotation._id, { campaign: undefined, updated_at: now });
+        unassigned += 1;
+      }
+    }
+
+    return { deleted: 1, unassigned };
+  },
+});
