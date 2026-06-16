@@ -331,6 +331,39 @@ export const bulkDeleteAssets = mutation({
   },
 });
 
+export const setPlannedAt = mutation({
+  args: {
+    user_id: v.string(),
+    asset_key: v.string(),
+    planned_at: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    await requireSameUser(ctx, args.user_id);
+    const assetKey = args.asset_key.trim();
+    if (!assetKey) throw new Error("asset_key required");
+
+    const planned_at = limitText(args.planned_at, 40);
+    const now = new Date().toISOString();
+
+    // Merge-safe: solo toca planned_at (para drag&drop del calendario).
+    const existing = await findAnnotation(ctx, args.user_id, assetKey);
+    if (existing) {
+      await ctx.db.patch(existing._id, { planned_at, updated_at: now });
+      return await ctx.db.get(existing._id);
+    }
+
+    const id = await ctx.db.insert("content_asset_annotations", {
+      user_id: args.user_id,
+      asset_key: assetKey,
+      status: "draft",
+      planned_at,
+      created_at: now,
+      updated_at: now,
+    });
+    return await ctx.db.get(id);
+  },
+});
+
 // --- Campaigns CRUD (campaigns are first-class so they can exist without assets) ---
 
 async function annotationsByCampaign(ctx: MutationCtx, userId: string, campaign: string) {
