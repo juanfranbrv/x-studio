@@ -9,6 +9,7 @@ interface ContentAssetCardProps {
     asset: ContentLibraryAsset
     selected: boolean
     checked: boolean
+    compact?: boolean
     onSelect: (asset: ContentLibraryAsset) => void
     onToggleSelection: (asset: ContentLibraryAsset) => void
     labels: {
@@ -28,7 +29,7 @@ function formatShortDate(value?: string) {
     return date.toLocaleDateString()
 }
 
-export function ContentAssetCard({ asset, selected, checked, onSelect, onToggleSelection, labels }: ContentAssetCardProps) {
+export function ContentAssetCard({ asset, selected, checked, compact = false, onSelect, onToggleSelection, labels }: ContentAssetCardProps) {
     const typeLabel = asset.type === 'carousel' ? labels.carousel : labels.image
     const copy = asset.copy?.trim() || labels.noCopy
     const created = formatShortDate(asset.created_at)
@@ -47,7 +48,8 @@ export function ContentAssetCard({ asset, selected, checked, onSelect, onToggleS
                 }
             }}
             className={cn(
-                'group flex min-w-0 cursor-pointer flex-col overflow-hidden rounded-[1.35rem] border bg-background text-left shadow-[0_18px_48px_-38px_rgba(15,23,42,0.38)] outline-none transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/25 focus-visible:ring-2 focus-visible:ring-primary/35',
+                'group flex min-w-0 cursor-pointer flex-col overflow-hidden border bg-background text-left shadow-[0_18px_48px_-38px_rgba(15,23,42,0.38)] outline-none transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/25 focus-visible:ring-2 focus-visible:ring-primary/35',
+                compact ? 'rounded-xl' : 'rounded-[1.35rem]',
                 selected ? 'border-primary/35 ring-2 ring-primary/18' : 'border-border/60',
                 checked && 'border-primary/45 ring-2 ring-primary/25'
             )}
@@ -77,20 +79,27 @@ export function ContentAssetCard({ asset, selected, checked, onSelect, onToggleS
                     />
                 </div>
             </div>
-            <div className="flex min-h-[10.5rem] flex-col gap-2 p-3.5">
-                <div className="flex items-start justify-between gap-2">
-                    <p className="line-clamp-2 text-sm font-semibold leading-snug text-foreground">
-                        {asset.session_title}
-                    </p>
-                    <Badge variant="outline">{labels.statuses[asset.status]}</Badge>
+            {compact ? (
+                <div className="flex flex-col gap-0.5 p-2">
+                    <p className="line-clamp-1 text-xs font-medium leading-tight text-foreground">{asset.session_title}</p>
+                    {planned ? <span className="text-[10px] leading-3 text-muted-foreground">{labels.plannedFor(planned)}</span> : null}
                 </div>
-                <p className="line-clamp-3 text-sm leading-5 text-muted-foreground">{copy}</p>
-                <div className="mt-auto flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                    {created ? <span>{created}</span> : null}
-                    {asset.platform ? <span>{asset.platform}</span> : null}
-                    {planned ? <span>{labels.plannedFor(planned)}</span> : null}
+            ) : (
+                <div className="flex min-h-[10.5rem] flex-col gap-2 p-3.5">
+                    <div className="flex items-start justify-between gap-2">
+                        <p className="line-clamp-2 text-sm font-semibold leading-snug text-foreground">
+                            {asset.session_title}
+                        </p>
+                        <Badge variant="outline">{labels.statuses[asset.status]}</Badge>
+                    </div>
+                    <p className="line-clamp-3 text-sm leading-5 text-muted-foreground">{copy}</p>
+                    <div className="mt-auto flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                        {created ? <span>{created}</span> : null}
+                        {asset.platform ? <span>{asset.platform}</span> : null}
+                        {planned ? <span>{labels.plannedFor(planned)}</span> : null}
+                    </div>
                 </div>
-            </div>
+            )}
         </article>
     )
 }

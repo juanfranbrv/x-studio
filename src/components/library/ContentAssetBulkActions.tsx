@@ -17,6 +17,7 @@ interface ContentAssetBulkActionsProps {
     visibleCount: number
     status: ContentAssetStatus
     campaignValue: string
+    campaigns: string[]
     busy: boolean
     onStatusChange: (status: ContentAssetStatus) => void
     onApplyStatus: () => void
@@ -44,6 +45,7 @@ export function ContentAssetBulkActions({
     visibleCount,
     status,
     campaignValue,
+    campaigns,
     busy,
     onStatusChange,
     onApplyStatus,
@@ -93,8 +95,14 @@ export function ContentAssetBulkActions({
                         placeholder={labels.campaignInput}
                         aria-label={labels.campaignInput}
                         disabled={busy || selectedCount === 0}
-                        className="h-9 w-[160px] rounded-xl"
+                        list="bulk-campaign-options"
+                        className="h-9 w-[180px] rounded-xl"
                     />
+                    <datalist id="bulk-campaign-options">
+                        {campaigns.map((campaign) => (
+                            <option key={campaign} value={campaign} />
+                        ))}
+                    </datalist>
                     <Button type="button" size="sm" variant="secondary" onClick={onApplyCampaign} disabled={selectedCount === 0 || busy}>
                         {labels.applyCampaign}
                     </Button>

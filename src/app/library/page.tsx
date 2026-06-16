@@ -43,6 +43,7 @@ export default function LibraryPage() {
     const createCampaign = useMutation(api.contentLibrary.createCampaign)
     const renameCampaign = useMutation(api.contentLibrary.renameCampaign)
     const deleteCampaign = useMutation(api.contentLibrary.deleteCampaign)
+    const setPlannedAt = useMutation(api.contentLibrary.setPlannedAt)
     const [selectedAssetKey, setSelectedAssetKey] = useState<string | undefined>()
     const [selectedAssetKeys, setSelectedAssetKeys] = useState<Set<string>>(() => new Set())
     const [savingAssetKey, setSavingAssetKey] = useState<string | null>(null)
@@ -258,6 +259,11 @@ export default function LibraryPage() {
         }
     }
 
+    const handleSchedule = async (assetKey: string, plannedAt: string | null) => {
+        if (!user?.id) return
+        await setPlannedAt({ user_id: user.id, asset_key: assetKey, planned_at: plannedAt || undefined })
+    }
+
     const handleBulkDelete = async () => {
         if (!user?.id || selectedBulkKeys.length === 0) return
         if (!window.confirm(selectedBulkKeys.length === 1 ? t('bulk.deleteConfirmOne') : t('bulk.deleteConfirmMany', { count: selectedBulkKeys.length }))) return
@@ -369,6 +375,7 @@ export default function LibraryPage() {
                                 visibleCount={filteredAssets.length}
                                 status={bulkStatus}
                                 campaignValue={bulkCampaign}
+                                campaigns={campaigns}
                                 busy={bulkBusy}
                                 onStatusChange={setBulkStatus}
                                 onApplyStatus={handleBulkStatus}
@@ -441,6 +448,7 @@ export default function LibraryPage() {
                                 assets={filteredAssets}
                                 selectedAssetKey={selectedAsset?.asset_key}
                                 onSelectAsset={(asset) => setSelectedAssetKey(asset.asset_key)}
+                                onSchedule={handleSchedule}
                                 locale={i18n.language || 'es-ES'}
                                 labels={{
                                     today: t('calendar.today'),

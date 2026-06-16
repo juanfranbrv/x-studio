@@ -86,6 +86,7 @@ export function ContentLibraryCampaignGroups({
                         assets={group.items}
                         selectedAssetKey={selectedAssetKey}
                         selectedAssetKeys={selectedAssetKeys}
+                        compact
                         onSelectAsset={onSelectAsset}
                         onToggleAssetSelection={onToggleAssetSelection}
                         labels={gridLabels}

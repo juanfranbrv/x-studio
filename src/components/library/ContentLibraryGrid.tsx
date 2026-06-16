@@ -7,6 +7,7 @@ interface ContentLibraryGridProps {
     assets: ContentLibraryAsset[]
     selectedAssetKey?: string
     selectedAssetKeys: Set<string>
+    compact?: boolean
     onSelectAsset: (asset: ContentLibraryAsset) => void
     onToggleAssetSelection: (asset: ContentLibraryAsset) => void
     labels: {
@@ -25,6 +26,7 @@ export function ContentLibraryGrid({
     assets,
     selectedAssetKey,
     selectedAssetKeys = new Set(),
+    compact = false,
     onSelectAsset,
     onToggleAssetSelection,
     labels,
@@ -39,13 +41,18 @@ export function ContentLibraryGrid({
     }
 
     return (
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+        <div className={
+            compact
+                ? 'grid gap-2.5 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 2xl:grid-cols-8'
+                : 'grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4'
+        }>
             {assets.map((asset) => (
                 <ContentAssetCard
                     key={asset.asset_key}
                     asset={asset}
                     selected={asset.asset_key === selectedAssetKey}
                     checked={selectedAssetKeys.has(asset.asset_key)}
+                    compact={compact}
                     onSelect={onSelectAsset}
                     onToggleSelection={onToggleAssetSelection}
                     labels={labels}
