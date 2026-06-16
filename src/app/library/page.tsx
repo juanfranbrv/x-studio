@@ -15,11 +15,12 @@ import { ContentAssetBulkActions } from '@/components/library/ContentAssetBulkAc
 import { ContentAssetFilters } from '@/components/library/ContentAssetFilters'
 import { ContentLibraryGrid } from '@/components/library/ContentLibraryGrid'
 import { ContentLibraryCampaignGroups } from '@/components/library/ContentLibraryCampaignGroups'
+import { ContentLibraryCalendar } from '@/components/library/ContentLibraryCalendar'
 import { CampaignManager } from '@/components/library/CampaignManager'
 import { filterContentLibraryAssets } from '@/components/library/contentLibraryFilters'
 import type { ContentAssetStatus, ContentCampaign, ContentLibraryAsset, ContentLibraryFilters, LibraryView } from '@/components/library/contentLibraryTypes'
 import { Button } from '@/components/ui/button'
-import { IconFolderKanban, IconGrid, IconPlus } from '@/components/ui/icons'
+import { IconCalendar, IconFolderKanban, IconGrid, IconPlus } from '@/components/ui/icons'
 
 const STATUS_KEYS: ContentAssetStatus[] = ['draft', 'selected', 'ready', 'published_manual', 'discarded']
 
@@ -28,7 +29,7 @@ function normalizeAssets(value: unknown): ContentLibraryAsset[] {
 }
 
 export default function LibraryPage() {
-    const { t } = useTranslation('library')
+    const { t, i18n } = useTranslation('library')
     const router = useRouter()
     const { user } = useUser()
     const { toast } = useToast()
@@ -283,6 +284,44 @@ export default function LibraryPage() {
         statuses: statusLabels,
     }
 
+    const detailPanel = (
+        <div className="xl:sticky xl:top-4 xl:self-start xl:max-h-[calc(100vh-6rem)] xl:overflow-y-auto">
+            <ContentAssetDetailPanel
+                key={selectedAsset?.asset_key || 'empty'}
+                asset={selectedAsset}
+                saving={savingAssetKey === selectedAsset?.asset_key}
+                saveState={selectedAsset ? saveStateByAssetKey[selectedAsset.asset_key] : undefined}
+                onSave={handleSave}
+                labels={{
+                    title: t('detail.title'),
+                    copy: t('detail.copy'),
+                    metadata: t('detail.metadata'),
+                    session: t('detail.session'),
+                    createdAt: t('detail.createdAt'),
+                    plannedAt: t('detail.plannedAt'),
+                    platform: t('detail.platform'),
+                    format: t('detail.format'),
+                    campaign: t('detail.campaign'),
+                    campaignPlaceholder: t('detail.campaignPlaceholder'),
+                    notes: t('detail.notes'),
+                    notesPlaceholder: t('detail.notesPlaceholder'),
+                    status: t('detail.status'),
+                    copyButton: t('detail.copyButton'),
+                    copied: t('detail.copied'),
+                    download: t('detail.download'),
+                    openSource: t('detail.openSource'),
+                    save: t('detail.save'),
+                    saving: t('detail.saving'),
+                    saved: t('detail.saved'),
+                    saveError: t('detail.saveError'),
+                    image: t('modules.image'),
+                    carousel: t('modules.carousel'),
+                    statuses: statusLabels,
+                }}
+            />
+        </div>
+    )
+
     return (
         <DashboardLayout
             brands={brandKits}
@@ -364,6 +403,10 @@ export default function LibraryPage() {
                                 <IconFolderKanban className="mr-1 h-4 w-4" />
                                 {t('view.campaigns')}
                             </Button>
+                            <Button type="button" size="sm" variant={view === 'calendar' ? 'default' : 'ghost'} onClick={() => setView('calendar')}>
+                                <IconCalendar className="mr-1 h-4 w-4" />
+                                {t('view.calendar')}
+                            </Button>
                         </div>
                         <Button type="button" variant="outline" size="sm" onClick={() => setManagerOpen(true)}>
                             <IconPlus className="mr-1 h-4 w-4" />
@@ -392,6 +435,22 @@ export default function LibraryPage() {
                                 }}
                             />
                         </div>
+                    ) : view === 'calendar' ? (
+                        <div className="grid min-h-0 flex-1 gap-4 xl:grid-cols-[minmax(0,1fr)_390px]">
+                            <ContentLibraryCalendar
+                                assets={filteredAssets}
+                                selectedAssetKey={selectedAsset?.asset_key}
+                                onSelectAsset={(asset) => setSelectedAssetKey(asset.asset_key)}
+                                locale={i18n.language || 'es-ES'}
+                                labels={{
+                                    today: t('calendar.today'),
+                                    unplannedTitle: t('calendar.unplannedTitle'),
+                                    unplannedEmpty: t('calendar.unplannedEmpty'),
+                                    more: (count) => t('calendar.more', { count }),
+                                }}
+                            />
+                            {detailPanel}
+                        </div>
                     ) : (
                         <div className="grid min-h-0 flex-1 gap-4 xl:grid-cols-[minmax(0,1fr)_390px]">
                             <ContentLibraryGrid
@@ -402,41 +461,7 @@ export default function LibraryPage() {
                                 onToggleAssetSelection={handleToggleAssetSelection}
                                 labels={gridLabels}
                             />
-                            <div className="xl:sticky xl:top-4 xl:self-start xl:max-h-[calc(100vh-6rem)] xl:overflow-y-auto">
-                            <ContentAssetDetailPanel
-                                key={selectedAsset?.asset_key || 'empty'}
-                                asset={selectedAsset}
-                                saving={savingAssetKey === selectedAsset?.asset_key}
-                                saveState={selectedAsset ? saveStateByAssetKey[selectedAsset.asset_key] : undefined}
-                                onSave={handleSave}
-                                labels={{
-                                    title: t('detail.title'),
-                                    copy: t('detail.copy'),
-                                    metadata: t('detail.metadata'),
-                                    session: t('detail.session'),
-                                    createdAt: t('detail.createdAt'),
-                                    plannedAt: t('detail.plannedAt'),
-                                    platform: t('detail.platform'),
-                                    format: t('detail.format'),
-                                    campaign: t('detail.campaign'),
-                                    campaignPlaceholder: t('detail.campaignPlaceholder'),
-                                    notes: t('detail.notes'),
-                                    notesPlaceholder: t('detail.notesPlaceholder'),
-                                    status: t('detail.status'),
-                                    copyButton: t('detail.copyButton'),
-                                    copied: t('detail.copied'),
-                                    download: t('detail.download'),
-                                    openSource: t('detail.openSource'),
-                                    save: t('detail.save'),
-                                    saving: t('detail.saving'),
-                                    saved: t('detail.saved'),
-                                    saveError: t('detail.saveError'),
-                                    image: t('modules.image'),
-                                    carousel: t('modules.carousel'),
-                                    statuses: statusLabels,
-                                }}
-                            />
-                            </div>
+                            {detailPanel}
                         </div>
                     )}
 

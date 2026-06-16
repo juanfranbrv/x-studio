@@ -36,7 +36,7 @@ export interface ContentLibraryAsset {
 // Sentinel para filtrar activos sin campaña asignada.
 export const CAMPAIGN_NONE = '__none__'
 
-export type LibraryView = 'grid' | 'campaigns'
+export type LibraryView = 'grid' | 'campaigns' | 'calendar'
 
 export interface ContentCampaign {
     id: string

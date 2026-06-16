@@ -79,7 +79,14 @@
   },
   "view": {
     "grid": "Grid",
-    "campaigns": "Campaigns"
+    "campaigns": "Campaigns",
+    "calendar": "Calendar"
+  },
+  "calendar": {
+    "today": "Today",
+    "unplannedTitle": "Not scheduled",
+    "unplannedEmpty": "Everything has a date.",
+    "more": "+{{count}} more"
   },
   "campaigns": {
     "manage": "Manage campaigns",

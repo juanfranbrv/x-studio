@@ -79,7 +79,14 @@
   },
   "view": {
     "grid": "Rejilla",
-    "campaigns": "Campañas"
+    "campaigns": "Campañas",
+    "calendar": "Calendario"
+  },
+  "calendar": {
+    "today": "Hoy",
+    "unplannedTitle": "Sin fecha planificada",
+    "unplannedEmpty": "Todo tiene fecha asignada.",
+    "more": "+{{count}} más"
   },
   "campaigns": {
     "manage": "Gestionar campañas",
