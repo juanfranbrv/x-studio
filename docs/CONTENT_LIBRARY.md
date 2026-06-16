@@ -8,7 +8,7 @@
 
 1. **Biblioteca** — rejilla con todos los activos. ✅ **V1 desplegada.**
 2. **Campañas** — agrupación por cliente / producto / promoción / tema. ✅ **hecha** (campo `campaign` editable + filtro + bulk; **vista agrupada** con toggle Rejilla/Campañas; **CRUD** de campañas como entidad propia). Sin desplegar.
-3. **Calendario** — planificación por fecha. ⏳ pendiente.
+3. **Calendario** — planificación por fecha. ✅ **hecho** (rejilla mensual sobre `planned_at` + tira "sin fecha"; planificar desde el detalle). Sin desplegar.
 
 **Orden de construcción (con dependencia):** Biblioteca → Campañas → Calendario.
 El calendario depende de poder **seleccionar, filtrar y clasificar** bien los
@@ -68,7 +68,16 @@ calendario. El campo `planned_at` ya está preparado para el calendario.
    desplegar**. Pendiente: `convex deploy` por la tabla `content_campaigns`, el
    campo `campaign` y los índices nuevos. QA visual con datos reales (cuenta con
    contenido) cuando se despliegue.
-3. **Calendario:** vista por fecha sobre `planned_at` + clasificación de Campañas.
+3. **Calendario:** HECHO (rejilla mensual sobre `planned_at`, nav de mes, tira
+   "sin fecha", planificar desde el detalle) en `develop`, **sin desplegar**.
+
+## Estado global
+
+Las **3 vistas están construidas** (Biblioteca desplegada; Campañas y Calendario
+en `develop` sin desplegar). Pendiente: un único `convex deploy` (por la tabla
+`content_campaigns`, el campo `campaign` y sus índices) + push del frontend, y QA
+visual con datos reales. Posibles mejoras futuras: drag&drop en el calendario,
+color por campaña, vista semana.
 
 ## QA
 
