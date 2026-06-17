@@ -60,7 +60,7 @@ function useScrollReveal<T extends HTMLElement>(threshold = 0.15) {
     return () => observer.disconnect()
   }, [threshold])
 
-  return { ref, isVisible }
+  return [ref, isVisible] as const
 }
 
 /* ─── Animated counter hook ─── */
@@ -595,6 +595,8 @@ function HeroSection({ hasAccess }: { hasAccess: boolean }) {
           </div>
         )}
 
+        <HeroPillsShowcase />
+
         {/* Trusted by */}
         <p className="mt-14 text-xs font-semibold uppercase tracking-widest text-muted-foreground/50 md:mt-20">
           {t('landing.trustedBy')}
@@ -615,7 +617,6 @@ function HeroSection({ hasAccess }: { hasAccess: boolean }) {
         </div>
 
         {/* ── Interactive hero showcase (Slack-style pills + image) ── */}
-        <HeroPillsShowcase />
       </div>
     </section>
   )
@@ -636,7 +637,7 @@ function HeroPillsShowcase() {
   const [activeIdx, setActiveIdx] = useState(0)
 
   return (
-    <div className="mt-16 md:mt-24">
+    <div className="mt-10 md:mt-14">
       {/* Image */}
       <div className="mx-auto max-w-[900px] overflow-hidden rounded-2xl border border-border/40 shadow-xl sm:rounded-3xl">
         <div className="relative aspect-[16/10]">
@@ -697,7 +698,7 @@ function FeatureTabsSection() {
   const { t } = useTranslation('home')
   const [activeIdx, setActiveIdx] = useState(0)
   const [progress, setProgress] = useState(0)
-  const startTimeRef = useRef(Date.now())
+  const startTimeRef = useRef(0)
   const isPausedRef = useRef(false)
 
   const activeTab = TAB_KEYS[activeIdx]
@@ -715,6 +716,7 @@ function FeatureTabsSection() {
   }, [])
 
   useEffect(() => {
+    startTimeRef.current = Date.now()
     const timer = setInterval(() => {
       if (isPausedRef.current) return
       const elapsed = Date.now() - startTimeRef.current
@@ -847,16 +849,16 @@ const SHOWCASES = [
 
 function FeatureShowcasesSection() {
   const { t } = useTranslation('home')
-  const headerReveal = useScrollReveal<HTMLDivElement>()
+  const [headerRevealRef, headerRevealVisible] = useScrollReveal<HTMLDivElement>()
 
   return (
     <section id="features" className="py-20 md:py-28">
       <div className="mx-auto max-w-[90rem] px-6 sm:px-10">
         <div
-          ref={headerReveal.ref}
+          ref={headerRevealRef}
           className={cn(
             'transition-all duration-700',
-            headerReveal.isVisible ? 'translate-y-0 opacity-100' : 'translate-y-8 opacity-0'
+            headerRevealVisible ? 'translate-y-0 opacity-100' : 'translate-y-8 opacity-0'
           )}
         >
           <h2 className="mx-auto max-w-3xl text-center text-[clamp(1.75rem,3vw,3rem)] font-bold tracking-tight">
@@ -880,8 +882,8 @@ function FeatureShowcasesSection() {
 function ShowcaseRow({ item, idx }: { item: typeof SHOWCASES[number]; idx: number }) {
   const { t } = useTranslation('home')
   const isReversed = idx % 2 !== 0
-  const textReveal = useScrollReveal<HTMLDivElement>(0.2)
-  const imageReveal = useScrollReveal<HTMLDivElement>(0.15)
+  const [textRevealRef, textRevealVisible] = useScrollReveal<HTMLDivElement>(0.2)
+  const [imageRevealRef, imageRevealVisible] = useScrollReveal<HTMLDivElement>(0.15)
 
   return (
     <div
@@ -892,10 +894,10 @@ function ShowcaseRow({ item, idx }: { item: typeof SHOWCASES[number]; idx: numbe
     >
       {/* Text — slides in from the side */}
       <div
-        ref={textReveal.ref}
+        ref={textRevealRef}
         className={cn(
           'transition-all duration-700',
-          textReveal.isVisible
+          textRevealVisible
             ? 'translate-x-0 opacity-100'
             : isReversed ? 'translate-x-12 opacity-0' : '-translate-x-12 opacity-0'
         )}
@@ -916,10 +918,10 @@ function ShowcaseRow({ item, idx }: { item: typeof SHOWCASES[number]; idx: numbe
 
       {/* Image — slides in from opposite side + subtle parallax scale */}
       <div
-        ref={imageReveal.ref}
+        ref={imageRevealRef}
         className={cn(
           'overflow-hidden rounded-3xl border border-border/40 shadow-lg transition-all duration-700',
-          imageReveal.isVisible
+          imageRevealVisible
             ? 'translate-y-0 scale-100 opacity-100'
             : 'translate-y-16 scale-95 opacity-0'
         )}
@@ -968,7 +970,7 @@ function AnimatedStat({ statKey }: { statKey: string }) {
 
 function StatsSection() {
   const { t } = useTranslation('home')
-  const headerReveal = useScrollReveal<HTMLDivElement>(0.3)
+  const [headerRevealRef, headerRevealVisible] = useScrollReveal<HTMLDivElement>(0.3)
 
   return (
     <section className="relative">
@@ -977,10 +979,10 @@ function StatsSection() {
       <div className="bg-primary pb-20 pt-8 md:pb-28 md:pt-12">
         <div className="mx-auto max-w-[90rem] px-6 sm:px-10">
           <div
-            ref={headerReveal.ref}
+            ref={headerRevealRef}
             className={cn(
               'transition-all duration-700',
-              headerReveal.isVisible ? 'translate-y-0 opacity-100' : 'translate-y-8 opacity-0'
+              headerRevealVisible ? 'translate-y-0 opacity-100' : 'translate-y-8 opacity-0'
             )}
           >
             <h2 className="mb-4 text-center text-[clamp(1.75rem,3vw,2.5rem)] font-bold tracking-tight text-primary-foreground">

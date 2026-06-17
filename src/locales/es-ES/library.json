@@ -18,7 +18,9 @@
     "allCampaigns": "Todas las campañas",
     "noCampaign": "Sin campaña",
     "planned": "Con fecha",
-    "unplanned": "Sin fecha"
+    "unplanned": "Sin fecha",
+    "toggle": "Filtros",
+    "visibleCount": "{{count}} activos"
   },
   "modules": {
     "image": "Imagen",

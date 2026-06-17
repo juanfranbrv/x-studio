@@ -8,33 +8,33 @@
     "openProduct": "Entrar al lab"
   },
   "hero": {
-    "kicker": "Guias, criterio y novedades",
+    "kicker": "Guías, criterio y novedades",
     "title": "Una capa editorial para entender la plataforma sin salir de ella.",
-    "description": "Academy mezcla ayuda accionable, tutoriales, novedades e inspiracion para que el producto se explique mejor desde dentro y tambien desde fuera.",
+    "description": "Academy mezcla ayuda accionable, tutoriales, novedades e inspiración para que el producto se explique mejor desde dentro y también desde fuera.",
     "featuredLabel": "Lectura destacada",
-    "openFeature": "Abrir articulo",
+    "openFeature": "Abrir artículo",
     "primaryCta": "Probar Imagen",
     "secondaryCta": "Preparar Kit de marca"
   },
   "listing": {
-    "kicker": "Biblioteca publica",
+    "kicker": "Biblioteca pública",
     "title": "Publicaciones para aprender, descubrir y activar el producto",
-    "description": "Explora guias de uso, tutoriales, notas de producto e ideas aplicadas sin tener que salir del ecosistema de Post laboratory."
+    "description": "Explora guías de uso, tutoriales, notas de producto e ideas aplicadas sin tener que salir del ecosistema de Post laboratory."
   },
   "categories": {
     "all": "Todo",
-    "guides": "Guias",
+    "guides": "Guías",
     "tutorials": "Tutoriales",
     "news": "Novedades",
-    "inspiration": "Inspiracion"
+    "inspiration": "Inspiración"
   },
   "post": {
-    "readArticle": "Leer articulo"
+    "readArticle": "Leer artículo"
   },
   "article": {
     "backToIndex": "Volver a Academy",
     "relatedKicker": "Sigue explorando",
     "relatedTitle": "Lecturas relacionadas",
-    "relatedDescription": "Mas piezas para convertir el contexto en acciones dentro del estudio."
+    "relatedDescription": "Más piezas para convertir el contexto en acciones dentro del estudio."
   }
 }

@@ -50,14 +50,26 @@ export function SlideCountSection({
                 titleClassName={PANEL_SECTION_HEADER_TITLE_CLASS}
             />
             <div className="flex items-center gap-4">
-                <Button variant="outline" size="icon" onClick={() => onChange(-1)} disabled={slideCount <= 0}>
+                <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() => onChange(-1)}
+                    disabled={slideCount <= 0}
+                    aria-label={t('ui.decreaseSlideCount', { defaultValue: 'Reducir número de slides' })}
+                >
                     <IconMinus className="w-4 h-4" />
                 </Button>
                 <div className="flex-1 text-center">
                     <span className="text-3xl font-bold">{slideCount}</span>
                     <span className="text-sm text-muted-foreground ml-2">{t('ui.slides')}</span>
                 </div>
-                <Button variant="outline" size="icon" onClick={() => onChange(1)} disabled={slideCount >= 15}>
+                <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() => onChange(1)}
+                    disabled={slideCount >= 15}
+                    aria-label={t('ui.increaseSlideCount', { defaultValue: 'Aumentar número de slides' })}
+                >
                     <IconPlus className="w-4 h-4" />
                 </Button>
             </div>

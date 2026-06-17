@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { IconClose } from '@/components/ui/icons'
 import { cn } from '@/lib/utils'
 import { renderLucideLayoutIcon } from '@/lib/layout-icon'
+import { renderMaterialIconBridge } from '@/components/ui/material-icon-bridge'
 
 export function renderLayoutIcon(svgIcon: string) {
     const trimmed = (svgIcon || '').trim()
@@ -32,12 +33,9 @@ export function renderLayoutIcon(svgIcon: string) {
     }
 
     return (
-        <span
-            className="material-symbols-outlined text-primary/25 leading-none"
-            style={{ fontSize: 'clamp(240px, 86cqw, 1500px)' }}
-        >
-            {trimmed}
-        </span>
+        <div className="w-[85%] h-[85%] flex items-center justify-center text-primary/25">
+            {renderMaterialIconBridge(trimmed, 'h-full w-full stroke-[1.25]')}
+        </div>
     )
 }
 
@@ -109,6 +107,7 @@ export function StyleReferenceCorner({
                             e.stopPropagation()
                             onRemove()
                         }}
+                        aria-label={t('common:styleImage.removeReference', { defaultValue: 'Remove style reference' })}
                         className={cn(
                             'absolute top-1 right-1 rounded-full bg-destructive/70 text-destructive-foreground shadow-lg z-50 pointer-events-auto transition-opacity hover:bg-destructive hover:text-destructive-foreground',
                             isMobile ? 'opacity-100' : 'opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 hover:opacity-100'

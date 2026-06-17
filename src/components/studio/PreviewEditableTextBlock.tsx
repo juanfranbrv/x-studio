@@ -81,6 +81,7 @@ export function PreviewEditableTextBlock({
                     variant="ghost"
                     size="icon"
                     onClick={onDelete}
+                    aria-label="Eliminar bloque de texto"
                     className={cn(removeButtonClassName, touchVisibleActionClass)}
                 >
                     <IconClose className="h-3.5 w-3.5" />

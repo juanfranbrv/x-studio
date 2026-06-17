@@ -104,6 +104,10 @@ export function ThumbnailHistory({
                         <button
                             key={gen.id}
                             onClick={() => onSelectGeneration(gen)}
+                            aria-label={t('preview.selectVariation', {
+                                defaultValue: 'Seleccionar variación {{index}}',
+                                index: (safePage - 1) * ITEMS_PER_PAGE + paginatedGenerations.indexOf(gen) + 1,
+                            })}
                             className={`relative flex-shrink-0 overflow-hidden rounded-[1.1rem] border transition-all duration-200 ${isSelected
                                 ? 'border-primary/35 bg-primary/5 scale-[1.02] shadow-[0_14px_28px_-22px_rgba(59,130,246,0.32)]'
                                 : 'border-border/50 bg-background/78 opacity-88 hover:-translate-y-0.5 hover:border-primary/20 hover:opacity-100'

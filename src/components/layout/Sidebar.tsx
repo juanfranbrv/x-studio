@@ -135,7 +135,10 @@ export function Sidebar({ className, showLogo = true, offsetTopClassName }: Side
 
                 <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                        <button className="h-16 w-16 shrink-0 cursor-pointer overflow-hidden rounded-full border border-primary/20 bg-white shadow-[0_18px_40px_-28px_rgba(15,23,42,0.35)] transition-colors transition-shadow duration-200 hover:ring-2 hover:ring-primary/25 focus:outline-none focus:ring-2 focus:ring-primary/30 [@media(max-height:820px)]:h-14 [@media(max-height:820px)]:w-14">
+                        <button
+                            className="h-16 w-16 shrink-0 cursor-pointer overflow-hidden rounded-full border border-primary/20 bg-white shadow-[0_18px_40px_-28px_rgba(15,23,42,0.35)] transition-colors transition-shadow duration-200 hover:ring-2 hover:ring-primary/25 focus:outline-none focus:ring-2 focus:ring-primary/30 [@media(max-height:820px)]:h-14 [@media(max-height:820px)]:w-14"
+                            aria-label={t('labels.accountMenu', { defaultValue: 'Menú de cuenta' })}
+                        >
                             {user?.imageUrl ? (
                                 <img
                                     src={user.imageUrl}

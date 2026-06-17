@@ -5,6 +5,7 @@ import { motion } from'framer-motion'
 import type { LayoutOption, IntentCategory } from'@/lib/creation-flow-types'
 import { CompositionPreviewThumbnail, getCompositionPreviewData } from'./MotifVisualPicker'
 import { renderLucideLayoutIcon } from'@/lib/layout-icon'
+import { renderMaterialIconBridge } from '@/components/ui/material-icon-bridge'
 import {
  getLayoutRatingStats,
  type LayoutRatingStoreEntry,
@@ -109,6 +110,8 @@ export function LayoutSelector({
  whileHover={{ scale: 1.02 }}
  whileTap={{ scale: 0.95 }}
  onClick={() => onSelectLayout(layout.id)}
+ aria-label={`${title}: ${description}`}
+ aria-pressed={isSelected}
  className={cn(
  'group relative flex h-full flex-col overflow-hidden rounded-[1rem] text-left transition-all duration-300',
  'border backdrop-blur-sm',
@@ -158,12 +161,7 @@ export function LayoutSelector({
  {renderLucideLayoutIcon(layout.svgIcon, {
  className:'h-11 w-11 stroke-[1.75]',
  }) ?? (
- <span
- className="material-symbols-outlined leading-none"
- style={{ fontSize:'42px' }}
- >
- {layout.svgIcon}
- </span>
+ renderMaterialIconBridge(layout.svgIcon, 'h-11 w-11 stroke-[1.75]')
  )}
  </div>
  ) : (

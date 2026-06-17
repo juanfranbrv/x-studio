@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
+import { renderMaterialIconBridge } from '@/components/ui/material-icon-bridge'
 
 export function renderCompositionGhostIcon(iconName: string) {
     const trimmed = (iconName || '').trim()
@@ -17,12 +18,9 @@ export function renderCompositionGhostIcon(iconName: string) {
     }
 
     return (
-        <span
-            className="material-symbols-outlined text-primary/25 leading-none"
-            style={{ fontSize: 'clamp(140px, 56cqw, 760px)' }}
-        >
-            {trimmed}
-        </span>
+        <div className="w-[92%] h-[92%] max-w-[820px] max-h-[820px] text-primary/25 flex items-center justify-center">
+            {renderMaterialIconBridge(trimmed, 'h-full w-full stroke-[1.25]')}
+        </div>
     )
 }
 

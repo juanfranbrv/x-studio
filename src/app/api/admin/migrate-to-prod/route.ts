@@ -6,6 +6,9 @@ import { isAdminEmail } from '@/lib/auth-config'
 
 export const runtime = 'nodejs'
 
+const DEFAULT_SOURCE_USER_ID = 'user_37R8MiIJvgY7ZIQaMyDnQCqDl5t'
+const DEFAULT_TARGET_USER_ID = 'user_3AB2BmaIPSkUvq1jIap4rKqRqdL'
+
 // Puente local dev -> prod. Solo funciona en local (donde existen las dos
 // conexiones, la URL de prod y el MIGRATION_SECRET). Append-only: inserta
 // sesiones nuevas en prod, nunca borra ni sobrescribe.
@@ -30,6 +33,46 @@ interface IncomingAsset {
     slides?: IncomingSlide[]
 }
 
+function getDeploymentName(url: string | undefined) {
+    if (!url) return null
+    try {
+        return new URL(url).hostname.split('.')[0] || null
+    } catch {
+        return null
+    }
+}
+
+function getMigrationConfig() {
+    const sourceConvexUrl = process.env.MIGRATION_SOURCE_URL?.trim() || process.env.NEXT_PUBLIC_CONVEX_URL?.trim() || null
+    const targetConvexUrl = process.env.MIGRATION_TARGET_URL?.trim() || process.env.CONVEX_PROD_URL?.trim() || null
+    const sourceUserId = process.env.MIGRATION_SOURCE_USER_ID?.trim() || DEFAULT_SOURCE_USER_ID
+    const targetUserId = process.env.MIGRATION_TARGET_USER_ID?.trim() || DEFAULT_TARGET_USER_ID
+    const sourceDeployment = getDeploymentName(sourceConvexUrl || undefined)
+    const targetDeployment = getDeploymentName(targetConvexUrl || undefined)
+
+    return {
+        sourceConvexUrl,
+        targetConvexUrl,
+        sourceUserId,
+        targetUserId,
+        sourceDeployment,
+        targetDeployment,
+        sameDeployment: Boolean(sourceDeployment && targetDeployment && sourceDeployment === targetDeployment),
+        sameUser: sourceUserId === targetUserId,
+        blockedAsDuplicateTarget: Boolean(sourceDeployment && targetDeployment && sourceDeployment === targetDeployment && sourceUserId === targetUserId),
+    }
+}
+
+async function listSourceAssets(config: ReturnType<typeof getMigrationConfig>, secret: string | undefined) {
+    if (!config.sourceConvexUrl || !secret) return []
+    const source = new ConvexHttpClient(config.sourceConvexUrl)
+    return await source.query(api.migration.listMigratableAssets, {
+        secret,
+        user_id: config.sourceUserId,
+        limit: 240,
+    })
+}
+
 async function uploadToProd(prod: ConvexHttpClient, secret: string, sourceUrl: string): Promise<string> {
     const download = await fetch(sourceUrl)
     if (!download.ok) throw new Error(`No se pudo descargar la imagen origen (${download.status})`)
@@ -48,6 +91,19 @@ async function uploadToProd(prod: ConvexHttpClient, secret: string, sourceUrl: s
     return storageId as string
 }
 
+export async function GET() {
+    const user = await currentUser()
+    const email = user?.emailAddresses?.[0]?.emailAddress
+    if (!user || !isAdminEmail(email)) {
+        return NextResponse.json({ error: 'No autorizado' }, { status: 403 })
+    }
+
+    const config = getMigrationConfig()
+    const assets = await listSourceAssets(config, process.env.MIGRATION_SECRET)
+
+    return NextResponse.json({ ...config, assets })
+}
+
 export async function POST(request: Request) {
     // 1. Autorizacion: solo admin autenticado.
     const user = await currentUser()
@@ -57,7 +113,8 @@ export async function POST(request: Request) {
     }
 
     // 2. Configuracion del puente (solo presente en local).
-    const prodUrl = process.env.CONVEX_PROD_URL
+    const config = getMigrationConfig()
+    const prodUrl = config.targetConvexUrl
     const secret = process.env.MIGRATION_SECRET
     if (!prodUrl || !secret) {
         return NextResponse.json(
@@ -71,30 +128,14 @@ export async function POST(request: Request) {
     if (assets.length === 0) {
         return NextResponse.json({ error: 'No se enviaron activos' }, { status: 400 })
     }
-    const overrideUserId = typeof body?.targetUserId === 'string' ? body.targetUserId.trim() : ''
 
     const prod = new ConvexHttpClient(prodUrl)
 
-    // 3. Resolver el clerk_id del usuario en prod: id explicito o por email.
-    let targetUserId: string | null = overrideUserId || null
-    if (!targetUserId) {
-        try {
-            targetUserId = await prod.query(api.migration.findClerkIdByEmail, { secret, email: email! })
-        } catch (e) {
-            const msg = e instanceof Error ? e.message : String(e)
-            console.error('[migrate-to-prod] fallo consultando prod:', msg)
-            return NextResponse.json({ error: `Fallo conectando a producción: ${msg}` }, { status: 500 })
-        }
-    }
-
-    if (!targetUserId) {
-        return NextResponse.json(
-            { error: `No se encontró tu usuario en produccion por email (${email}). Pega tu clerk id de producción en el campo "ID de usuario de prod" y reintenta.` },
-            { status: 400 }
-        )
-    }
+    // 3. La migración local copia desde el usuario dev fijado hacia el usuario prod fijado.
+    const targetUserId = config.targetUserId
 
     let migrated = 0
+    let skipped = 0
     const errors: Array<{ asset_key: string; error: string }> = []
 
     for (const asset of assets) {
@@ -105,6 +146,12 @@ export async function POST(request: Request) {
                 const storageId = await uploadToProd(prod, secret, source)
                 const snapshot = {
                     module: 'image',
+                    migration: {
+                        source_asset_key: asset.asset_key,
+                        source_deployment: config.sourceDeployment,
+                        target_deployment: config.targetDeployment,
+                        migrated_at: new Date().toISOString(),
+                    },
                     creationFlowState: {
                         caption: asset.copy,
                         selectedPlatform: asset.platform,
@@ -122,14 +169,16 @@ export async function POST(request: Request) {
                         },
                     ],
                 }
-                await prod.mutation(api.migration.createMigratedSession, {
+                const result = await prod.mutation(api.migration.createMigratedSession, {
                     secret,
                     user_id: targetUserId,
                     module: 'image',
                     title: asset.session_title,
+                    source_asset_key: asset.asset_key,
                     snapshot,
                 })
-                migrated += 1
+                if (result.created) migrated += 1
+                else skipped += 1
             } else if (asset.module === 'carousel') {
                 const slides = Array.isArray(asset.slides) ? asset.slides : []
                 if (slides.length === 0) throw new Error('El carrusel no tiene slides')
@@ -148,17 +197,25 @@ export async function POST(request: Request) {
                 if (migratedSlides.length === 0) throw new Error('Ninguna slide tenia imagen descargable')
                 const snapshot = {
                     module: 'carousel',
+                    migration: {
+                        source_asset_key: asset.asset_key,
+                        source_deployment: config.sourceDeployment,
+                        target_deployment: config.targetDeployment,
+                        migrated_at: new Date().toISOString(),
+                    },
                     caption: asset.copy,
                     previewState: { slides: migratedSlides },
                 }
-                await prod.mutation(api.migration.createMigratedSession, {
+                const result = await prod.mutation(api.migration.createMigratedSession, {
                     secret,
                     user_id: targetUserId,
                     module: 'carousel',
                     title: asset.session_title,
+                    source_asset_key: asset.asset_key,
                     snapshot,
                 })
-                migrated += 1
+                if (result.created) migrated += 1
+                else skipped += 1
             }
         } catch (error) {
             errors.push({
@@ -168,5 +225,5 @@ export async function POST(request: Request) {
         }
     }
 
-    return NextResponse.json({ migrated, failed: errors.length, errors })
+    return NextResponse.json({ migrated, skipped, failed: errors.length, errors, ...config })
 }

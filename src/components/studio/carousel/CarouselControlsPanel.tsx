@@ -69,6 +69,13 @@ import type {
 
 export type { SlideConfig, CarouselSettings } from './CarouselControlsPanel.types'
 
+type LegacyBrandKitFields = {
+    _id?: Id<'brand_dna'>
+    emails?: unknown
+    phones?: unknown
+    addresses?: unknown
+}
+
 interface CarouselControlsPanelProps {
     className?: string
     onAnalyze: (settings: CarouselSettings) => Promise<void>
@@ -224,7 +231,8 @@ export function CarouselControlsPanel({
     const activateWorkSession = useMutation(api.work_sessions.activateSession)
     const deleteWorkSession = useMutation(api.work_sessions.deleteSession)
     const clearWorkSessions = useMutation(api.work_sessions.clearSessions)
-    const scopedBrandId = (brandKit?.id || (brandKit as any)?._id) as Id<'brand_dna'> | undefined
+    const legacyBrandKit = brandKit as LegacyBrandKitFields | null | undefined
+    const scopedBrandId = (brandKit?.id || legacyBrandKit?._id) as Id<'brand_dna'> | undefined
     const activeWorkSession = useQuery(
         api.work_sessions.getActiveSession,
         userId && scopedBrandId
@@ -1700,7 +1708,8 @@ export function CarouselControlsPanel({
 
     // INITIALIZE default colors from brand kit
     useEffect(() => {
-        const currentBrandId = brandKit?.id || (brandKit as any)?._id
+        const legacyBrandKit = brandKit as LegacyBrandKitFields | null | undefined
+        const currentBrandId = brandKit?.id || legacyBrandKit?._id
         if (!brandKit || !currentBrandId) return
 
         const shouldInitializeColors = currentBrandId !== lastInitBrandId || selectedColors.length === 0
@@ -2008,19 +2017,19 @@ export function CarouselControlsPanel({
     }
 
     const primaryEmail = useMemo(() => {
-        const emails = (brandKit as any)?.emails
+        const emails = (brandKit as LegacyBrandKitFields | null | undefined)?.emails
         if (!Array.isArray(emails)) return ''
         return String(emails.find((value: unknown) => typeof value === 'string' && value.trim()) || '').trim()
     }, [brandKit])
 
     const phoneValues = useMemo(() => {
-        const phones = (brandKit as any)?.phones
+        const phones = (brandKit as LegacyBrandKitFields | null | undefined)?.phones
         if (!Array.isArray(phones)) return [] as string[]
         return phones.map((value: unknown) => String(value || '').trim()).filter(Boolean)
     }, [brandKit])
 
     const addressValues = useMemo(() => {
-        const addresses = (brandKit as any)?.addresses
+        const addresses = (brandKit as LegacyBrandKitFields | null | undefined)?.addresses
         if (!Array.isArray(addresses)) return [] as string[]
         return addresses.map((value: unknown) => String(value || '').trim()).filter(Boolean)
     }, [brandKit])
@@ -2396,7 +2405,7 @@ export function CarouselControlsPanel({
             selectedLogoUrl: resolveSelectedLogoUrl(),
             selectedColors: selectedColors.length > 0 ? selectedColors : brandColors.slice(0, 3).map(c => ({
                 color: c.color,
-                role: (c.role || 'Acento') as any
+                role: (c.role || 'Acento') as BrandColorRole
             })),
             selectedReferenceImages,
             selectedImageUrls: selectedReferenceImages.map((item) => item.url),
@@ -2431,7 +2440,8 @@ export function CarouselControlsPanel({
     }
 
     const handleInspire = async () => {
-        const brandKitId = (brandKit?.id || (brandKit as any)?._id) as string | undefined
+        const legacyBrandKit = brandKit as LegacyBrandKitFields | null | undefined
+        const brandKitId = brandKit?.id || legacyBrandKit?._id
         if (!brandKitId || isInspiring) return
         setIsInspiring(true)
         try {
@@ -2480,29 +2490,31 @@ export function CarouselControlsPanel({
     return (
         <div className={cn(STUDIO_CONTROLS_SHELL_CLASS, className)}>
             <div className="thin-scrollbar flex-1 overflow-y-auto pl-4 pr-0 -mr-[2px] pt-4 md:pl-5 md:pr-0 md:pt-5">
-                <div className="space-y-3 pr-4 pb-10 md:pr-5 md:pb-12">
+                <div className="flex flex-col gap-3 pr-4 pb-10 md:pr-5 md:pb-12">
                 {/* SECTION: Sessions */}
-                <SessionsSection
-                    isSavingSession={isSavingSession}
-                    saveError={saveError}
-                    hasUnsavedChanges={hasUnsavedChanges}
-                    lastSavedAt={lastSavedAt}
-                    userId={userId}
-                    scopedBrandId={scopedBrandId}
-                    isHydratingSession={isHydratingSession}
-                    handleSaveNow={handleSaveNow}
-                    selectedSessionToLoad={selectedSessionToLoad}
-                    setSelectedSessionToLoad={setSelectedSessionToLoad}
-                    currentSessionId={currentSessionId}
-                    handleLoadSession={handleLoadSession}
-                    buildDisplaySessionTitle={buildDisplaySessionTitle}
-                    activeSessionMeta={activeSessionMeta}
-                    workSessions={workSessions}
-                    createNewCarouselSession={createNewCarouselSession}
-                    handleRenameCurrentSession={handleRenameCurrentSession}
-                    handleDeleteCurrentSession={handleDeleteCurrentSession}
-                    handleClearAllSessions={handleClearAllSessions}
-                />
+                <div className="order-last">
+                    <SessionsSection
+                        isSavingSession={isSavingSession}
+                        saveError={saveError}
+                        hasUnsavedChanges={hasUnsavedChanges}
+                        lastSavedAt={lastSavedAt}
+                        userId={userId}
+                        scopedBrandId={scopedBrandId}
+                        isHydratingSession={isHydratingSession}
+                        handleSaveNow={handleSaveNow}
+                        selectedSessionToLoad={selectedSessionToLoad}
+                        setSelectedSessionToLoad={setSelectedSessionToLoad}
+                        currentSessionId={currentSessionId}
+                        handleLoadSession={handleLoadSession}
+                        buildDisplaySessionTitle={buildDisplaySessionTitle}
+                        activeSessionMeta={activeSessionMeta}
+                        workSessions={workSessions}
+                        createNewCarouselSession={createNewCarouselSession}
+                        handleRenameCurrentSession={handleRenameCurrentSession}
+                        handleDeleteCurrentSession={handleDeleteCurrentSession}
+                        handleClearAllSessions={handleClearAllSessions}
+                    />
+                </div>
 
                 {/* Slide Count */}
                 {isStepVisible(1) && (
@@ -2706,6 +2718,9 @@ export function CarouselControlsPanel({
                                     <Switch
                                         checked={imageSourceMode === 'generate'}
                                         onCheckedChange={(checked) => handleImageSourceModeChange(checked ? 'generate' : 'upload')}
+                                        aria-label={imageSourceMode === 'generate'
+                                            ? t('ui.generatedContentTitle')
+                                            : t('ui.userContentTitle')}
                                     />
                                 )}
                             />
@@ -2972,6 +2987,7 @@ export function CarouselControlsPanel({
                                                 setCtaUrl(brandKit?.url?.trim() || '')
                                             }
                                         }}
+                                        aria-label={t('ui.link')}
                                     />
                                 </div>
                                 {ctaUrlEnabled ? (
@@ -2998,6 +3014,7 @@ export function CarouselControlsPanel({
                                                     <Switch
                                                         checked={Boolean(getContactFieldValue('contact-email-main'))}
                                                         onCheckedChange={(checked) => setContactFieldChecked('contact-email-main', primaryEmail, checked)}
+                                                        aria-label={t('ui.email')}
                                                     />
                                                 </div>
                                                 {getContactFieldValue('contact-email-main') ? (
@@ -3023,6 +3040,7 @@ export function CarouselControlsPanel({
                                                         <Switch
                                                             checked={Boolean(selectedValue)}
                                                             onCheckedChange={(checked) => setContactFieldChecked(fieldId, phone, checked)}
+                                                            aria-label={t('ui.phone', { index: idx + 1 })}
                                                         />
                                                     </div>
                                                     {selectedValue ? (
@@ -3049,6 +3067,7 @@ export function CarouselControlsPanel({
                                                         <Switch
                                                             checked={Boolean(selectedValue)}
                                                             onCheckedChange={(checked) => setContactFieldChecked(fieldId, address, checked)}
+                                                            aria-label={t('ui.address', { index: idx + 1 })}
                                                         />
                                                     </div>
                                                     {selectedValue ? (

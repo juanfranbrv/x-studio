@@ -291,7 +291,7 @@ export default function LibraryPage() {
     }
 
     const detailPanel = (
-        <div className="xl:sticky xl:top-4 xl:self-start xl:max-h-[calc(100vh-6rem)] xl:overflow-y-auto">
+        <div className="min-h-0 overflow-y-auto">
             <ContentAssetDetailPanel
                 key={selectedAsset?.asset_key || 'empty'}
                 asset={selectedAsset}
@@ -328,6 +328,92 @@ export default function LibraryPage() {
         </div>
     )
 
+    const controlsBar = (
+        <div className="grid shrink-0 gap-3">
+            <section className="rounded-[1.45rem] border border-border/60 bg-background/86 p-4 shadow-[0_24px_70px_-50px_rgba(15,23,42,0.32)] backdrop-blur-xl">
+                <div className="grid gap-3">
+                    <ContentAssetFilters
+                        filters={filters}
+                        platforms={platforms}
+                        campaigns={campaigns}
+                        onChange={setFilters}
+                        responsive
+                        visibleCount={filteredAssets.length}
+                        labels={{
+                            search: t('filters.search'),
+                            module: t('filters.module'),
+                            status: t('filters.status'),
+                            platform: t('filters.platform'),
+                            campaign: t('filters.campaign'),
+                            planning: t('filters.planning'),
+                            all: t('filters.all'),
+                            allPlatforms: t('filters.allPlatforms'),
+                            allCampaigns: t('filters.allCampaigns'),
+                            noCampaign: t('filters.noCampaign'),
+                            planned: t('filters.planned'),
+                            unplanned: t('filters.unplanned'),
+                            image: t('modules.image'),
+                            carousel: t('modules.carousel'),
+                            filtersToggle: t('filters.toggle'),
+                            visibleCount: (count) => t('filters.visibleCount', { count }),
+                            statuses: statusLabels,
+                        }}
+                    />
+                    {selectedBulkKeys.length > 0 && (
+                        <ContentAssetBulkActions
+                            selectedCount={selectedBulkKeys.length}
+                            visibleCount={filteredAssets.length}
+                            status={bulkStatus}
+                            campaignValue={bulkCampaign}
+                            campaigns={campaigns}
+                            busy={bulkBusy}
+                            onStatusChange={setBulkStatus}
+                            onApplyStatus={handleBulkStatus}
+                            onCampaignValueChange={setBulkCampaign}
+                            onApplyCampaign={handleBulkCampaign}
+                            onDelete={handleBulkDelete}
+                            onSelectVisible={handleSelectVisible}
+                            onClearSelection={handleClearSelection}
+                            labels={{
+                                selected: (count) => count === 1 ? t('bulk.selectedOne') : t('bulk.selectedMany', { count }),
+                                selectVisible: (count) => t('bulk.selectVisible', { count }),
+                                clear: t('bulk.clear'),
+                                status: t('bulk.status'),
+                                applyStatus: t('bulk.applyStatus'),
+                                campaignInput: t('bulk.campaignInput'),
+                                applyCampaign: t('bulk.applyCampaign'),
+                                delete: t('bulk.delete'),
+                                busy: t('bulk.busy'),
+                                statuses: statusLabels,
+                            }}
+                        />
+                    )}
+                </div>
+            </section>
+
+            <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="inline-flex rounded-xl border border-border/60 bg-background/86 p-1 backdrop-blur-xl">
+                    <Button type="button" size="sm" variant={view === 'grid' ? 'default' : 'ghost'} onClick={() => setView('grid')}>
+                        <IconGrid className="mr-1 h-4 w-4" />
+                        {t('view.grid')}
+                    </Button>
+                    <Button type="button" size="sm" variant={view === 'campaigns' ? 'default' : 'ghost'} onClick={() => setView('campaigns')}>
+                        <IconFolderKanban className="mr-1 h-4 w-4" />
+                        {t('view.campaigns')}
+                    </Button>
+                    <Button type="button" size="sm" variant={view === 'calendar' ? 'default' : 'ghost'} onClick={() => setView('calendar')}>
+                        <IconCalendar className="mr-1 h-4 w-4" />
+                        {t('view.calendar')}
+                    </Button>
+                </div>
+                <Button type="button" variant="outline" size="sm" onClick={() => setManagerOpen(true)}>
+                    <IconPlus className="mr-1 h-4 w-4" />
+                    {t('campaigns.manage')}
+                </Button>
+            </div>
+        </div>
+    )
+
     return (
         <DashboardLayout
             brands={brandKits}
@@ -338,95 +424,21 @@ export default function LibraryPage() {
             contentContainerVariant="plain"
             headerVariant="bar"
         >
-            <main className="flex min-h-0 flex-1 flex-col overflow-y-auto px-3 py-4 md:px-4">
-                <div className="mx-auto flex w-full max-w-[1800px] flex-1 flex-col gap-4">
-                    <header className="rounded-[1.45rem] border border-border/60 bg-background/86 p-5 shadow-[0_24px_70px_-50px_rgba(15,23,42,0.32)]">
-                        <h1 className="text-2xl font-semibold tracking-tight text-foreground">{t('header.title')}</h1>
-                        <p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground">{t('header.description')}</p>
+            <main className="flex min-h-0 flex-1 flex-col overflow-y-auto px-3 py-4 md:px-4 xl:overflow-hidden">
+                <div className="mx-auto flex min-h-0 w-full max-w-[1800px] flex-1 flex-col gap-4">
+                    <header className="rounded-[1.45rem] border border-border/60 bg-background/86 p-4 shadow-[0_24px_70px_-50px_rgba(15,23,42,0.32)] md:p-5">
+                        <h1 className="text-xl font-semibold tracking-tight text-foreground md:text-2xl">{t('header.title')}</h1>
+                        <p className="mt-2 hidden max-w-3xl text-sm leading-6 text-muted-foreground md:block">{t('header.description')}</p>
                     </header>
 
-                    <section className="rounded-[1.45rem] border border-border/60 bg-background/86 p-4 shadow-[0_24px_70px_-50px_rgba(15,23,42,0.32)]">
-                        <div className="grid gap-3">
-                            <ContentAssetFilters
-                                filters={filters}
-                                platforms={platforms}
-                                campaigns={campaigns}
-                                onChange={setFilters}
-                                labels={{
-                                    search: t('filters.search'),
-                                    module: t('filters.module'),
-                                    status: t('filters.status'),
-                                    platform: t('filters.platform'),
-                                    campaign: t('filters.campaign'),
-                                    planning: t('filters.planning'),
-                                    all: t('filters.all'),
-                                    allPlatforms: t('filters.allPlatforms'),
-                                    allCampaigns: t('filters.allCampaigns'),
-                                    noCampaign: t('filters.noCampaign'),
-                                    planned: t('filters.planned'),
-                                    unplanned: t('filters.unplanned'),
-                                    image: t('modules.image'),
-                                    carousel: t('modules.carousel'),
-                                    statuses: statusLabels,
-                                }}
-                            />
-                            <ContentAssetBulkActions
-                                selectedCount={selectedBulkKeys.length}
-                                visibleCount={filteredAssets.length}
-                                status={bulkStatus}
-                                campaignValue={bulkCampaign}
-                                campaigns={campaigns}
-                                busy={bulkBusy}
-                                onStatusChange={setBulkStatus}
-                                onApplyStatus={handleBulkStatus}
-                                onCampaignValueChange={setBulkCampaign}
-                                onApplyCampaign={handleBulkCampaign}
-                                onDelete={handleBulkDelete}
-                                onSelectVisible={handleSelectVisible}
-                                onClearSelection={handleClearSelection}
-                                labels={{
-                                    selected: (count) => count === 1 ? t('bulk.selectedOne') : t('bulk.selectedMany', { count }),
-                                    selectVisible: (count) => t('bulk.selectVisible', { count }),
-                                    clear: t('bulk.clear'),
-                                    status: t('bulk.status'),
-                                    applyStatus: t('bulk.applyStatus'),
-                                    campaignInput: t('bulk.campaignInput'),
-                                    applyCampaign: t('bulk.applyCampaign'),
-                                    delete: t('bulk.delete'),
-                                    busy: t('bulk.busy'),
-                                    statuses: statusLabels,
-                                }}
-                            />
-                        </div>
-                    </section>
-
-                    <div className="flex flex-wrap items-center justify-between gap-3">
-                        <div className="inline-flex rounded-xl border border-border/60 bg-background/86 p-1">
-                            <Button type="button" size="sm" variant={view === 'grid' ? 'default' : 'ghost'} onClick={() => setView('grid')}>
-                                <IconGrid className="mr-1 h-4 w-4" />
-                                {t('view.grid')}
-                            </Button>
-                            <Button type="button" size="sm" variant={view === 'campaigns' ? 'default' : 'ghost'} onClick={() => setView('campaigns')}>
-                                <IconFolderKanban className="mr-1 h-4 w-4" />
-                                {t('view.campaigns')}
-                            </Button>
-                            <Button type="button" size="sm" variant={view === 'calendar' ? 'default' : 'ghost'} onClick={() => setView('calendar')}>
-                                <IconCalendar className="mr-1 h-4 w-4" />
-                                {t('view.calendar')}
-                            </Button>
-                        </div>
-                        <Button type="button" variant="outline" size="sm" onClick={() => setManagerOpen(true)}>
-                            <IconPlus className="mr-1 h-4 w-4" />
-                            {t('campaigns.manage')}
-                        </Button>
-                    </div>
+                    {controlsBar}
 
                     {rawAssets === undefined ? (
-                        <div className="flex min-h-[18rem] items-center justify-center rounded-[1.45rem] border border-border/60 bg-background/86 text-sm text-muted-foreground">
+                        <div className="flex min-h-0 flex-1 items-center justify-center rounded-[1.45rem] border border-border/60 bg-background/86 text-sm text-muted-foreground">
                             {t('loading')}
                         </div>
                     ) : view === 'campaigns' ? (
-                        <div className="min-h-0 flex-1">
+                        <div className="min-h-0 flex-1 pr-1 xl:overflow-y-auto">
                             <ContentLibraryCampaignGroups
                                 assets={filteredAssets}
                                 campaigns={campaignEntities}
@@ -444,31 +456,35 @@ export default function LibraryPage() {
                         </div>
                     ) : view === 'calendar' ? (
                         <div className="grid min-h-0 flex-1 gap-4 xl:grid-cols-[minmax(0,1fr)_390px]">
-                            <ContentLibraryCalendar
-                                assets={filteredAssets}
-                                selectedAssetKey={selectedAsset?.asset_key}
-                                onSelectAsset={(asset) => setSelectedAssetKey(asset.asset_key)}
-                                onSchedule={handleSchedule}
-                                locale={i18n.language || 'es-ES'}
-                                labels={{
-                                    today: t('calendar.today'),
-                                    unplannedTitle: t('calendar.unplannedTitle'),
-                                    unplannedEmpty: t('calendar.unplannedEmpty'),
-                                    more: (count) => t('calendar.more', { count }),
-                                }}
-                            />
+                            <div className="min-h-0 pr-1 xl:overflow-y-auto">
+                                <ContentLibraryCalendar
+                                    assets={filteredAssets}
+                                    selectedAssetKey={selectedAsset?.asset_key}
+                                    onSelectAsset={(asset) => setSelectedAssetKey(asset.asset_key)}
+                                    onSchedule={handleSchedule}
+                                    locale={i18n.language || 'es-ES'}
+                                    labels={{
+                                        today: t('calendar.today'),
+                                        unplannedTitle: t('calendar.unplannedTitle'),
+                                        unplannedEmpty: t('calendar.unplannedEmpty'),
+                                        more: (count) => t('calendar.more', { count }),
+                                    }}
+                                />
+                            </div>
                             {detailPanel}
                         </div>
                     ) : (
                         <div className="grid min-h-0 flex-1 gap-4 xl:grid-cols-[minmax(0,1fr)_390px]">
-                            <ContentLibraryGrid
-                                assets={filteredAssets}
-                                selectedAssetKey={selectedAsset?.asset_key}
-                                selectedAssetKeys={selectedAssetKeys}
-                                onSelectAsset={(asset) => setSelectedAssetKey(asset.asset_key)}
-                                onToggleAssetSelection={handleToggleAssetSelection}
-                                labels={gridLabels}
-                            />
+                            <div className="min-h-0 pr-1 xl:overflow-y-auto">
+                                <ContentLibraryGrid
+                                    assets={filteredAssets}
+                                    selectedAssetKey={selectedAsset?.asset_key}
+                                    selectedAssetKeys={selectedAssetKeys}
+                                    onSelectAsset={(asset) => setSelectedAssetKey(asset.asset_key)}
+                                    onToggleAssetSelection={handleToggleAssetSelection}
+                                    labels={gridLabels}
+                                />
+                            </div>
                             {detailPanel}
                         </div>
                     )}

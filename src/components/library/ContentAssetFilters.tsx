@@ -1,6 +1,11 @@
 'use client'
 
+import { useState } from 'react'
 import { Input } from '@/components/ui/input'
+import { Button } from '@/components/ui/button'
+import { Collapsible, CollapsibleContent } from '@/components/ui/collapsible'
+import { IconChevronDown, IconFilter } from '@/components/ui/icons'
+import { cn } from '@/lib/utils'
 import {
     Select,
     SelectContent,
@@ -15,6 +20,8 @@ interface ContentAssetFiltersProps {
     platforms: string[]
     campaigns: string[]
     onChange: (filters: ContentLibraryFilters) => void
+    responsive?: boolean
+    visibleCount?: number
     labels: {
         search: string
         module: string
@@ -30,23 +37,28 @@ interface ContentAssetFiltersProps {
         unplanned: string
         image: string
         carousel: string
+        filtersToggle?: string
+        visibleCount?: (count: number) => string
         statuses: Record<ContentAssetStatus, string>
     }
 }
 
-export function ContentAssetFilters({ filters, platforms, campaigns, onChange, labels }: ContentAssetFiltersProps) {
+export function ContentAssetFilters({ filters, platforms, campaigns, onChange, responsive = false, visibleCount = 0, labels }: ContentAssetFiltersProps) {
+    const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false)
     const update = (patch: Partial<ContentLibraryFilters>) => onChange({ ...filters, ...patch })
 
-    return (
-        <div className="grid gap-3 md:grid-cols-[minmax(220px,1.2fr)_repeat(5,minmax(150px,0.8fr))]">
-            <Input
-                value={filters.query}
-                onChange={(event) => update({ query: event.target.value })}
-                placeholder={labels.search}
-                aria-label={labels.search}
-                className="h-10 rounded-xl"
-            />
+    const searchInput = (
+        <Input
+            value={filters.query}
+            onChange={(event) => update({ query: event.target.value })}
+            placeholder={labels.search}
+            aria-label={labels.search}
+            className="h-10 rounded-xl"
+        />
+    )
 
+    const secondaryFilters = (
+        <>
             <Select value={filters.module} onValueChange={(value) => update({ module: value as ContentLibraryFilters['module'] })}>
                 <SelectTrigger className="h-10 w-full rounded-xl">
                     <SelectValue aria-label={labels.module} />
@@ -105,6 +117,51 @@ export function ContentAssetFilters({ filters, platforms, campaigns, onChange, l
                     <SelectItem value="unplanned">{labels.unplanned}</SelectItem>
                 </SelectContent>
             </Select>
+        </>
+    )
+
+    if (responsive) {
+        return (
+            <Collapsible open={mobileFiltersOpen} onOpenChange={setMobileFiltersOpen} className="grid gap-3">
+                <div className="grid gap-2 md:hidden">
+                    <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-2">
+                        {searchInput}
+                        <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            aria-expanded={mobileFiltersOpen}
+                            onClick={() => setMobileFiltersOpen((open) => !open)}
+                            className="h-10 rounded-xl px-3"
+                        >
+                            <IconFilter className="mr-1.5 h-4 w-4" />
+                            {labels.filtersToggle || 'Filtros'}
+                            <IconChevronDown className={cn('ml-1.5 h-4 w-4 transition-transform duration-200', mobileFiltersOpen && 'rotate-180')} />
+                        </Button>
+                    </div>
+                    <p className="text-xs font-medium text-muted-foreground">
+                        {labels.visibleCount?.(visibleCount) || String(visibleCount)}
+                    </p>
+                </div>
+
+                <CollapsibleContent className="md:hidden">
+                    <div className="grid gap-2 pt-1">
+                        {secondaryFilters}
+                    </div>
+                </CollapsibleContent>
+
+                <div className="hidden gap-3 md:grid md:grid-cols-[minmax(220px,1.2fr)_repeat(5,minmax(150px,0.8fr))]">
+                    {searchInput}
+                    {secondaryFilters}
+                </div>
+            </Collapsible>
+        )
+    }
+
+    return (
+        <div className="grid gap-3 md:grid-cols-[minmax(220px,1.2fr)_repeat(5,minmax(150px,0.8fr))]">
+            {searchInput}
+            {secondaryFilters}
         </div>
     )
 }

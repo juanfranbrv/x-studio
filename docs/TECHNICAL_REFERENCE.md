@@ -852,6 +852,28 @@ Si Clerk exige verificacion completa del dominio para correo o cuenta hospedada,
   - el formato portable cubre los assets persistidos dentro de `brand_dna`
   - los assets efimeros o de sesion fuera del Brand Kit, como `session_images`, no forman parte del paquete portable salvo implementacion explicita futura
 
+## Herramienta local de migración a producción
+
+- Ruta local: `/admin/migrate`.
+- Flujo fijo actual:
+  - origen de desarrollo: `prestigious-pigeon-784` (`MIGRATION_SOURCE_URL`)
+  - destino de producción visible: `prestigious-pigeon-784` (`MIGRATION_TARGET_URL` / `CONVEX_PROD_URL`)
+  - usuario origen dev: `user_37R8MiIJvgY7ZIQaMyDnQCqDl5t` (`MIGRATION_SOURCE_USER_ID`)
+  - usuario destino prod: `user_3AB2BmaIPSkUvq1jIap4rKqRqdL` (`MIGRATION_TARGET_USER_ID`)
+- La herramienta lee activos desde el Convex configurado en `MIGRATION_SOURCE_URL`.
+- La herramienta escribe activos en el Convex configurado en `MIGRATION_TARGET_URL`.
+- `CONVEX_PROD_URL` debe quedar alineada con `MIGRATION_TARGET_URL` para evitar ambigüedad heredada.
+- El default "Production" del dashboard Convex puede ser `watchful-retriever-328`, pero `postlaboratory.com` usa la variable de Vercel `NEXT_PUBLIC_CONVEX_URL`. Mientras esa variable apunte a `prestigious-pigeon-784`, la producción visible es `prestigious-pigeon-784`.
+- La migración está fijada a Juanfran (`juanfranbrv@gmail.com`), pero el Clerk ID técnico no es el mismo en dev y en producción.
+- La migración es append-only y no borra ni sobrescribe contenido existente.
+- Cada activo migrado queda marcado con `snapshot.migration.source_asset_key`; si se repite la misma migración, el destino devuelve el registro existente y la API lo cuenta como omitido.
+- La UI debe mostrar siempre ambos deployments antes de migrar:
+  - origen de migración
+  - destino configurado como producción
+- La herramienta no debe usar `NEXT_PUBLIC_CONVEX_URL` ni la "producción pública visible" como criterio para bloquear el botón. En esta utilidad, producción de destino es `MIGRATION_TARGET_URL`.
+- Si origen y destino son el mismo deployment y el mismo usuario, la UI debe bloquear la migración para evitar duplicados dentro de la misma base.
+- Si origen y destino son el mismo deployment pero usuarios distintos, la migración es válida: copia del usuario dev al usuario prod dentro del deployment que ve la web pública.
+
 ## Preview editable de textos
 
 - La preview de `image` clasifica los textos en zonas semanticas (`headline`, `support`, `meta`, `cta`, `url`) desde `src/components/studio/previewTextLayout.ts`.

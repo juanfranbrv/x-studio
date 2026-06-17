@@ -18,7 +18,9 @@
     "allCampaigns": "All campaigns",
     "noCampaign": "No campaign",
     "planned": "Planned",
-    "unplanned": "Unplanned"
+    "unplanned": "Unplanned",
+    "toggle": "Filters",
+    "visibleCount": "{{count}} assets"
   },
   "modules": {
     "image": "Image",

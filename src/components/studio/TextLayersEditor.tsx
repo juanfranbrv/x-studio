@@ -70,7 +70,7 @@ export function TextLayersEditor({
 }: TextLayersEditorProps) {
     const { t } = useTranslation('common')
     const containerRef = useRef<HTMLDivElement | null>(null)
-    const touchVisibleActionClass = 'opacity-100 md:opacity-0 md:group-hover:opacity-100 md:group-focus-within:opacity-100'
+    const touchVisibleActionClass = 'focus-visible:opacity-100'
     const layout = buildPreviewTextLayout({
         headline,
         customTexts,
@@ -318,6 +318,7 @@ export function TextLayersEditor({
                                 variant="ghost"
                                 size="icon"
                                 onClick={() => onDeleteLayer('cta', 'cta')}
+                                aria-label={t('textLayerEditor.clearCta', { defaultValue: 'Clear CTA' })}
                                 className={cn(PREVIEW_TEXT_REMOVE_BUTTON_CLASS, touchVisibleActionClass)}
                             >
                                 <IconClose className="h-3.5 w-3.5" />

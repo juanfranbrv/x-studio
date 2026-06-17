@@ -204,7 +204,11 @@ export function ImageReferenceSelector({
                         {t('imageReference.aiGeneratedContent', { defaultValue: 'AI-generated content' })}
                     </div>
                     <div className="flex items-center gap-2">
-                        <Switch checked={isAiContentMode} onCheckedChange={handleToggleAiContentMode} />
+                        <Switch
+                            checked={isAiContentMode}
+                            onCheckedChange={handleToggleAiContentMode}
+                            aria-label={t('imageReference.aiGeneratedContent', { defaultValue: 'AI-generated content' })}
+                        />
                     </div>
                 </div>
                 {hasSuggestions ? (

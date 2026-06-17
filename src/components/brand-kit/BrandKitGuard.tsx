@@ -37,9 +37,10 @@ export function BrandKitGuard({ children }: { children: React.ReactNode }) {
 
   if (loading || isRecovering) {
     return (
-      <div className="flex min-h-dvh items-center justify-center bg-background">
-        <Loader2 className="h-8 w-8 text-muted-foreground" />
-      </div>
+      <BrandKitLoadingState
+        title={isRecovering ? 'Recuperando Kit de Marca' : 'Cargando Kit de Marca'}
+        description={isRecovering ? 'Reintentando la lectura de tus kits guardados.' : 'Preparando recursos de marca para este módulo.'}
+      />
     )
   }
 
@@ -64,11 +65,24 @@ export function BrandKitGuard({ children }: { children: React.ReactNode }) {
 
   if (brandKits.length === 0) {
     return (
-      <div className="flex min-h-dvh items-center justify-center bg-background">
-        <Loader2 className="h-8 w-8 text-muted-foreground" />
-      </div>
+      <BrandKitLoadingState
+        title="Preparando tu espacio de trabajo"
+        description="Buscando kits de marca disponibles antes de continuar."
+      />
     )
   }
 
   return <>{children}</>
+}
+
+function BrandKitLoadingState({ title, description }: { title: string; description: string }) {
+  return (
+    <div className="flex min-h-dvh items-center justify-center bg-background p-6">
+      <div className="w-full max-w-sm rounded-[1.45rem] border border-border/60 bg-background/90 p-5 text-center shadow-lg">
+        <Loader2 className="mx-auto h-8 w-8 text-primary" />
+        <p className="mt-4 text-sm font-semibold text-foreground">{title}</p>
+        <p className="mt-2 text-sm leading-6 text-muted-foreground">{description}</p>
+      </div>
+    </div>
+  )
 }

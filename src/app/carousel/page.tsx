@@ -67,6 +67,44 @@ import { normalizeStudioDebugOverlaysEnabled } from '@/lib/studio-debug-visibili
 const createAuditFlowId = (prefix: string) =>
     `flow_${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
 
+type SlideFingerprintItem = {
+    index: number
+    title?: string
+    description?: string
+}
+
+type CarouselPromptComposition = {
+    layoutPrompt: string
+    name: string
+}
+
+type BrandFont = {
+    family: string
+    role?: 'heading' | 'body'
+}
+
+function normalizeBrandFonts(fonts: unknown): BrandFont[] | undefined {
+    if (!Array.isArray(fonts)) return undefined
+
+    const normalized = fonts
+        .map((font) => {
+            if (!font || typeof font !== 'object') return null
+            const candidate = font as { family?: unknown; role?: unknown }
+            if (typeof candidate.family !== 'string' || !candidate.family.trim()) return null
+
+            const normalizedFont: BrandFont = {
+                family: candidate.family.trim(),
+            }
+            if (candidate.role === 'heading' || candidate.role === 'body') {
+                normalizedFont.role = candidate.role
+            }
+            return normalizedFont
+        })
+        .filter((font): font is BrandFont => Boolean(font))
+
+    return normalized.length > 0 ? normalized : undefined
+}
+
 const getDebugReferenceWeight = (
     role: ReferenceImageRole,
     hasLayoutConsistencyRef: boolean
@@ -476,7 +514,7 @@ export default function CarouselPage() {
 
     const fingerprintSlides = useCallback((items: SlideContent[] | CarouselSlide[]) => {
         return items
-            .map((s: any) => `${s.index}|${(s.title || '').trim()}|${(s.description || '').trim()}`)
+            .map((slide: SlideFingerprintItem) => `${slide.index}|${(slide.title || '').trim()}|${(slide.description || '').trim()}`)
             .join('||')
             .toLowerCase()
     }, [])
@@ -1260,9 +1298,9 @@ export default function CarouselPage() {
         const compositionPreset = settings.structureId
             ? compositionsForDebug?.find((c) => c.composition_id === settingsWithStyle.compositionId)
             : undefined
-        const resolvedCompositionPreset = compositionPreset || {
-            layoutPrompt: "Standard clean social media composition with clear text area.",
-            name: "Free Layout"
+        const resolvedCompositionPreset: CarouselPromptComposition = {
+            layoutPrompt: compositionPreset?.layoutPrompt || 'Standard clean social media composition with clear text area.',
+            name: compositionPreset?.name || 'Free Layout',
         }
 
         // Extract brand colors for injection with role-based helper
@@ -1305,7 +1343,7 @@ export default function CarouselPage() {
             const auxiliaryLogoCount = (settingsWithStyle.selectedReferenceImages || [])
                 .filter((item) => item.role === 'logo').length
             const prompt = buildFinalPrompt({
-                composition: resolvedCompositionPreset as any,
+                composition: resolvedCompositionPreset,
                 brandColors,
                 slideData: slide,
                 currentMood,
@@ -1329,7 +1367,7 @@ export default function CarouselPage() {
                     ],
                     activeBrandKit?.preferred_language || 'es'
                 ),
-                fonts: activeBrandKit?.fonts as any,
+                fonts: normalizeBrandFonts(activeBrandKit?.fonts),
                 applyStyleToTypography: settingsWithStyle.applyStyleToTypography
             })
 
@@ -1945,12 +1983,13 @@ export default function CarouselPage() {
                                 <button
                                     type="button"
                                     onClick={() => setIsAdminCompositionOpen((prev) => !prev)}
+                                    aria-label={t('admin.compositionBadge', { defaultValue: 'Composición' })}
                                     className="flex w-full items-center justify-between gap-3 p-3 text-left"
                                 >
                                     <div className="min-w-0 flex flex-1 flex-wrap items-center gap-2">
                                         <Badge variant="outline" className="gap-1">
                                             <IconSparkles className="h-3 w-3" />
-                                            {t('admin.badge', { defaultValue: 'Admin composition' })}
+                                            {t('admin.compositionBadge', { defaultValue: 'Composición' })}
                                         </Badge>
                                         <Badge variant={activeComposition.isActive ? 'default' : 'destructive'}>
                                             {activeComposition.isActive
@@ -1958,11 +1997,11 @@ export default function CarouselPage() {
                                                 : t('admin.inactive', { defaultValue: 'Inactive' })}
                                         </Badge>
                                         <span className="truncate text-sm font-medium">{activeComposition.name}</span>
-                                        <span className="truncate text-xs font-mono text-muted-foreground">
-                                            {activeComposition.composition_id}
-                                        </span>
                                         {isAdminCompositionOpen && (
                                             <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                                                <span className="font-mono text-muted-foreground">
+                                                    {activeComposition.composition_id}
+                                                </span>
                                                 <span>{t('admin.now', { defaultValue: 'Now:' })}</span>
                                                 <Badge variant="secondary">{activeComposition.mode}</Badge>
                                                 <Badge variant="outline">{activeComposition.scope}</Badge>

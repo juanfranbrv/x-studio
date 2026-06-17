@@ -1,7 +1,7 @@
 ﻿'use client'
 
 import { Loader2 } from '@/components/ui/spinner'
-import { ReactNode } from 'react'
+import { ReactNode, useEffect } from 'react'
 import { useAuth, useUser } from '@clerk/nextjs'
 import { useQuery } from 'convex/react'
 import { api } from '@/../convex/_generated/api'
@@ -22,6 +22,12 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
     const { user } = useUser()
     const userEmail = user?.emailAddresses[0]?.emailAddress || ''
 
+    useEffect(() => {
+        if (isLoaded && !isSignedIn) {
+            window.location.href = '/sign-in'
+        }
+    }, [isLoaded, isSignedIn])
+
     // Check beta access
     const betaAccess = useQuery(
         api.admin.checkBetaAccess,
@@ -29,26 +35,31 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
     )
 
     // Loading state
-    if (!isLoaded || (isSignedIn && betaAccess === undefined)) {
+    if (!isLoaded) {
         return (
-            <div className="min-h-screen bg-background flex items-center justify-center">
-                <div className="text-center">
-                    <Loader2 className="w-8 h-8 text-primary mx-auto mb-4" />
-                    <p className="text-muted-foreground">Verificando acceso...</p>
-                </div>
-            </div>
+            <AccessLoadingScreen
+                title="Comprobando sesión"
+                description="Validando tu identidad antes de abrir el espacio de trabajo."
+            />
+        )
+    }
+
+    if (isSignedIn && betaAccess === undefined) {
+        return (
+            <AccessLoadingScreen
+                title="Verificando acceso"
+                description="Confirmando permisos beta y preparando tu espacio de trabajo."
+            />
         )
     }
 
     // Not signed in - redirect to sign-in
     if (!isSignedIn) {
-        if (typeof window !== 'undefined') {
-            window.location.href = '/sign-in'
-        }
         return (
-            <div className="min-h-screen bg-background flex items-center justify-center">
-                <Loader2 className="w-8 h-8 text-primary" />
-            </div>
+            <AccessLoadingScreen
+                title="Abriendo inicio de sesión"
+                description="Redirigiendo para autenticar la sesión."
+            />
         )
     }
 
@@ -59,6 +70,18 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
 
     // Has access - render children
     return <>{children}</>
+}
+
+function AccessLoadingScreen({ title, description }: { title: string; description: string }) {
+    return (
+        <div className="flex min-h-screen items-center justify-center bg-background p-6">
+            <div className="w-full max-w-sm rounded-[1.45rem] border border-border/60 bg-background/90 p-5 text-center shadow-lg">
+                <Loader2 className="mx-auto h-8 w-8 text-primary" />
+                <p className="mt-4 text-sm font-semibold text-foreground">{title}</p>
+                <p className="mt-2 text-sm leading-6 text-muted-foreground">{description}</p>
+            </div>
+        </div>
+    )
 }
 
 function AccessDeniedScreen({ status, email, onSignOut }: { status: string; email: string; onSignOut: () => void }) {

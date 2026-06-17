@@ -71,6 +71,13 @@ import {
 } from './ControlsPanel.helpers'
 import type { BrandColorRole, DraggedBrandColor } from './ControlsPanel.types'
 
+type LegacyBrandKitFields = {
+    _id?: string
+    emails?: unknown
+    phones?: unknown
+    addresses?: unknown
+}
+
 interface ControlsPanelProps {
     creationFlow: ReturnType<typeof useCreationFlow>
     highlightedFields?: Set<string>
@@ -82,7 +89,7 @@ interface ControlsPanelProps {
     isGenerating: boolean
     canGenerate: boolean
     onUnifiedAction: () => void
-    onAnalyze: () => Promise<any>
+    onAnalyze: () => Promise<unknown>
     onCancelAnalyze?: () => void
     isAdmin?: boolean
     adminEmail?: string
@@ -236,7 +243,8 @@ export function ControlsPanel({
     const lastInitBrandId = useRef<string | null>(null)
 
     useEffect(() => {
-        const brandId = activeBrandKit?.id || (activeBrandKit as any)?._id
+        const legacyBrandKit = activeBrandKit as LegacyBrandKitFields | null | undefined
+        const brandId = activeBrandKit?.id || legacyBrandKit?._id
         if (!activeBrandKit || !brandId) return
 
         const hasSelectedColors = state.selectedBrandColors.length > 0
@@ -251,7 +259,7 @@ export function ControlsPanel({
                 else if (rawRole.includes('FOND')) role = 'Fondo'
                 else if (rawRole.includes('ACENT')) role = 'Acento'
 
-                const color = (c.color || (c as any).hex || (typeof c === 'string' ? c : '')).toLowerCase()
+                const color = (c.color || (c as { hex?: string }).hex || (typeof c === 'string' ? c : '')).toLowerCase()
                 if (color) toggleBrandColor(color, role)
             })
         }
@@ -262,7 +270,8 @@ export function ControlsPanel({
 
 
     const handleInspire = async () => {
-        const brandKitId = (activeBrandKit?.id || (activeBrandKit as any)?._id) as string | undefined
+        const legacyBrandKit = activeBrandKit as LegacyBrandKitFields | null | undefined
+        const brandKitId = activeBrandKit?.id || legacyBrandKit?._id
         if (!brandKitId || isInspiring) return
         setIsInspiring(true)
         try {
@@ -302,7 +311,8 @@ export function ControlsPanel({
     }, [])
 
     const refreshActiveBrandKitContent = async () => {
-        const currentId = activeBrandKit?.id || (activeBrandKit as any)?._id
+        const legacyBrandKit = activeBrandKit as LegacyBrandKitFields | null | undefined
+        const currentId = activeBrandKit?.id || legacyBrandKit?._id
         if (!currentId) return
         await setActiveBrandKit(String(currentId), false, false)
         await reloadBrandKits(true)
@@ -418,19 +428,19 @@ export function ControlsPanel({
         ? getLayoutRatingStats(state.selectedLayout, layoutRatingStore)
         : null
     const primaryEmail = useMemo(() => {
-        const emails = (activeBrandKit as any)?.emails
+        const emails = (activeBrandKit as LegacyBrandKitFields | null | undefined)?.emails
         if (!Array.isArray(emails)) return ''
         return String(emails.find((value: unknown) => typeof value === 'string' && value.trim()) || '').trim()
     }, [activeBrandKit])
     const phoneValues = useMemo(() => {
-        const phones = (activeBrandKit as any)?.phones
+        const phones = (activeBrandKit as LegacyBrandKitFields | null | undefined)?.phones
         if (!Array.isArray(phones)) return [] as string[]
         return phones
             .map((value: unknown) => String(value || '').trim())
             .filter(Boolean)
     }, [activeBrandKit])
     const addressValues = useMemo(() => {
-        const addresses = (activeBrandKit as any)?.addresses
+        const addresses = (activeBrandKit as LegacyBrandKitFields | null | undefined)?.addresses
         if (!Array.isArray(addresses)) return [] as string[]
         return addresses
             .map((value: unknown) => String(value || '').trim())
@@ -606,10 +616,11 @@ export function ControlsPanel({
                     uses: nextStats.uses,
                 }),
             })
-        } catch (error: any) {
+        } catch (error: unknown) {
+            const message = error instanceof Error ? error.message : undefined
             toast({
                 title: t('ui.voteSaveErrorTitle', { defaultValue: 'Error saving vote' }),
-                description: error?.message || t('ui.voteSaveErrorDescription', {
+                description: message || t('ui.voteSaveErrorDescription', {
                     defaultValue: 'The vote could not be recorded.',
                 }),
                 variant: 'destructive',
@@ -620,9 +631,9 @@ export function ControlsPanel({
     return (
         <div className={cn(STUDIO_CONTROLS_SHELL_CLASS, className)}>
             <div className="thin-scrollbar flex-1 overflow-y-auto pl-4 pr-0 -mr-[2px] pt-4 md:pl-5 md:pr-0 md:pt-5">
-                <div className="space-y-3 pr-4 pb-10 md:pr-5 md:pb-12">
+                <div className="flex flex-col gap-3 pr-4 pb-10 md:pr-5 md:pb-12">
                 {/* SECTION: Sessions */}
-                <div className={PANEL_SECTION_DIVIDER_WRAP_CLASS}>
+                <div className={cn(PANEL_SECTION_DIVIDER_WRAP_CLASS, 'order-last')}>
                     <div className="flex items-start justify-between gap-3">
                         <div className="flex min-w-0 items-center gap-3">
                             <div className="flex h-9 w-9 shrink-0 items-center justify-center text-foreground/72">
@@ -1058,6 +1069,9 @@ export function ControlsPanel({
                                         <Switch
                                             checked={state.imageSourceMode === 'generate'}
                                             onCheckedChange={(checked) => setImageSourceMode(checked ? 'generate' : 'upload')}
+                                            aria-label={state.imageSourceMode === 'generate'
+                                                ? t('ui.generatedContentTitle')
+                                                : t('ui.userContentTitle')}
                                         />
                                     )}
                                 />
@@ -1341,6 +1355,7 @@ export function ControlsPanel({
                                             onCheckedChange={(checked) => {
                                                 setCtaUrlEnabled(checked, { useKitIfEmpty: true })
                                             }}
+                                            aria-label={t('ui.link')}
                                         />
                                     </div>
                                     {state.ctaUrlEnabled ? (
@@ -1378,6 +1393,7 @@ export function ControlsPanel({
                                                                     removeTextAsset('contact-email-main')
                                                                 }
                                                             }}
+                                                            aria-label={t('ui.email')}
                                                         />
                                                     </div>
                                                     {getContactAssetById('contact-email-main') ? (
@@ -1414,6 +1430,7 @@ export function ControlsPanel({
                                                                     removeTextAsset(assetId)
                                                                 }
                                                             }}
+                                                            aria-label={t('ui.phone', { index: idx + 1 })}
                                                         />
                                                         </div>
                                                         {selectedPhoneAsset ? (
@@ -1451,6 +1468,7 @@ export function ControlsPanel({
                                                                     removeTextAsset(assetId)
                                                                 }
                                                             }}
+                                                            aria-label={t('ui.address', { index: idx + 1 })}
                                                         />
                                                         </div>
                                                         {selectedAddressAsset ? (

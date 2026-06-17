@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef, useState, useEffect, type ReactNode } from 'react'
+import { useRef, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { motion, useDragControls, useReducedMotion } from 'framer-motion'
 import { IconChevronLeft, IconChevronRight } from '@/components/ui/icons'
@@ -39,12 +39,6 @@ export function MobileWorkPanelDrawer({
     const prefersReducedMotion = useReducedMotion()
     const dragControls = useDragControls()
     const suppressToggleRef = useRef(false)
-    const [mounted, setMounted] = useState(false)
-
-    useEffect(() => {
-        setMounted(true)
-    }, [])
-
     const panelTransition = prefersReducedMotion
         ? { duration: 0.06 }
         : {
@@ -154,7 +148,7 @@ export function MobileWorkPanelDrawer({
         </>
     )
 
-    if (!mounted) return null
+    if (typeof document === 'undefined') return null
 
     return createPortal(drawerContent, document.body)
 }

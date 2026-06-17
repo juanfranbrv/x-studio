@@ -3,6 +3,7 @@
 import { motion } from 'framer-motion'
 import { cn } from '@/lib/utils'
 import { resolveCarouselCompositionIcon } from '@/lib/carousel-composition-icon'
+import { renderMaterialIconBridge } from '@/components/ui/material-icon-bridge'
 
 type CarouselComposition = {
  id: string
@@ -35,12 +36,7 @@ function renderCompositionIcon(iconName: string) {
 
  return (
    <div className="flex h-11 w-11 items-center justify-center text-primary/72">
-     <span
-       className="material-symbols-outlined leading-none"
-       style={{ fontSize: '42px' }}
-     >
-       {trimmed}
-     </span>
+     {renderMaterialIconBridge(trimmed, 'h-11 w-11 stroke-[1.75]')}
    </div>
  )
 }
@@ -63,6 +59,8 @@ export function CarouselCompositionSelector({
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.95 }}
               onClick={() => onSelect(composition.id)}
+              aria-label={`${composition.name}: ${composition.description}`}
+              aria-pressed={isSelected}
               className={cn(
                 'group relative flex h-full flex-col overflow-hidden rounded-[1rem] border text-left transition-all duration-300',
                 isSelected

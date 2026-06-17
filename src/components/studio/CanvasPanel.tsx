@@ -142,11 +142,17 @@ export function CanvasPanel({
     const [currentImageNaturalSize, setCurrentImageNaturalSize] = useState<{ w: number; h: number } | null>(null)
     const selectedLogoUrl = useMemo(() => {
         if (!creationState.selectedLogoId || !activeBrandKit?.logos?.length) return null
-        const found = activeBrandKit.logos.find((logo: any, idx: number) =>
-            logo?._id === creationState.selectedLogoId || `logo-${idx}` === creationState.selectedLogoId
-        )
+        const found = activeBrandKit.logos.find((logo: unknown, idx: number) => {
+            const record = typeof logo === 'object' && logo !== null ? logo as { _id?: unknown } : null
+            return record?._id === creationState.selectedLogoId || `logo-${idx}` === creationState.selectedLogoId
+        })
         if (!found) return null
-        return typeof found === 'string' ? found : found.url
+        if (typeof found === 'string') return found
+        if (typeof found === 'object' && found !== null) {
+            const url = (found as { url?: unknown }).url
+            return typeof url === 'string' ? url : null
+        }
+        return null
     }, [activeBrandKit?.logos, creationState.selectedLogoId])
 
     const selectedLayoutIcon = useMemo(() => {
@@ -914,6 +920,7 @@ export function CanvasPanel({
                                                                 variant="ghost"
                                                                 size="icon"
                                                                 onClick={() => onRemoveReferenceImage(item.url)}
+                                                                aria-label={tt('common:preview.removeReferenceImage', 'Quitar imagen de referencia')}
                                                                 className={cn(
                                                                     CANVAS_REMOVE_BUTTON_CLASS,
                                                                     isMobile ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
@@ -966,6 +973,7 @@ export function CanvasPanel({
                                                                     variant="ghost"
                                                                     size="icon"
                                                                     onClick={onDisableAiPromptReference}
+                                                                    aria-label={tt('common:preview.removeAiReference', 'Quitar referencia IA')}
                                                                     className={cn(
                                                                         CANVAS_REMOVE_BUTTON_CLASS,
                                                                         isMobile ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
@@ -993,6 +1001,7 @@ export function CanvasPanel({
                                                                     variant="ghost"
                                                                     size="icon"
                                                                     onClick={() => onRemoveReferenceImage(item.url)}
+                                                                    aria-label={tt('common:preview.removeContentReference', 'Quitar referencia de contenido')}
                                                                     className={cn(
                                                                         CANVAS_REMOVE_BUTTON_CLASS,
                                                                         isMobile ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
@@ -1029,6 +1038,7 @@ export function CanvasPanel({
                                                 variant="ghost"
                                                 size="icon"
                                                 onClick={() => onSelectLogo(null)}
+                                                aria-label={tt('common:preview.removeLogo', 'Quitar logo')}
                                                 className={cn(
                                                     CANVAS_REMOVE_BUTTON_CLASS.replace('z-40', 'z-30'),
                                                     isMobile ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'

@@ -28,13 +28,18 @@ import { log } from '@/lib/logger'
 
 import { type LayoutOption, type SelectedColor, type TextAsset } from '@/lib/creation-flow-types'
 
-const extractHex = (c: any): string => {
+type ColorLike = string | { color?: unknown; hex?: unknown; role?: unknown }
+type LogoLike = string | { url?: unknown }
+
+const extractHex = (c: unknown): string => {
     if (!c) return ''
     let hex = ''
     if (typeof c === 'string') {
         hex = c.trim().toLowerCase()
-    } else {
-        hex = ((c.color || (c as any).hex || '') as string).trim().toLowerCase()
+    } else if (typeof c === 'object') {
+        const color = c as Exclude<ColorLike, string>
+        const value = color.color || color.hex || ''
+        hex = typeof value === 'string' ? value.trim().toLowerCase() : ''
     }
     if (!hex || hex === '#') return ''
     return hex.startsWith('#') ? hex : `#${hex}`
@@ -427,7 +432,7 @@ export function BrandingConfigurator({
     // Base colors for the grid: All colors from Brand Kit + any custom colors added in session
     const brandKitColors = activeBrandKit?.colors || []
     const brandKitColorHexes = brandKitColors
-        .map((c: any) => extractHex(c))
+        .map((c: unknown) => extractHex(c))
         .filter(Boolean)
     let colors = [
         ...brandKitColors,
@@ -474,12 +479,21 @@ export function BrandingConfigurator({
                         {logos.map((logo, idx) => {
                             const logoId = `logo-${idx}`
                             const isSelected = selectedLogoId === logoId
-                            const logoUrl = typeof logo === 'string' ? logo : (logo as any).url
+                            const logoRecord = logo as LogoLike
+                            const logoUrl = typeof logoRecord === 'string'
+                                ? logoRecord
+                                : typeof logoRecord.url === 'string'
+                                    ? logoRecord.url
+                                    : ''
 
                             return (
                                 <button
                                     key={logoId}
                                     onClick={() => onSelectLogo(logoId)}
+                                    aria-label={t('brandingConfigurator.selectLogo', {
+                                        defaultValue: 'Seleccionar logo {{index}}',
+                                        index: idx + 1,
+                                    })}
                                     className={cn(
                                         logoOptionClassName,
                                         isSelected
@@ -499,6 +513,7 @@ export function BrandingConfigurator({
                         {/* No logo option */}
                         <button
                             onClick={() => onSelectLogo(null)}
+                            aria-label={t('brandingConfigurator.selectNoLogo', { defaultValue: 'No usar logo' })}
                             className={cn(
                                 logoOptionClassName,
                                 "text-[0.78rem] font-medium text-muted-foreground leading-tight",
@@ -527,7 +542,8 @@ export function BrandingConfigurator({
                             const isSelected = !!selection
 
                             // Only show role if selected OR it's a fixed brand kit color (to guide the user)
-                            const role = selection?.role || (colorObj as any).role
+                            const rawRole = selection?.role || (typeof colorObj === 'object' && colorObj !== null ? (colorObj as { role?: unknown }).role : undefined)
+                            const role = typeof rawRole === 'string' ? rawRole : ''
                             const showRole = !!role
 
                             return (

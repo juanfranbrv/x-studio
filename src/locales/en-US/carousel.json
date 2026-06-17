@@ -158,6 +158,7 @@
   },
   "admin": {
     "badge": "Admin composition",
+    "compositionBadge": "Composition",
     "active": "Active",
     "inactive": "Inactive",
     "now": "Now:",

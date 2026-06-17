@@ -610,7 +610,14 @@ export function CarouselCanvasPanel({
 
                 {/* Right: Actions */}
                 <div className={CANVAS_FLOATING_TOOLBAR_CLASS}>
-                    <Button variant="ghost" size="icon" className={CANVAS_TOOL_BUTTON_CLASS} onClick={handleIconZoomOut}>
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        className={CANVAS_TOOL_BUTTON_CLASS}
+                        onClick={handleIconZoomOut}
+                        aria-label={tt('common:preview.zoomOut', 'Zoom out')}
+                        title={tt('common:preview.zoomOut', 'Zoom out')}
+                    >
                         <IconZoomOut className={CANVAS_TOOL_ICON_CLASS} />
                     </Button>
                     <button
@@ -622,16 +629,30 @@ export function CarouselCanvasPanel({
                     >
                         {zoom}%
                     </button>
-                    <Button variant="ghost" size="icon" className={CANVAS_TOOL_BUTTON_CLASS} onClick={handleIconZoomIn}>
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        className={CANVAS_TOOL_BUTTON_CLASS}
+                        onClick={handleIconZoomIn}
+                        aria-label={tt('common:preview.zoomIn', 'Zoom in')}
+                        title={tt('common:preview.zoomIn', 'Zoom in')}
+                    >
                         <IconZoomIn className={CANVAS_TOOL_ICON_CLASS} />
                     </Button>
-                    <Button variant="ghost" size="icon" className={CANVAS_TOOL_BUTTON_CLASS} onClick={handleMaximizeZoom}>
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        className={CANVAS_TOOL_BUTTON_CLASS}
+                        onClick={handleMaximizeZoom}
+                        aria-label={tt('common:preview.fitHeight', 'Fit to height')}
+                        title={tt('common:preview.fitHeight', 'Fit to height')}
+                    >
                         <IconMaximize className={CANVAS_TOOL_ICON_CLASS} />
                     </Button>
-                    <Button variant="ghost" size="icon" className={CANVAS_TOOL_BUTTON_CLASS} onClick={handleDownloadCurrent} disabled={!currentSlide?.imageUrl} title={tt('common:preview.downloadCurrentSlide', 'Download current slide')}>
+                    <Button variant="ghost" size="icon" className={CANVAS_TOOL_BUTTON_CLASS} onClick={handleDownloadCurrent} disabled={!currentSlide?.imageUrl} title={tt('common:preview.downloadCurrentSlide', 'Download current slide')} aria-label={tt('common:preview.downloadCurrentSlide', 'Download current slide')}>
                         <IconImageDownload className={CANVAS_TOOL_ICON_CLASS} />
                     </Button>
-                    <Button variant="ghost" size="icon" className={CANVAS_TOOL_BUTTON_CLASS} onClick={handleDownloadBundle} disabled={completedSlides === 0} title={tt('common:preview.downloadCarouselZip', 'Download carousel ZIP')}>
+                    <Button variant="ghost" size="icon" className={CANVAS_TOOL_BUTTON_CLASS} onClick={handleDownloadBundle} disabled={completedSlides === 0} title={tt('common:preview.downloadCarouselZip', 'Download carousel ZIP')} aria-label={tt('common:preview.downloadCarouselZip', 'Download carousel ZIP')}>
                         <IconSquareArrowDown className={CANVAS_TOOL_ICON_CLASS} />
                     </Button>
                     <Button
@@ -641,6 +662,9 @@ export function CarouselCanvasPanel({
                         onClick={() => onRegenerateSlide(currentIndex)}
                         disabled={!currentSlide || isRegenerating}
                         title={isCurrentSlideRegenerating
+                            ? tt('common:preview.regeneratingCurrentSlide', 'Regenerating current slide...')
+                            : tt('common:preview.regenerateCurrentSlide', 'Regenerate current slide')}
+                        aria-label={isCurrentSlideRegenerating
                             ? tt('common:preview.regeneratingCurrentSlide', 'Regenerating current slide...')
                             : tt('common:preview.regenerateCurrentSlide', 'Regenerate current slide')}
                     >
@@ -653,6 +677,7 @@ export function CarouselCanvasPanel({
                         onClick={() => exportCarouselVideo(true)}
                         disabled={isExportingVideo || completedSlides === 0}
                         title={tt('common:preview.exportVideoWithMusic', 'Export video with music')}
+                        aria-label={tt('common:preview.exportVideoWithMusic', 'Export video with music')}
                     >
                         <IconMusic className={cn(CANVAS_TOOL_ICON_CLASS, isExportingVideo && "animate-pulse")} />
                     </Button>
@@ -667,6 +692,7 @@ export function CarouselCanvasPanel({
                             slide: formatDurationLabel(slideDurationMs),
                             last: formatDurationLabel(lastSlideDurationMs),
                         })}
+                        aria-label={tt('common:preview.exportVideo', 'Export video')}
                     >
                         <IconVideo className={cn(CANVAS_TOOL_ICON_CLASS, isExportingVideo && "animate-pulse")} />
                     </Button>
