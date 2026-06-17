@@ -5,4 +5,4 @@ export const STUDIO_PANEL_CARD_PADDED_CLASS = `${STUDIO_PANEL_CARD_CLASS} p-4`
 export const STUDIO_PANEL_CARD_PADDED_LG_CLASS = `${STUDIO_PANEL_CARD_CLASS} p-5`
 
 export const STUDIO_CONTROLS_SHELL_CLASS =
-  "studio-tone-shell w-full h-auto min-h-0 lg:h-full controls-panel flex flex-col shrink-0 relative group/panel overflow-hidden border-t lg:border-t-0 lg:border-l border-border/30 bg-[linear-gradient(180deg,hsl(var(--surface-alt))/0.82,white_16%,hsl(var(--surface))/0.9)]"
+  "studio-tone-shell w-full h-auto min-h-0 lg:h-full controls-panel flex flex-col shrink-0 relative group/panel overflow-hidden border-t lg:border-t-0 border-border/30 bg-[linear-gradient(180deg,hsl(var(--surface-alt))/0.82,white_16%,hsl(var(--surface))/0.9)]"

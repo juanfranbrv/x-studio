@@ -52,6 +52,8 @@ import {
     PANEL_TEXT_BUTTON_REVEAL_CLASS,
     PANEL_SECONDARY_BUTTON_CLASS,
     PANEL_SECTION_STACK_CLASS,
+    PANEL_SECTION_DIVIDER_BASE_CLASS,
+    PANEL_SECTION_ACCENTS,
 } from './CarouselControlsPanel.helpers'
 import type {
     SlideConfig,
@@ -2492,7 +2494,7 @@ export function CarouselControlsPanel({
             <div className="thin-scrollbar flex-1 overflow-y-auto pl-4 pr-0 -mr-[2px] pt-4 md:pl-5 md:pr-0 md:pt-5">
                 <div className="flex flex-col gap-3 pr-4 pb-10 md:pr-5 md:pb-12">
                 {/* SECTION: Sessions */}
-                <div className="order-last">
+                <div className={cn(PANEL_SECTION_DIVIDER_BASE_CLASS, PANEL_SECTION_ACCENTS.history, 'order-last pb-0')}>
                     <SessionsSection
                         isSavingSession={isSavingSession}
                         saveError={saveError}
@@ -2518,14 +2520,14 @@ export function CarouselControlsPanel({
 
                 {/* Slide Count */}
                 {isStepVisible(1) && (
-                <div ref={(el) => { stepRefs.current[1] = el }} className={PANEL_SECTION_STACK_CLASS}>
+                <div ref={(el) => { stepRefs.current[1] = el }} className={cn(PANEL_SECTION_STACK_CLASS, 'before:hidden after:hidden pt-0')}>
                     <SlideCountSection slideCount={slideCount} onChange={handleSlideCountChange} />
                 </div>
                 )}
 
                 {/* Prompt */}
                 {isStepVisible(2) && (
-                <div ref={(el) => { stepRefs.current[2] = el }} className={PANEL_SECTION_STACK_CLASS}>
+                <div ref={(el) => { stepRefs.current[2] = el }} className={cn(PANEL_SECTION_STACK_CLASS, PANEL_SECTION_ACCENTS.idea)}>
                     <SectionHeader
                         icon={IconIdea}
                         title={t('ui.whatToCreate')}
@@ -2680,7 +2682,7 @@ export function CarouselControlsPanel({
 
                 {/* Composition */}
                 {isStepVisible(3) && (
-                <div ref={(el) => { stepRefs.current[3] = el }} className={PANEL_SECTION_STACK_CLASS}>
+                <div ref={(el) => { stepRefs.current[3] = el }} className={cn(PANEL_SECTION_STACK_CLASS, PANEL_SECTION_ACCENTS.design)}>
                     <CompositionSection
                         compositionMode={compositionMode}
                         setCompositionMode={setCompositionMode}
@@ -2700,7 +2702,7 @@ export function CarouselControlsPanel({
 
                 {/* Format */}
                 {isStepVisible(4) && (
-                <div ref={(el) => { stepRefs.current[4] = el }} className={PANEL_SECTION_STACK_CLASS}>
+                <div ref={(el) => { stepRefs.current[4] = el }} className={cn(PANEL_SECTION_STACK_CLASS, PANEL_SECTION_ACCENTS.format)}>
                     <FormatSection aspectRatio={aspectRatio} onSelect={handleAspectRatioSelect} />
                 </div>
                 )}
@@ -2708,7 +2710,7 @@ export function CarouselControlsPanel({
                 {/* Image */}
                 {isStepVisible(5) && (
                     <>
-                        <div ref={(el) => { stepRefs.current[5] = el }} className={PANEL_SECTION_STACK_CLASS}>
+                        <div ref={(el) => { stepRefs.current[5] = el }} className={cn(PANEL_SECTION_STACK_CLASS, PANEL_SECTION_ACCENTS.content)}>
                             <SectionHeader
                                 icon={IconImageAdd}
                                 title={imageSourceMode === 'generate' ? t('ui.generatedContentTitle') : t('ui.userContentTitle')}
@@ -2746,7 +2748,7 @@ export function CarouselControlsPanel({
                             />
                         </div>
 
-                        <div className={PANEL_SECTION_STACK_CLASS}>
+                        <div className={cn(PANEL_SECTION_STACK_CLASS, PANEL_SECTION_ACCENTS.style)}>
                             <SectionHeader
                                 icon={IconPaintbrush02}
                                 title={t('ui.styleTitle')}
@@ -2783,7 +2785,7 @@ export function CarouselControlsPanel({
                             </div>
                         </div>
 
-                        <div className={PANEL_SECTION_STACK_CLASS}>
+                        <div className={cn(PANEL_SECTION_STACK_CLASS, PANEL_SECTION_ACCENTS.logos)}>
                             <AuxiliaryLogosCard
                                 uploadedImages={uploadedImages}
                                 onUpload={handleAuxLogoUpload}
@@ -2797,7 +2799,7 @@ export function CarouselControlsPanel({
                             />
                         </div>
 
-                        <div className={PANEL_SECTION_STACK_CLASS}>
+                        <div className={cn(PANEL_SECTION_STACK_CLASS, PANEL_SECTION_ACCENTS.brand)}>
                             <SectionHeader
                                 icon={IconFingerprint}
                                 title={t('ui.brandKitTitle')}

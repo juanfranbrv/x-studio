@@ -2660,7 +2660,7 @@ export default function ImagePage() {
                                     {previewPane}
                                 </div>
                                 <div className="flex w-full min-h-0 flex-col lg:w-[27%] lg:pb-3">
-                                    <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-[1.6rem] border border-border/60 bg-white shadow-[0_24px_70px_-46px_rgba(15,23,42,0.34)]">
+                                    <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-[1.6rem] bg-white shadow-[0_24px_70px_-46px_rgba(15,23,42,0.34)]">
                                         {controlsPane}
                                         <div className="shrink-0 px-4 py-4">
                                             {generateBar}

@@ -152,7 +152,10 @@
   /* Controls panel for studio — solid surface */
   .controls-panel {
     background-color: hsl(var(--surface));
-    border-left: 1px solid hsl(var(--border));
+    /* Sin borde ni sombra en el canto izquierdo: el lienzo y la grieta
+       comparten el mismo gris (--surface), de modo que la grieta se funde
+       con el lienzo y parece un corte real del panel. Cualquier línea o
+       sombra continua en el canto cruzaría la grieta y rompería el efecto. */
   }
 }
 

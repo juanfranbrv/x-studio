@@ -17,8 +17,14 @@ export const PANEL_RICH_SELECT_CONTENT_STYLE = {
     minWidth: 'var(--radix-select-trigger-width)',
     maxWidth: 'var(--radix-select-trigger-width)',
 } as const
-export const PANEL_SECTION_DIVIDER_WRAP_CLASS = 'relative py-5 first:pt-0 last:pb-0 before:absolute before:left-[-1rem] before:right-[-1rem] before:top-0 before:h-[2px] before:bg-border/35 before:shadow-[inset_0_1px_0_rgba(255,255,255,0.55),inset_0_-1px_0_rgba(15,23,42,0.04)] first:before:hidden'
-export const PANEL_SECTION_STACK_CLASS = `${PANEL_SECTION_DIVIDER_WRAP_CLASS} space-y-[0.85rem]`
+// Divisor (grieta-ruptura) y paleta de acentos: fuente única en ControlsPanel.helpers
+// para que imagen y carrusel no se desincronicen.
+export {
+    PANEL_SECTION_DIVIDER_BASE_CLASS,
+    PANEL_SECTION_DIVIDER_WRAP_CLASS,
+    PANEL_SECTION_STACK_CLASS,
+    PANEL_SECTION_ACCENTS,
+} from '../ControlsPanel.helpers'
 export const PANEL_SECTION_SURFACE_CLASS = 'rounded-2xl border border-border/65 bg-background/72 px-4 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.72)]'
 export const ADVANCED_COMPOSITION_MODAL_CLASS = 'h-[min(90vh,920px)] w-[min(94vw,1200px)] !max-w-[min(94vw,1200px)] overflow-hidden rounded-[1.9rem] border border-border/70 bg-background/98 p-0 shadow-[0_38px_100px_-56px_rgba(15,23,42,0.42)] data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=open]:fade-in-0 data-[state=closed]:fade-out-0 data-[state=open]:zoom-in-[0.985] data-[state=closed]:zoom-out-[0.985] data-[state=open]:slide-in-from-bottom-4 data-[state=closed]:slide-out-to-bottom-2 duration-200 flex flex-col'
 

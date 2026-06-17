@@ -52,6 +52,7 @@ import { RoleColorSwatch, AddAccentSwatch } from './ControlsColorSwatches'
 import {
     RESET_USES4_FLAG,
     PANEL_SECTION_HEADER_ICON_CLASS,
+    PANEL_SECTION_ACCENTS,
     PANEL_SECTION_HEADER_TITLE_CLASS,
     PANEL_SECTION_SELECT_CONTENT_CLASS,
     PANEL_SECTION_SELECT_ITEM_CLASS,
@@ -61,6 +62,7 @@ import {
     PANEL_SECONDARY_BUTTON_CLASS,
     PANEL_RICH_SELECT_TRIGGER_CLASS,
     PANEL_RICH_SELECT_CONTENT_STYLE,
+    PANEL_SECTION_DIVIDER_BASE_CLASS,
     BRAND_KIT_GROUP_CLASS,
     BRAND_KIT_CONTACT_ROW_CLASS,
     BRAND_KIT_SUBTLE_BUTTON_CLASS,
@@ -630,10 +632,10 @@ export function ControlsPanel({
 
     return (
         <div className={cn(STUDIO_CONTROLS_SHELL_CLASS, className)}>
-            <div className="thin-scrollbar flex-1 overflow-y-auto pl-4 pr-0 -mr-[2px] pt-4 md:pl-5 md:pr-0 md:pt-5">
+            <div className="thin-scrollbar flex-1 overflow-y-auto overflow-x-clip pl-4 pr-0 -mr-[2px] pt-4 md:pl-5 md:pr-0 md:pt-5">
                 <div className="flex flex-col gap-3 pr-4 pb-10 md:pr-5 md:pb-12">
                 {/* SECTION: Sessions */}
-                <div className={cn(PANEL_SECTION_DIVIDER_WRAP_CLASS, 'order-last')}>
+                <div className={cn(PANEL_SECTION_DIVIDER_BASE_CLASS, PANEL_SECTION_ACCENTS.history, 'order-last pb-0')}>
                     <div className="flex items-start justify-between gap-3">
                         <div className="flex min-w-0 items-center gap-3">
                             <div className="flex h-9 w-9 shrink-0 items-center justify-center text-foreground/72">
@@ -801,7 +803,7 @@ export function ControlsPanel({
                 </div>
 
                 {/* STEP 1: Intent Input */}
-                <div ref={step1Ref} className={cn(PANEL_SECTION_STACK_CLASS, 'group')}>
+                <div ref={step1Ref} className={cn(PANEL_SECTION_STACK_CLASS, 'group pt-0 before:hidden after:hidden')}>
                     {(isMagicParsing || isGenerating) && (
                         <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-primary/0 via-primary/50 to-primary/0 animate-shimmer" />
                     )}
@@ -963,7 +965,7 @@ export function ControlsPanel({
                     <>
                         {/* STEP 2: LAYOUT */}
                         {availableLayouts.length > 0 && (
-                            <div ref={step2Ref} className={PANEL_SECTION_STACK_CLASS}>
+                            <div ref={step2Ref} className={cn(PANEL_SECTION_STACK_CLASS, PANEL_SECTION_ACCENTS.design)}>
                                 <FloatingAssistance isVisible={assistanceEnabled && state.currentStep === 2 && !state.hasGeneratedImage && !isGenerating} {...STEP_ASSISTANCE[2]} side={panelPosition === 'right' ? 'left' : 'right'} anchorRef={step2Ref} />
                                 <SectionHeader
                                     icon={IconLayout}
@@ -1041,7 +1043,7 @@ export function ControlsPanel({
                         )}
 
                         {/* STEP 3: FORMAT */}
-                        <div ref={step3Ref} className={PANEL_SECTION_STACK_CLASS}>
+                        <div ref={step3Ref} className={cn(PANEL_SECTION_STACK_CLASS, PANEL_SECTION_ACCENTS.format)}>
                                 <FloatingAssistance isVisible={assistanceEnabled && state.currentStep === 3 && !state.hasGeneratedImage && !isGenerating} {...STEP_ASSISTANCE[3]} side={panelPosition === 'right' ? 'left' : 'right'} anchorRef={step3Ref} />
                                 <SectionHeader
                                     icon={IconDashboardSquare}
@@ -1058,7 +1060,7 @@ export function ControlsPanel({
                         </div>
 
                         {/* STEP 4A: CONTENT */}
-                        <div ref={step4Ref} className={PANEL_SECTION_STACK_CLASS}>
+                        <div ref={step4Ref} className={cn(PANEL_SECTION_STACK_CLASS, PANEL_SECTION_ACCENTS.content)}>
                                 <FloatingAssistance isVisible={assistanceEnabled && state.currentStep === 4 && !state.hasGeneratedImage && !isGenerating} {...STEP_ASSISTANCE[4]} side={panelPosition === 'right' ? 'left' : 'right'} anchorRef={step4Ref} />
                                 <SectionHeader
                                     icon={IconImageAdd}
@@ -1098,7 +1100,7 @@ export function ControlsPanel({
                         </div>
 
                         {/* STEP 4B: STYLE */}
-                        <div className={PANEL_SECTION_STACK_CLASS}>
+                        <div className={cn(PANEL_SECTION_STACK_CLASS, PANEL_SECTION_ACCENTS.style)}>
                                 <SectionHeader
                                     icon={IconPaintbrush02}
                                     title={t('ui.styleTitle', { defaultValue: 'Estilo' })}
@@ -1149,7 +1151,7 @@ export function ControlsPanel({
                         </div>
 
                         {/* STEP 4C: AUXILIARY LOGOS */}
-                        <div className={PANEL_SECTION_STACK_CLASS}>
+                        <div className={cn(PANEL_SECTION_STACK_CLASS, PANEL_SECTION_ACCENTS.logos)}>
                                 <AuxiliaryLogosCard
                                     uploadedImages={state.uploadedImages}
                                     onUpload={uploadImage}
@@ -1165,7 +1167,7 @@ export function ControlsPanel({
                         </div>
 
                         {/* STEP 6: KIT DE MARCA */}
-                        <div ref={step6Ref} className={cn(PANEL_SECTION_DIVIDER_WRAP_CLASS, 'space-y-6')}>
+                        <div ref={step6Ref} className={cn(PANEL_SECTION_DIVIDER_WRAP_CLASS, PANEL_SECTION_ACCENTS.brand, 'space-y-6')}>
                                 <FloatingAssistance isVisible={assistanceEnabled && state.currentStep >= 5 && !state.hasGeneratedImage && !isGenerating} {...STEP_ASSISTANCE[6]} side={panelPosition === 'right' ? 'left' : 'right'} anchorRef={step6Ref} />
                                 <SectionHeader
                                     icon={IconFingerprint}
