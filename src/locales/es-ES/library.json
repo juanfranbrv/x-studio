@@ -82,7 +82,11 @@
   "view": {
     "grid": "Rejilla",
     "campaigns": "Campañas",
-    "calendar": "Calendario"
+    "calendar": "Calendario",
+    "gridCountOne": "1 publicación",
+    "gridCountMany": "{{count}} publicaciones",
+    "gridCountFilteredOne": "1 de {{total}} publicaciones",
+    "gridCountFilteredMany": "{{count}} de {{total}} publicaciones"
   },
   "calendar": {
     "today": "Hoy",

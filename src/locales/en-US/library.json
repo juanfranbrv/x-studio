@@ -82,7 +82,11 @@
   "view": {
     "grid": "Grid",
     "campaigns": "Campaigns",
-    "calendar": "Calendar"
+    "calendar": "Calendar",
+    "gridCountOne": "1 publication",
+    "gridCountMany": "{{count}} publications",
+    "gridCountFilteredOne": "1 of {{total}} publications",
+    "gridCountFilteredMany": "{{count}} of {{total}} publications"
   },
   "calendar": {
     "today": "Today",

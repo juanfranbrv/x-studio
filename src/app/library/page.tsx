@@ -69,6 +69,23 @@ export default function LibraryPage() {
 
     const assets = useMemo(() => normalizeAssets(rawAssets), [rawAssets])
     const filteredAssets = useMemo(() => filterContentLibraryAssets(assets, filters), [assets, filters])
+    const hasActiveLibraryFilters = Boolean(
+        filters.query.trim() ||
+        filters.module !== 'all' ||
+        filters.status !== 'all' ||
+        filters.platform !== 'all' ||
+        filters.campaign !== 'all' ||
+        filters.planning !== 'all'
+    )
+    const gridPublicationCountLabel = hasActiveLibraryFilters
+        ? t(
+            filteredAssets.length === 1 ? 'view.gridCountFilteredOne' : 'view.gridCountFilteredMany',
+            { count: filteredAssets.length, total: assets.length }
+        )
+        : t(
+            filteredAssets.length === 1 ? 'view.gridCountOne' : 'view.gridCountMany',
+            { count: filteredAssets.length }
+        )
     const selectedAsset = useMemo(
         () => filteredAssets.find((asset) => asset.asset_key === selectedAssetKey) || filteredAssets[0] || null,
         [filteredAssets, selectedAssetKey]
@@ -392,19 +409,26 @@ export default function LibraryPage() {
             </section>
 
             <div className="flex flex-wrap items-center justify-between gap-3">
-                <div className="inline-flex rounded-xl border border-border/60 bg-background/86 p-1 backdrop-blur-xl">
-                    <Button type="button" size="sm" variant={view === 'grid' ? 'default' : 'ghost'} onClick={() => setView('grid')}>
-                        <IconGrid className="mr-1 h-4 w-4" />
-                        {t('view.grid')}
-                    </Button>
-                    <Button type="button" size="sm" variant={view === 'campaigns' ? 'default' : 'ghost'} onClick={() => setView('campaigns')}>
-                        <IconFolderKanban className="mr-1 h-4 w-4" />
-                        {t('view.campaigns')}
-                    </Button>
-                    <Button type="button" size="sm" variant={view === 'calendar' ? 'default' : 'ghost'} onClick={() => setView('calendar')}>
-                        <IconCalendar className="mr-1 h-4 w-4" />
-                        {t('view.calendar')}
-                    </Button>
+                <div className="flex min-w-0 flex-wrap items-center gap-3">
+                    <div className="inline-flex rounded-xl border border-border/60 bg-background/86 p-1 backdrop-blur-xl">
+                        <Button type="button" size="sm" variant={view === 'grid' ? 'default' : 'ghost'} onClick={() => setView('grid')}>
+                            <IconGrid className="mr-1 h-4 w-4" />
+                            {t('view.grid')}
+                        </Button>
+                        <Button type="button" size="sm" variant={view === 'campaigns' ? 'default' : 'ghost'} onClick={() => setView('campaigns')}>
+                            <IconFolderKanban className="mr-1 h-4 w-4" />
+                            {t('view.campaigns')}
+                        </Button>
+                        <Button type="button" size="sm" variant={view === 'calendar' ? 'default' : 'ghost'} onClick={() => setView('calendar')}>
+                            <IconCalendar className="mr-1 h-4 w-4" />
+                            {t('view.calendar')}
+                        </Button>
+                    </div>
+                    {view === 'grid' && (
+                        <p className="rounded-xl border border-border/60 bg-background/86 px-3 py-2 text-sm font-medium text-muted-foreground backdrop-blur-xl">
+                            {gridPublicationCountLabel}
+                        </p>
+                    )}
                 </div>
                 <Button type="button" variant="outline" size="sm" onClick={() => setManagerOpen(true)}>
                     <IconPlus className="mr-1 h-4 w-4" />
