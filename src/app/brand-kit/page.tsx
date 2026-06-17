@@ -78,6 +78,8 @@ function BrandKitPageContent() {
         activeBrandKit,
         brandKits,
         loading: contextLoading,
+        isRecovering,
+        loadError,
         setActiveBrandKit,
         syncActiveBrandKit,
         deleteBrandKitById,
@@ -105,6 +107,9 @@ function BrandKitPageContent() {
     // Multi-profile state
     const [showNewKitForm, setShowNewKitForm] = useState(false);
     const [creatingAssistantKit, setCreatingAssistantKit] = useState(false);
+    const [emptyStateRepairing, setEmptyStateRepairing] = useState(false);
+    const [emptyStateVerifiedEmpty, setEmptyStateVerifiedEmpty] = useState(false);
+    const [emptyStateRepairFailed, setEmptyStateRepairFailed] = useState(false);
     const autoCreateTriggeredRef = useRef(false);
     const emptyStateRepairUserRef = useRef<string | null>(null);
     const [showRegenerateConfirm, setShowRegenerateConfirm] = useState(false);
@@ -116,6 +121,15 @@ function BrandKitPageContent() {
     const [exportLaunchBrandId, setExportLaunchBrandId] = useState<string | null>(null);
     const [showDeleteCurrentConfirm, setShowDeleteCurrentConfirm] = useState(false);
     const [isDuplicatingCurrent, setIsDuplicatingCurrent] = useState(false);
+    const nextParam = searchParams.get('next');
+    const hasExplicitFlow = Boolean(
+        searchParams.get('action') || searchParams.get('id') || searchParams.get('creation') || searchParams.get('selectUrl')
+    );
+    const hasInternalNext = Boolean(nextParam && nextParam.startsWith('/') && !nextParam.startsWith('//') && !hasExplicitFlow);
+    const shouldShowRecoveryState = !loading && !creatingAssistantKit && !activeBrandKit && brandKits.length === 0 && !emptyStateVerifiedEmpty && !emptyStateRepairFailed;
+    const shouldShowSelectionState = !loading && !creatingAssistantKit && !activeBrandKit && brandKits.length > 0 && !emptyStateRepairFailed;
+    const shouldShowRepairErrorState = !loading && !creatingAssistantKit && !activeBrandKit && emptyStateRepairFailed;
+    const shouldShowVerifiedEmptyState = !loading && !creatingAssistantKit && !activeBrandKit && brandKits.length === 0 && emptyStateVerifiedEmpty;
 
     // Brand name editing
     const [isEditingBrandName, setIsEditingBrandName] = useState(false);
@@ -308,7 +322,23 @@ function BrandKitPageContent() {
     useEffect(() => {
         emptyStateRepairUserRef.current = null;
         autoCreateTriggeredRef.current = false;
+        setEmptyStateRepairing(false);
+        setEmptyStateVerifiedEmpty(false);
+        setEmptyStateRepairFailed(false);
     }, [user?.id]);
+
+    useEffect(() => {
+        if (contextLoading || loading) return;
+        if (activeBrandKit?.id) return;
+        if (!brandKits[0]?.id) return;
+
+        setEmptyStateRepairFailed(false);
+        void setActiveBrandKit(brandKits[0].id, true, true).then((selected) => {
+            if (!selected) {
+                setEmptyStateRepairFailed(true);
+            }
+        });
+    }, [contextLoading, loading, activeBrandKit?.id, brandKits, setActiveBrandKit]);
 
     // Handle initial state and query params
     useEffect(() => {
@@ -354,6 +384,9 @@ function BrandKitPageContent() {
                 autoCreateTriggeredRef.current = true;
                 emptyStateRepairUserRef.current = user.id;
                 void (async () => {
+                    setEmptyStateRepairing(true);
+                    setEmptyStateRepairFailed(false);
+                    setEmptyStateVerifiedEmpty(false);
                     try {
                         const serverKits = await getAllUserBrandKits(user.id);
                         const realCount = serverKits.success ? (serverKits.data?.length || 0) : -1;
@@ -362,16 +395,28 @@ function BrandKitPageContent() {
                         // Si hay kits reales, rehidratamos contexto.
                         if (realCount > 0) {
                             await reloadBrandKits(true);
+                            if (serverKits.data?.[0]?.id) {
+                                const selected = await setActiveBrandKit(serverKits.data[0].id, true, true);
+                                if (!selected) {
+                                    setEmptyStateRepairFailed(true);
+                                }
+                            }
+                        } else if (realCount === 0) {
+                            setEmptyStateVerifiedEmpty(true);
+                        } else {
+                            setEmptyStateRepairFailed(true);
                         }
                     } catch (error) {
                         console.error('[AUTO-CREATE] Error verificando kits reales:', error);
+                        setEmptyStateRepairFailed(true);
                     } finally {
+                        setEmptyStateRepairing(false);
                         autoCreateTriggeredRef.current = false;
                     }
                 })();
             }
         }
-    }, [contextLoading, brandKits, activeBrandKit, user?.id, searchParams, router, createAssistantKitAndOpen, reloadBrandKits]);
+    }, [contextLoading, brandKits, activeBrandKit, user?.id, searchParams, router, createAssistantKitAndOpen, reloadBrandKits, setActiveBrandKit]);
 
     // Si el guard nos trajo aqui con ?next= (falso "0 kits" transitorio), volvemos al
     // modulo original en cuanto los kits se recuperan. Solo aplica fuera de flujos de
@@ -379,18 +424,32 @@ function BrandKitPageContent() {
     useEffect(() => {
         if (contextLoading) return;
 
-        const nextParam = searchParams.get('next');
         if (!nextParam) return;
 
         const isInternalPath = nextParam.startsWith('/') && !nextParam.startsWith('//');
-        const hasExplicitFlow = Boolean(
-            searchParams.get('action') || searchParams.get('id') || searchParams.get('creation') || searchParams.get('selectUrl')
-        );
 
         if (brandKits.length > 0 && isInternalPath && !hasExplicitFlow) {
-            console.log('%c[BrandKitPage] kits recovered -> returning to', 'color:#22c55e;font-weight:bold', nextParam);
-            router.replace(nextParam);
-            return;
+            let cancelled = false;
+            void (async () => {
+                const selected = activeBrandKit?.id
+                    ? true
+                    : brandKits[0]?.id
+                        ? await setActiveBrandKit(brandKits[0].id, true, true)
+                        : false;
+
+                if (!selected) {
+                    setEmptyStateRepairFailed(true);
+                    return;
+                }
+
+                if (!cancelled) {
+                    console.log('%c[BrandKitPage] kits recovered -> returning to', 'color:#22c55e;font-weight:bold', nextParam);
+                    router.replace(nextParam);
+                }
+            })();
+            return () => {
+                cancelled = true;
+            };
         }
 
         // Param invalido o flujo explicito en curso: limpiamos `next` para no arrastrarlo.
@@ -399,7 +458,7 @@ function BrandKitPageContent() {
             newParams.delete('next');
             router.replace(`/brand-kit${newParams.toString() ? `?${newParams.toString()}` : ''}`);
         }
-    }, [contextLoading, brandKits.length, searchParams, router]);
+    }, [contextLoading, brandKits, activeBrandKit?.id, nextParam, hasExplicitFlow, searchParams, router, setActiveBrandKit]);
 
     // Si llega un id por query param (ej. tras crear un kit), forzamos seleccion de ese kit.
     useEffect(() => {
@@ -493,7 +552,7 @@ function BrandKitPageContent() {
     const handleBrandDelete = async (brandId: string) => {
         try {
             await deleteBrandKitById(brandId);
-        } catch (err: any) {
+        } catch (err) {
             console.error('Error al eliminar kit de marca:', err);
         }
     };
@@ -922,6 +981,78 @@ function BrandKitPageContent() {
                             <p className="text-muted-foreground">
                                 {t('loading.preparingDescription')}
                             </p>
+                        </div>
+                    </div>
+                )}
+
+                {(shouldShowRecoveryState || shouldShowSelectionState) && (
+                    <div className="mx-auto flex min-h-[58vh] max-w-xl items-center justify-center py-16 text-center">
+                        <div className="w-full rounded-[1.45rem] border border-border/60 bg-background/90 p-6 shadow-lg">
+                            <Loader2 className="mx-auto h-8 w-8 text-primary" />
+                            <h2 className="mt-4 text-base font-semibold text-foreground">
+                                {shouldShowSelectionState
+                                    ? t('recovery.selectingTitle', { defaultValue: 'Activando tu kit de marca' })
+                                    : t('recovery.loadingTitle', { defaultValue: 'Recuperando tus kits de marca' })}
+                            </h2>
+                            <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                                {shouldShowSelectionState
+                                    ? t('recovery.selectingDescription', { defaultValue: 'Estamos preparando el kit correcto antes de continuar.' })
+                                    : hasInternalNext
+                                        ? t('recovery.nextDescription', { defaultValue: 'Estamos rehidratando tu sesión para volver al módulo donde estabas.' })
+                                        : isRecovering || emptyStateRepairing
+                                            ? t('recovery.retryDescription', { defaultValue: 'Estamos comprobando tus kits guardados antes de mostrar el panel.' })
+                                            : t('recovery.initialDescription', { defaultValue: 'Estamos comprobando si ya tienes kits guardados.' })}
+                            </p>
+                        </div>
+                    </div>
+                )}
+
+                {shouldShowRepairErrorState && (
+                    <div className="mx-auto flex min-h-[58vh] max-w-xl items-center justify-center py-16 text-center">
+                        <div className="w-full rounded-[1.45rem] border border-border/60 bg-background/90 p-6 shadow-lg">
+                            <IconTriangleAlert className="mx-auto h-8 w-8 text-destructive" />
+                            <h2 className="mt-4 text-base font-semibold text-foreground">
+                                {t('recovery.errorTitle', { defaultValue: 'No pudimos recuperar tus kits' })}
+                            </h2>
+                            <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                                {loadError
+                                    ? t('recovery.serverErrorDescription', { defaultValue: 'La lectura inicial falló. Puedes reintentar la carga sin salir de esta pantalla.' })
+                                    : t('recovery.errorDescription', { defaultValue: 'La comprobación no devolvió un estado válido. Reintentaremos la carga completa.' })}
+                            </p>
+                            <Button
+                                type="button"
+                                variant="outline"
+                                className="mt-5"
+                                onClick={() => {
+                                    emptyStateRepairUserRef.current = null;
+                                    setEmptyStateRepairFailed(false);
+                                    void reloadBrandKits(false);
+                                }}
+                            >
+                                {t('common:actions.retry', { defaultValue: 'Reintentar' })}
+                            </Button>
+                        </div>
+                    </div>
+                )}
+
+                {shouldShowVerifiedEmptyState && (
+                    <div className="mx-auto flex min-h-[58vh] max-w-xl items-center justify-center py-16 text-center">
+                        <div className="w-full rounded-[1.45rem] border border-border/60 bg-background/90 p-6 shadow-lg">
+                            <IconPackage className="mx-auto h-8 w-8 text-muted-foreground" />
+                            <h2 className="mt-4 text-base font-semibold text-foreground">
+                                {t('empty.title', { defaultValue: 'Todavía no tienes kits de marca' })}
+                            </h2>
+                            <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                                {t('empty.description', { defaultValue: 'Crea tu primer kit para activar Imagen, Carrusel y el resto de módulos creativos.' })}
+                            </p>
+                            <Button
+                                type="button"
+                                className="mt-5"
+                                onClick={handleNewProfile}
+                            >
+                                <IconPlus className="mr-2 h-4 w-4" />
+                                {t('actions.newBrandKit', { defaultValue: 'Nuevo kit de marca' })}
+                            </Button>
                         </div>
                     </div>
                 )}
