@@ -651,15 +651,11 @@ async function getLatestForScope(
           .order("desc")
           .take(1);
 
-    if (byBrand[0]) return byBrand[0];
-
-    // Legacy fallback: older sessions could exist without brand_id.
-    const legacyRows = await ctx.db
-      .query("work_sessions")
-      .withIndex("by_user_module_updated", (q) => q.eq("user_id", args.user_id).eq("module", args.module))
-      .order("desc")
-      .take(200);
-    return legacyRows.find((row) => row.brand_id === undefined && (!activeOnly || row.active)) || null;
+    // Aislamiento estricto por marca: cuando se consulta con brand_id, NUNCA
+    // devolvemos sesiones legacy sin marca (brand_id === undefined). Cruzarlas
+    // hacía que restos de un contexto aparecieran bajo otra marca. Cambiar de
+    // kit debe ser un escenario completamente nuevo.
+    return byBrand[0] || null;
   }
 
   const byUserModule = activeOnly
@@ -692,15 +688,8 @@ async function listLatestForScope(
       .order("desc")
       .take(args.limit);
 
-    if (byBrand.length > 0) return byBrand;
-
-    // Legacy fallback.
-    const legacy = await ctx.db
-      .query("work_sessions")
-      .withIndex("by_user_module_updated", (q) => q.eq("user_id", args.user_id).eq("module", args.module))
-      .order("desc")
-      .take(Math.max(args.limit, 200));
-    return legacy.filter((row) => row.brand_id === undefined).slice(0, args.limit);
+    // Aislamiento estricto por marca (ver getLatestForScope): sin fallback legacy.
+    return byBrand;
   }
 
   return await ctx.db

@@ -856,6 +856,10 @@ export default function ImagePage() {
             setSessionSavedAt(null)
             setSessionSaveError(null)
             setHasUnsavedChanges(false)
+            // Cambio de marca = escenario nuevo: no debe pervivir el historial de
+            // imagenes de la marca anterior mientras se hidrata (o si la nueva
+            // marca no tiene sesion todavia, en cuyo caso quedaria visible).
+            setSessionGenerations([])
         }
 
         if (!user?.id || !scopedBrandId) return

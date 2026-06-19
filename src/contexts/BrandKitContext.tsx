@@ -17,6 +17,13 @@ interface BrandKitContextType {
     isRecovering: boolean
     /** True when load failed due to a server error (as opposed to success but empty kits) */
     loadError: boolean
+    /**
+     * True SOLO cuando una lectura satisfactoria confirmó que el usuario no tiene
+     * kits (data:[]) y se agotaron los reintentos de recuperación. Es la única
+     * señal con la que se puede redirigir al hub de Brand Kit. Un vacío
+     * transitorio (token/identidad no lista) NUNCA pone esto a true.
+     */
+    confirmedEmpty: boolean
     setActiveBrandKit: (id: string, shouldPersist?: boolean, allowFallback?: boolean) => Promise<boolean>
     reloadBrandKits: (isSilent?: boolean) => Promise<void>
     deleteBrandKitById: (id: string) => Promise<void>
@@ -27,7 +34,16 @@ interface BrandKitContextType {
 const BrandKitContext = createContext<BrandKitContextType | undefined>(undefined)
 
 const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
-const EMPTY_BRANDKIT_RECOVERY_DELAYS_MS = [1800, 4500, 9000]
+const EMPTY_BRANDKIT_RECOVERY_DELAYS_MS = [1200, 2500, 4500, 7000, 10000]
+/**
+ * Nº de reintentos de fondo antes de CONFIRMAR "sin kits" cuando la lectura
+ * tuvo éxito pero devolvió 0 (caso usuario nuevo real). Tras el blindaje del
+ * token (Eje 1) un éxito-vacío es fiable, así que basta con pocas confirmaciones
+ * para no hacer esperar de más a un usuario realmente sin kits. Un FALLO
+ * (transitorio/servidor) NO usa este umbral: sigue reintentando toda la tanda
+ * sin confirmar vacío jamás.
+ */
+const EMPTY_CONFIRM_AFTER_ATTEMPTS = 2
 
 export function BrandKitProvider({ children }: { children: ReactNode }) {
     const { user, isLoaded } = useUser()
@@ -37,6 +53,8 @@ export function BrandKitProvider({ children }: { children: ReactNode }) {
     const [isRecovering, setIsRecovering] = useState(false)
     /** True when the last load attempt failed with a server error (vs. success but no kits) */
     const [loadError, setLoadError] = useState(false)
+    /** Ver doc en BrandKitContextType.confirmedEmpty */
+    const [confirmedEmpty, setConfirmedEmpty] = useState(false)
 
     const userRecord = useQuery(api.users.getUser, user?.id ? { clerk_id: user.id } : 'skip')
     const updateLastBrand = useMutation(api.users.setCurrentBrand)
@@ -50,6 +68,8 @@ export function BrandKitProvider({ children }: { children: ReactNode }) {
     const pendingPersistedBrandIdRef = useRef<string | null>(null)
     const backgroundRetryTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
     const emptyRecoveryAttemptRef = useRef(0)
+    /** Resultado de la última lectura: 'empty' (éxito sin kits) vs 'fail' (error/transitorio). */
+    const lastLoadOutcomeRef = useRef<'empty' | 'fail'>('empty')
     const loadBrandKitsRef = useRef<(isSilent?: boolean) => Promise<void>>(async () => { })
     const setActiveBrandKitRef = useRef<BrandKitContextType['setActiveBrandKit']>(async () => false)
 
@@ -66,9 +86,20 @@ export function BrandKitProvider({ children }: { children: ReactNode }) {
         if (backgroundRetryTimeoutRef.current) return
 
         const attemptIndex = emptyRecoveryAttemptRef.current
+
+        // Éxito-vacío confirmado pronto: el usuario no tiene kits de verdad.
+        if (lastLoadOutcomeRef.current === 'empty' && attemptIndex >= EMPTY_CONFIRM_AFTER_ATTEMPTS) {
+            console.log('%c[BrandKitCtx:recovery]', 'color:#f59e0b;font-weight:bold', 'empty confirmed after retries')
+            setIsRecovering(false)
+            setConfirmedEmpty(true)
+            return
+        }
+
         const delay = EMPTY_BRANDKIT_RECOVERY_DELAYS_MS[attemptIndex]
         if (typeof delay !== 'number') {
-            console.warn('%c[BrandKitCtx:recovery]', 'color:#f59e0b;font-weight:bold', 'all background retries exhausted — giving up')
+            // Tanda agotada con la última lectura en FALLO: nunca confirmamos
+            // vacío (no redirigimos); dejamos loadError visible con reintento.
+            console.warn('%c[BrandKitCtx:recovery]', 'color:#f59e0b;font-weight:bold', 'all background retries exhausted (load kept failing)')
             setIsRecovering(false)
             return
         }
@@ -160,7 +191,7 @@ export function BrandKitProvider({ children }: { children: ReactNode }) {
 
                 console.log(`%c${tag}`, style, `attempt ${i + 1}/${retryDelaysMs.length} userId=${user.id}`)
                 result = await getAllUserBrandKits(user.id)
-                console.log(`%c${tag}`, style, `attempt ${i + 1} result:`, { success: result.success, count: Array.isArray(result.data) ? result.data.length : 'n/a', error: (result as any).error })
+                console.log(`%c${tag}`, style, `attempt ${i + 1} result:`, { success: result.success, count: Array.isArray(result.data) ? result.data.length : 'n/a', error: result.error })
 
                 if (result.success && Array.isArray(result.data) && result.data.length > 0) {
                     break
@@ -183,9 +214,12 @@ export function BrandKitProvider({ children }: { children: ReactNode }) {
 
                 if (result.data.length > 0) {
                     emptyRecoveryAttemptRef.current = 0
+                    lastLoadOutcomeRef.current = 'empty'
+                    setConfirmedEmpty(false)
                     clearBackgroundRetry()
                 } else {
                     console.warn(`%c${tag}`, style, 'success but 0 kits — scheduling background recovery')
+                    lastLoadOutcomeRef.current = 'empty'
                     scheduleBackgroundRecovery()
                 }
 
@@ -206,13 +240,21 @@ export function BrandKitProvider({ children }: { children: ReactNode }) {
                     }
                 }
             } else {
-                console.error(`%c${tag}`, style, '✗ server error — scheduling background recovery', (result as any).error)
-                setLoadError(true)
+                const isTransient = result.transient === true
+                lastLoadOutcomeRef.current = 'fail'
+                // Un fallo transitorio (token/identidad no lista) NO debe pintar la
+                // pantalla de error: solo reintentar en silencio. Mantenemos los
+                // kits que ya tuviéramos en memoria para no parpadear a vacío.
+                setLoadError(!isTransient)
+                setConfirmedEmpty(false)
+                console.warn(`%c${tag}`, style, `✗ load failed (${isTransient ? 'transient' : 'server-error'}) — scheduling background recovery`, result.error)
                 scheduleBackgroundRecovery()
             }
         } catch (error) {
             console.error(`%c${tag}`, style, '✗ exception thrown:', error)
+            lastLoadOutcomeRef.current = 'fail'
             setLoadError(true)
+            setConfirmedEmpty(false)
             scheduleBackgroundRecovery()
         } finally {
             loadInFlightRef.current = false
@@ -271,6 +313,7 @@ export function BrandKitProvider({ children }: { children: ReactNode }) {
     const reloadBrandKits = useCallback(async (isSilent = true) => {
         clearBackgroundRetry()
         emptyRecoveryAttemptRef.current = 0
+        setConfirmedEmpty(false)
         await loadBrandKits(isSilent)
     }, [clearBackgroundRetry, loadBrandKits])
 
@@ -322,8 +365,11 @@ export function BrandKitProvider({ children }: { children: ReactNode }) {
         clearBackgroundRetry()
         loadInFlightRef.current = false
         emptyRecoveryAttemptRef.current = 0
+        lastLoadOutcomeRef.current = 'empty'
         setActiveBrandKitState(null)
         setBrandKits([])
+        setLoadError(false)
+        setConfirmedEmpty(false)
         setLoading(Boolean(nextUserId))
     }, [clearBackgroundRetry, user?.id])
 
@@ -405,6 +451,7 @@ export function BrandKitProvider({ children }: { children: ReactNode }) {
         loading,
         isRecovering,
         loadError,
+        confirmedEmpty,
         setActiveBrandKit,
         reloadBrandKits,
         deleteBrandKitById,

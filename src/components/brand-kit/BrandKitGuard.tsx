@@ -8,43 +8,54 @@ import { Loader2 } from '@/components/ui/spinner'
 import { Button } from '@/components/ui/button'
 
 export function BrandKitGuard({ children }: { children: React.ReactNode }) {
-  const { brandKits, loading, isRecovering, loadError, reloadBrandKits } = useBrandKit()
+  const { brandKits, loading, isRecovering, loadError, confirmedEmpty, reloadBrandKits } = useBrandKit()
   const router = useRouter()
   const pathname = usePathname()
+  const hasKits = brandKits.length > 0
 
   // Debug: log every state change.
   useEffect(() => {
     console.log(
       '%c[BrandKitGuard]',
       'color:#6366f1;font-weight:bold',
-      `loading=${loading} isRecovering=${isRecovering} loadError=${loadError} kits=${brandKits.length}`
+      `loading=${loading} isRecovering=${isRecovering} loadError=${loadError} confirmedEmpty=${confirmedEmpty} kits=${brandKits.length}`
     )
   })
 
+  // Redirección al hub SOLO ante vacío confirmado (el usuario realmente no tiene
+  // kits). Un vacío transitorio (token/identidad no lista en producción) NO
+  // dispara redirección: nos quedamos en el módulo reintentando en silencio.
   useEffect(() => {
-    if (!loading && !isRecovering && brandKits.length === 0 && !loadError) {
-      console.warn(
-        '%c[BrandKitGuard] -> REDIRECT /brand-kit',
-        'color:#ef4444;font-weight:bold',
-        '(success=true but no kits found after all retries; handing off to Brand Kit hub for defensive rehydration)'
-      )
-      const next = pathname && pathname !== '/brand-kit'
-        ? `?next=${encodeURIComponent(pathname)}`
-        : ''
-      router.replace(`/brand-kit${next}`)
-    }
-  }, [loading, isRecovering, brandKits.length, loadError, router, pathname])
+    if (!confirmedEmpty || hasKits) return
+    console.warn(
+      '%c[BrandKitGuard] -> REDIRECT /brand-kit',
+      'color:#ef4444;font-weight:bold',
+      '(confirmed empty: user has no brand kits; handing off to Brand Kit hub to create one)'
+    )
+    const next = pathname && pathname !== '/brand-kit'
+      ? `?next=${encodeURIComponent(pathname)}`
+      : ''
+    router.replace(`/brand-kit${next}`)
+  }, [confirmedEmpty, hasKits, router, pathname])
 
-  if (loading || isRecovering) {
+  // Si ya tenemos kits, renderizamos el módulo aunque haya una recarga en curso.
+  if (hasKits) {
+    return <>{children}</>
+  }
+
+  // Vacío confirmado: estamos redirigiendo; mostramos loader mientras tanto.
+  if (confirmedEmpty) {
     return (
       <BrandKitLoadingState
-        title={isRecovering ? 'Recuperando Kit de Marca' : 'Cargando Kit de Marca'}
-        description={isRecovering ? 'Reintentando la lectura de tus kits guardados.' : 'Preparando recursos de marca para este módulo.'}
+        title="Preparando tu espacio de trabajo"
+        description="Te llevamos a tu Kit de Marca."
       />
     )
   }
 
-  if (brandKits.length === 0 && loadError) {
+  // Error persistente (no transitorio) y sin kits: ofrecemos reintento manual,
+  // pero NUNCA redirigimos ni abandonamos el módulo por timing.
+  if (loadError && !isRecovering) {
     return (
       <div className="flex min-h-dvh flex-col items-center justify-center gap-4 bg-background">
         <motion.div
@@ -63,16 +74,17 @@ export function BrandKitGuard({ children }: { children: React.ReactNode }) {
     )
   }
 
-  if (brandKits.length === 0) {
-    return (
-      <BrandKitLoadingState
-        title="Preparando tu espacio de trabajo"
-        description="Buscando kits de marca disponibles antes de continuar."
-      />
-    )
-  }
-
-  return <>{children}</>
+  // Caso restante: sin kits todavía y sin error terminal (carga inicial o
+  // reintento transitorio en curso). Esperamos pacientemente sin abandonar el
+  // módulo; el contexto sigue reintentando en segundo plano.
+  return (
+    <BrandKitLoadingState
+      title={isRecovering ? 'Recuperando Kit de Marca' : 'Preparando tu espacio de trabajo'}
+      description={isRecovering
+        ? 'Reintentando la lectura de tus kits guardados.'
+        : 'Buscando kits de marca disponibles antes de continuar.'}
+    />
+  )
 }
 
 function BrandKitLoadingState({ title, description }: { title: string; description: string }) {

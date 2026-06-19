@@ -3,7 +3,10 @@
 import { auth } from '@clerk/nextjs/server'
 import { fetchQuery } from 'convex/nextjs'
 import { api } from '../../../convex/_generated/api'
-import { authedFetchQuery } from '@/lib/convex-server'
+import { authedFetchQuery, isTransientAuthError } from '@/lib/convex-server'
+
+const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
+const TRANSIENT_RETRY_DELAYS_MS = [200, 450, 800]
 
 type LastVisitedModuleResult = {
     module: 'image' | 'carousel' | 'brand-kit'
@@ -19,9 +22,24 @@ export async function getLastVisitedModuleAction(clerkUserId: string) {
     }
 
     try {
-        const data = await authedFetchQuery(api.work_sessions.getLastVisitedModule, {
-            user_id: userId,
-        })
+        // El token Clerk->Convex puede no estar listo en el primer intento tras
+        // navegar (frecuente en serverless frio). Reintentamos ante transitorios
+        // para aterrizar SIEMPRE en el ultimo modulo correcto, no en el fallback.
+        let data: Awaited<ReturnType<typeof authedFetchQuery<typeof api.work_sessions.getLastVisitedModule>>> | null = null
+        for (let attempt = 0; attempt <= TRANSIENT_RETRY_DELAYS_MS.length; attempt++) {
+            try {
+                data = await authedFetchQuery(api.work_sessions.getLastVisitedModule, {
+                    user_id: userId,
+                })
+                break
+            } catch (error) {
+                if (isTransientAuthError(error) && attempt < TRANSIENT_RETRY_DELAYS_MS.length) {
+                    await wait(TRANSIENT_RETRY_DELAYS_MS[attempt])
+                    continue
+                }
+                throw error
+            }
+        }
 
         const normalizedData: LastVisitedModuleResult | null =
             data && (data.module === 'image' || data.module === 'carousel' || data.module === 'brand-kit')

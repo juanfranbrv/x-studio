@@ -352,12 +352,19 @@ function BrandKitPageContent() {
                     if (user?.id) {
                         try {
                             const serverKits = await getAllUserBrandKits(user.id);
-                            const realCount = serverKits.success ? (serverKits.data?.length || 0) : -1;
-                            if (realCount > 0) {
+                            // Fallo transitorio (token/identidad no lista): NO crear nada;
+                            // dejamos que la recuperacion del contexto rellene los kits.
+                            if (!serverKits.success && serverKits.transient) {
                                 shouldCreateDraft = false;
                                 await reloadBrandKits(true);
-                            } else if (realCount === 0) {
-                                shouldCreateDraft = true;
+                            } else {
+                                const realCount = serverKits.success ? (serverKits.data?.length || 0) : -1;
+                                if (realCount > 0) {
+                                    shouldCreateDraft = false;
+                                    await reloadBrandKits(true);
+                                } else if (realCount === 0) {
+                                    shouldCreateDraft = true;
+                                }
                             }
                         } catch (error) {
                             console.error('[ACTION=NEW] Error verificando kits reales, se evita creacion automatica:', error);
@@ -389,6 +396,16 @@ function BrandKitPageContent() {
                     setEmptyStateVerifiedEmpty(false);
                     try {
                         const serverKits = await getAllUserBrandKits(user.id);
+
+                        // Fallo transitorio (token/identidad no lista en produccion):
+                        // NO mostrar error ni "vacio confirmado". Reintentamos via
+                        // contexto y permitimos que el efecto vuelva a evaluarse.
+                        if (!serverKits.success && serverKits.transient) {
+                            emptyStateRepairUserRef.current = null;
+                            await reloadBrandKits(true);
+                            return;
+                        }
+
                         const realCount = serverKits.success ? (serverKits.data?.length || 0) : -1;
 
                         // Nunca crear kits automáticamente al entrar.

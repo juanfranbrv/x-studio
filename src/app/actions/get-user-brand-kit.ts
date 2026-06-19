@@ -2,7 +2,7 @@
 
 import { fetchQuery } from 'convex/nextjs';
 import { api } from '../../../convex/_generated/api';
-import { authedFetchQuery, authedFetchMutation } from '@/lib/convex-server';
+import { authedFetchQuery, authedFetchMutation, isTransientAuthError } from '@/lib/convex-server';
 import type { BrandDNA, BrandKitSummary } from '@/lib/brand-types';
 import { auth } from '@clerk/nextjs/server';
 import type { Id } from '../../../convex/_generated/dataModel';
@@ -108,11 +108,14 @@ export async function getAllUserBrandKits(clerkUserId: string): Promise<{
     success: boolean;
     data?: BrandKitSummary[];
     error?: string;
+    /** True cuando el fallo es transitorio (token/identidad no lista). El llamador DEBE reintentar, nunca tratarlo como "0 kits" ni como error terminal. */
+    transient?: boolean;
 }> {
     try {
         const { userId } = await auth();
         if (!userId || userId !== clerkUserId) {
-            return { success: false, error: 'No autorizado' };
+            // auth() aún no resuelta o desajuste momentáneo tras navegar: transitorio.
+            return { success: false, error: 'No autorizado', transient: !userId };
         }
 
         const brands = await authedFetchQuery(api.brands.listSummariesByClerkId, { clerk_user_id: userId });
@@ -138,6 +141,10 @@ export async function getAllUserBrandKits(clerkUserId: string): Promise<{
 
         return { success: true, data: summaryData };
     } catch (err) {
+        if (isTransientAuthError(err)) {
+            console.warn('[getAllUserBrandKits] transient auth (token not ready) — caller should retry');
+            return { success: false, error: 'Token no disponible todavía', transient: true };
+        }
         console.error('Unexpected error in getAllUserBrandKits:', err);
         return { success: false, error: 'Error inesperado' };
     }

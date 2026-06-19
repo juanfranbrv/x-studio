@@ -1159,6 +1159,10 @@ export function CarouselControlsPanel({
             setLastSavedAt(null)
             setSaveError(null)
             setHasUnsavedChanges(false)
+            // Cambio de marca = escenario nuevo: limpiamos el lienzo del carrusel
+            // de la marca anterior. Si la nueva marca tiene sesion, se restaura
+            // justo despues; si no, queda limpio (sin restos de otra marca).
+            resetWorkspace()
         }
 
         if (!userId || !scopedBrandId) return
@@ -1204,7 +1208,8 @@ export function CarouselControlsPanel({
         activeWorkSession,
         workSessions,
         restoreWorkspaceFromSnapshot,
-        handleLoadSession
+        handleLoadSession,
+        resetWorkspace
     ])
 
     const persistWorkspaceSnapshot = useCallback(async (options?: {

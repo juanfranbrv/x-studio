@@ -135,10 +135,13 @@ function LabEntryButton({
   const { isLoaded, isSignedIn } = useAuth()
   const { user } = useUser()
   const [isResolving, setIsResolving] = useState(false)
+  // Si el usuario pulsa antes de que Clerk termine de hidratar (frecuente en
+  // produccion, mas lenta), NO perdemos el clic: lo dejamos pendiente y lo
+  // resolvemos en cuanto `isLoaded` pasa a true. Esto elimina el "entra a la 2ª".
+  const [entryRequested, setEntryRequested] = useState(false)
 
-  const handleClick = useCallback(async () => {
-    if (!isLoaded || isResolving) return
-
+  const resolveEntry = useCallback(async () => {
+    if (isResolving) return
     if (!isSignedIn || !user?.id) {
       router.push('/sign-in')
       return
@@ -151,16 +154,35 @@ function LabEntryButton({
     } finally {
       setIsResolving(false)
     }
-  }, [isLoaded, isResolving, isSignedIn, router, user?.id])
+  }, [isResolving, isSignedIn, router, user?.id])
+
+  const handleClick = useCallback(() => {
+    // Aún hidratando: registramos la intención y salimos. El efecto la ejecuta.
+    if (!isLoaded) {
+      setEntryRequested(true)
+      return
+    }
+    void resolveEntry()
+  }, [isLoaded, resolveEntry])
+
+  // Ejecuta la entrada pendiente en cuanto Clerk está listo.
+  useEffect(() => {
+    if (!entryRequested || !isLoaded) return
+    setEntryRequested(false)
+    void resolveEntry()
+  }, [entryRequested, isLoaded, resolveEntry])
+
+  const showSpinner = isResolving || (entryRequested && !isLoaded)
 
   return (
     <Button
       size={size}
       className={className}
-      disabled={!isLoaded || isResolving}
-      onClick={() => void handleClick()}
+      disabled={isResolving}
+      aria-busy={showSpinner}
+      onClick={handleClick}
     >
-      {isResolving ? (
+      {showSpinner ? (
         <Loader2 className="h-4 w-4" />
       ) : (
         <>
