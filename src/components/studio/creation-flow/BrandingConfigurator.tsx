@@ -458,14 +458,20 @@ export function BrandingConfigurator({
         })
     }
 
-    // Ensure first logo is selected by default if none is selected and logos exist
-    const hasAutoSelected = useRef(false)
+    // Auto-selecciona el logo por defecto UNA VEZ POR CADA KIT (no una sola vez en
+    // toda la vida del componente). Antes un ref booleano se quedaba en `true`
+    // para siempre, asi que al cambiar de kit no se reseleccionaba el logo del
+    // nuevo kit y solo reaparecia al desmontar/remontar (ir y volver de otra
+    // marca). Si el kit ya trae un logo seleccionado (p. ej. restaurado de su
+    // sesion), no se fuerza nada porque `selectedLogoId` no estara vacio.
+    const autoSelectedKitRef = useRef<string | null>(null)
     useEffect(() => {
-        if (!hasAutoSelected.current && logos.length > 0 && !selectedLogoId) {
+        const kitId = activeBrandKit?.id ?? null
+        if (autoSelectedKitRef.current !== kitId && logos.length > 0 && !selectedLogoId) {
             onSelectLogo(primaryLogoId)
-            hasAutoSelected.current = true
+            autoSelectedKitRef.current = kitId
         }
-    }, [logos, onSelectLogo, primaryLogoId, selectedLogoId])
+    }, [activeBrandKit?.id, logos, onSelectLogo, primaryLogoId, selectedLogoId])
 
     const logoOptionClassName =
         "group relative flex h-[62px] w-[62px] items-center justify-center overflow-hidden rounded-[1rem] border bg-background/80 p-2 shadow-[0_16px_34px_-30px_rgba(15,23,42,0.28)] transition-all duration-200"
