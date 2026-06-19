@@ -171,22 +171,42 @@ function removeImageGenerationFromSnapshot(snapshot: unknown, generationId: stri
 export const listAssets = query({
   args: {
     user_id: v.string(),
+    brand_id: v.optional(v.id("brand_dna")),
     limit: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
     await requireSameUser(ctx, args.user_id);
     const limit = Math.max(1, Math.min(args.limit ?? MAX_ASSETS, MAX_ASSETS));
 
-    const sessionRows = await ctx.db
-      .query("work_sessions")
-      .withIndex("by_user_module_updated", (q) => q.eq("user_id", args.user_id).eq("module", "image"))
-      .order("desc")
-      .take(limit);
-    const carouselRows = await ctx.db
-      .query("work_sessions")
-      .withIndex("by_user_module_updated", (q) => q.eq("user_id", args.user_id).eq("module", "carousel"))
-      .order("desc")
-      .take(limit);
+    // Cuando hay kit de marca activo, segmentamos las publicaciones por marca
+    // usando el índice compuesto; si no, caemos al listado global por usuario.
+    const brandId = args.brand_id;
+    const sessionRows = brandId
+      ? await ctx.db
+          .query("work_sessions")
+          .withIndex("by_user_brand_module_updated", (q) =>
+            q.eq("user_id", args.user_id).eq("brand_id", brandId).eq("module", "image"),
+          )
+          .order("desc")
+          .take(limit)
+      : await ctx.db
+          .query("work_sessions")
+          .withIndex("by_user_module_updated", (q) => q.eq("user_id", args.user_id).eq("module", "image"))
+          .order("desc")
+          .take(limit);
+    const carouselRows = brandId
+      ? await ctx.db
+          .query("work_sessions")
+          .withIndex("by_user_brand_module_updated", (q) =>
+            q.eq("user_id", args.user_id).eq("brand_id", brandId).eq("module", "carousel"),
+          )
+          .order("desc")
+          .take(limit)
+      : await ctx.db
+          .query("work_sessions")
+          .withIndex("by_user_module_updated", (q) => q.eq("user_id", args.user_id).eq("module", "carousel"))
+          .order("desc")
+          .take(limit);
 
     const rows = [...sessionRows, ...carouselRows]
       .filter((row) => SUPPORTED_MODULES.has(row.module))

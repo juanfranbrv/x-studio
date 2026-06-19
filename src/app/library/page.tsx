@@ -34,7 +34,12 @@ export default function LibraryPage() {
     const { user } = useUser()
     const { toast } = useToast()
     const { activeBrandKit, brandKits, setActiveBrandKit, deleteBrandKitById } = useBrandKit()
-    const rawAssets = useQuery(api.contentLibrary.listAssets, user?.id ? { user_id: user.id, limit: 240 } : 'skip')
+    const rawAssets = useQuery(
+        api.contentLibrary.listAssets,
+        user?.id && activeBrandKit?.id
+            ? { user_id: user.id, brand_id: activeBrandKit.id as Id<'brand_dna'>, limit: 240 }
+            : 'skip'
+    )
     const rawCampaigns = useQuery(api.contentLibrary.listCampaigns, user?.id ? { user_id: user.id } : 'skip')
     const updateAnnotation = useMutation(api.contentLibrary.updateAnnotation)
     const bulkUpdateAnnotations = useMutation(api.contentLibrary.bulkUpdateAnnotations)
