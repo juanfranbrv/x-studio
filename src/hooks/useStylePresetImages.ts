@@ -23,7 +23,9 @@ export function useStylePresetImages(): UseStylePresetImagesResult {
         const response = await fetch('/api/style-presets', {
           method: 'GET',
           signal: controller.signal,
-          cache: 'force-cache',
+          // Revalida siempre contra el CDN (rapido y barato) en vez de servir
+          // una copia local cacheada que oculta los estilos recien creados.
+          cache: 'no-cache',
         })
 
         if (!response.ok) {

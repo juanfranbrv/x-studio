@@ -43,7 +43,7 @@ La generación de texto ha sido unificada para usar también el **formato nativo
 **Endpoints:** `/v1beta/models/{model}:generateContent`
 
 **Modelos:**
-- **Primario:** `gemini-3-pro-preview` (o `gemini-3-pro`)
+- **Primario:** `gemini-3.1-pro-preview`
 - **Fallback:** `gemini-2.5-flash`
 
 ### Estrategia de Fallback

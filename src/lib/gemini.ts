@@ -340,7 +340,7 @@ async function resolveAtlasApiKey(explicitKey?: string): Promise<string> {
 
 export const WISDOM_MODELS = {
     TEXT: {
-        'gemini-3-pro-preview': 'Gemini 3 Pro (Wisdom)',
+        'gemini-3.1-pro-preview': 'Gemini 3.1 Pro (Wisdom)',
         'gemini-3-flash-preview': 'Gemini 3 Flash (Wisdom)',
         'gemini-3.1-flash-lite-preview': 'Gemini 3.1 Flash Lite Preview (Wisdom)',
         'gemini-2.5-flash': 'Gemini 2.5 Flash (Wisdom)',

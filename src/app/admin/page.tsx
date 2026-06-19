@@ -86,7 +86,7 @@ function normalizeImageModelSettingValue(value: string): string {
 const INTELLIGENCE_MODEL_OPTIONS = [
     { value: 'wisdom/gemini-3-flash-preview', label: 'Wisdom · Gemini 3 Flash Preview' },
     { value: 'wisdom/gemini-3.1-flash-lite-preview', label: 'Wisdom · Gemini 3.1 Flash Lite Preview' },
-    { value: 'wisdom/gemini-3-pro-preview', label: 'Wisdom · Gemini 3 Pro Preview' },
+    { value: 'wisdom/gemini-3.1-pro-preview', label: 'Wisdom · Gemini 3.1 Pro Preview' },
     { value: 'wisdom/gemini-2.5-flash', label: 'Wisdom · Gemini 2.5 Flash' },
     { value: 'gemini-3-flash-preview', label: 'Google (legacy) · gemini-3-flash-preview' },
     { value: 'google/gemini-3-flash-preview', label: 'Google · gemini-3-flash-preview' },

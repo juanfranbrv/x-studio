@@ -23,7 +23,11 @@ export async function GET() {
 
     return NextResponse.json(presets, {
       headers: {
-        'Cache-Control': 'public, max-age=300, s-maxage=300, stale-while-revalidate=86400',
+        // El navegador revalida siempre (peticion barata contra el CDN), mientras el
+        // CDN cachea 5 min y se purga on-demand al cambiar estilos en Admin
+        // (ver revalidateStylePresets). Asi los cambios se ven al instante sin
+        // golpear Convex en cada carga.
+        'Cache-Control': 'public, max-age=0, s-maxage=300, stale-while-revalidate=86400',
       },
     })
   } catch (error) {

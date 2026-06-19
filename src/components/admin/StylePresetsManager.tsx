@@ -17,6 +17,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { IconGripVertical, IconEdit, IconPlus, IconRefresh, IconSearch, IconDelete } from '@/components/ui/icons'
 import { useToast } from '@/hooks/use-toast'
 import { uploadBrandImage } from '@/app/actions/upload-image'
+import { revalidateStylePresets } from '@/app/actions/revalidate-style-presets'
 
 type PresetRow = {
   _id: Id<'style_presets'>
@@ -55,7 +56,7 @@ const FALLBACK_INTELLIGENCE_MODEL = 'wisdom/gemini-3-flash-preview'
 const BASE_INTELLIGENCE_MODELS = [
   'wisdom/gemini-3-flash-preview',
   'wisdom/gemini-3.1-flash-lite-preview',
-  'wisdom/gemini-3-pro-preview',
+  'wisdom/gemini-3.1-pro-preview',
   'wisdom/gemini-2.5-flash',
 ]
 
@@ -452,6 +453,8 @@ export function StylePresetsManager({ adminEmail }: StylePresetsManagerProps) {
         sort_order: newSortOrder || nextSortOrder,
       })
 
+      await revalidateStylePresets()
+
       setNewName('')
       setNewImageDataUrl('')
       setNewAnalysis(null)
@@ -493,6 +496,7 @@ export function StylePresetsManager({ adminEmail }: StylePresetsManagerProps) {
         admin_email: adminEmail,
         ordered_ids: next as Id<'style_presets'>[],
       })
+      await revalidateStylePresets()
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Error desconocido'
       toast({ title: 'No se pudo reordenar', description: message, variant: 'destructive' })
@@ -765,6 +769,7 @@ export function StylePresetsManager({ adminEmail }: StylePresetsManagerProps) {
                           setSavingId(String(preset._id))
                           try {
                             await updatePreset({ admin_email: adminEmail, id: preset._id, sort_order: value })
+                            await revalidateStylePresets()
                           } finally {
                             setSavingId(null)
                           }
@@ -786,6 +791,7 @@ export function StylePresetsManager({ adminEmail }: StylePresetsManagerProps) {
                           setSavingId(String(preset._id))
                           try {
                             await updatePreset({ admin_email: adminEmail, id: preset._id, is_active: checked })
+                            await revalidateStylePresets()
                           } finally {
                             setSavingId(null)
                           }
@@ -826,6 +832,7 @@ export function StylePresetsManager({ adminEmail }: StylePresetsManagerProps) {
                         disabled={Boolean(reanalyzingId)}
                         onClick={async () => {
                           await removePreset({ admin_email: adminEmail, id: preset._id })
+                          await revalidateStylePresets()
                         }}
                       >
                         <IconDelete className="w-3.5 h-3.5 mr-1" />
