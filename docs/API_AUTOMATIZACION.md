@@ -211,10 +211,10 @@ Descargable desde la UI (botón en la campaña) y desde la API. Debe poder pedir
 **parcialmente**: solo los posts en estado `done`, para no tener que esperar a que
 termine el lote entero.
 
-**Decisión pendiente de confirmar contigo:** si el ZIP debe respetar el formato de
-importación que espera Postiz (si es que tiene uno documentado), en lugar de un
-`campaign.json` propio. Si Postiz acepta un CSV con columnas concretas, mejor generar
-exactamente ese CSV y ahorrarle el trabajo de traducción al agente.
+**Decidido (2026-08-11):** el formato del paquete lo define esta plataforma
+(`campaign.json` + `campaign.csv`); **el agente de Postiz se adapta**. No perseguimos
+el formato de importación de Postiz, que además podría cambiar por su cuenta y
+convertirse en una dependencia que no controlamos.
 
 ## 8. Autenticación
 
@@ -266,10 +266,25 @@ completo, o no entra ninguno.
    La integración con Postiz queda **fuera del alcance** de este contrato; lo que sí
    entra es que la salida sea directamente consumible por ese agente (§7.2).
 
+5. ✅ **El formato del paquete lo define esta plataforma**, no Postiz. El agente se
+   adapta (§7.2).
+
 ### Sigue abierto
 
-- **Formato exacto del ZIP para Postiz** (§7.2): ¿inventamos `campaign.json` o
-  generamos el formato de importación que Postiz ya entienda? Necesito saber si Postiz
-  documenta uno.
 - **Dónde se guardan los ZIP** y cuánto tiempo: generarlos al vuelo en cada descarga es
-  simple pero lento con 60 imágenes; cachearlos consume almacenamiento.
+  simple pero lento con 60 imágenes; cachearlos consume almacenamiento. Decisión que
+  puede tomarse al implementar el export, no antes.
+
+## 12. Plan de construcción (Fase 1)
+
+En orden, cada paso verificable por su cuenta:
+
+1. **Validador del manifiesto** — helpers puros con tests, sin tocar base de datos.
+   Es la puerta de entrada y lo que evita gastar créditos con un fichero mal formado.
+2. **Tablas de la cola** (`campaign_jobs`, `campaign_job_items`) en Convex.
+3. **El encolado**: `POST /api/v1/campaigns` valida, resuelve marca y estilos por slug,
+   y crea el trabajo.
+4. **El worker**: acción encolada con concurrencia limitada y reintentos, que reutiliza
+   la tubería de generación existente y deposita en la Biblioteca.
+5. **La pantalla de lote**: subir manifiesto, ver progreso, revisar resultados.
+6. **El export ZIP** (§7.2).
