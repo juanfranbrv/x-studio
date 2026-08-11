@@ -18,6 +18,7 @@ import {
     IconUser,
     IconLogout,
     IconFolderKanban,
+    IconSparkles,
 } from '@/components/ui/icons'
 import { AppLogo } from '@/components/ui/AppLogo'
 import { cn } from '@/lib/utils'
@@ -53,6 +54,7 @@ export function Sidebar({ className, showLogo = true, offsetTopClassName }: Side
         { icon: IconImage, label: t('nav.image'), href: '/image' },
         { icon: IconCarousel, label: t('nav.carousel'), href: '/carousel' },
         { icon: IconFolderKanban, label: t('nav.library'), href: '/library' },
+        { icon: IconSparkles, label: t('nav.campaigns'), href: '/campaigns' },
         ...(replaceModuleFlags?.showReplaceModule ? [{ icon: IconLayers, label: t('nav.replace'), href: '/replace' }] : []),
         { icon: IconFileText, label: t('nav.academy'), href: '/academy' },
     ]
