@@ -10,6 +10,7 @@ import { persistGeneratedImage } from '@/lib/campaigns/store-image'
 import { resolveCampaignColors } from '@/lib/campaigns/brand-colors'
 import { buildCampaignContext, type ContextItem } from '@/lib/campaigns/brand-logo'
 import { P06B } from '@/lib/prompts/priorities/p06b-ai-image-description'
+import { buildLayoutDirective } from '@/lib/campaigns/layout-directive'
 import type { SelectedColor } from '@/lib/creation-flow-types'
 import type { ManifestPost } from '@/lib/campaigns/manifest'
 import { log } from '@/lib/logger'
@@ -89,15 +90,23 @@ function buildPrompt(post: ManifestPost): string {
             post.hashtags?.length ? post.hashtags.join(' ') : '',
         ].filter(Boolean).join('\n\n')
 
+    const partes = [base]
+
+    // La composicion del layout se adjunta aqui porque el servidor solo la
+    // aplicaria a traves de `layoutReference`, y ningun layout del catalogo
+    // tiene imagen de referencia (ver layout-directive.ts).
+    const layoutDirective = buildLayoutDirective(post.layout)
+    if (layoutDirective) partes.push('', layoutDirective)
+
     // El contenido visual se inyecta con la MISMA instruccion que usa la
     // interfaz al aplicar una sugerencia, para que el resultado sea el mismo
     // se pida desde el panel o desde una campana.
     const visual = (post.visual_content || post.visual_note || '').trim()
-    if (!visual) return base
+    if (visual) {
+        partes.push('', P06B.PRIORITY_HEADER, '', P06B.AI_IMAGE_DESCRIPTION_INSTRUCTION(visual))
+    }
 
-    return [base, '', P06B.PRIORITY_HEADER, '', P06B.AI_IMAGE_DESCRIPTION_INSTRUCTION(visual)]
-        .filter((part) => part !== undefined)
-        .join('\n')
+    return partes.join('\n')
 }
 
 export async function POST(request: NextRequest, context: { params: Promise<{ jobId: string }> }) {
