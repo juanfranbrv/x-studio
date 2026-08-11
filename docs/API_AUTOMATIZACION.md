@@ -300,14 +300,42 @@ Verificado contra el entorno real, no deducido:
 
 ## 12. Plan de construcción (Fase 1)
 
-En orden, cada paso verificable por su cuenta:
+1. ✅ **Validador del manifiesto** — módulo puro con tests. Probado contra la campaña
+   real de Bauset: los 60 posts validan sin errores ni avisos.
+2. ✅ **Tablas de la cola** (`campaign_jobs`, `campaign_job_items`) en Convex.
+3. ✅ **El encolado**: `POST /api/v1/campaigns`, con `dry_run` e idempotencia.
+4. ✅ **El worker**: `POST /api/v1/campaigns/{id}/run`, concurrencia 2 y reintentos.
+   Vive en Next, no en Convex, porque la cadena de generación está en `src/lib`.
+5. ⬜ **La pantalla de lote**: subir manifiesto, ver progreso, revisar resultados.
+   Es lo único que falta para no depender de llamadas a la API.
+6. ✅ **El export ZIP** (§7.2), con `campaign.json` y `campaign.csv`.
 
-1. **Validador del manifiesto** — helpers puros con tests, sin tocar base de datos.
-   Es la puerta de entrada y lo que evita gastar créditos con un fichero mal formado.
-2. **Tablas de la cola** (`campaign_jobs`, `campaign_job_items`) en Convex.
-3. **El encolado**: `POST /api/v1/campaigns` valida, resuelve marca y estilos por slug,
-   y crea el trabajo.
-4. **El worker**: acción encolada con concurrencia limitada y reintentos, que reutiliza
-   la tubería de generación existente y deposita en la Biblioteca.
-5. **La pantalla de lote**: subir manifiesto, ver progreso, revisar resultados.
-6. **El export ZIP** (§7.2).
+Además, fuera del plan original pero necesarios al aparecer:
+`GET /api/v1/catalog` y `GET /api/v1/campaign-guide` (§4.4), y la paridad con los
+controles del panel lateral (§13).
+
+## 13. Paridad con el panel lateral
+
+El manifiesto tiene que ser el panel en forma de parámetros: "un clic con
+parámetros". Estado verificado control a control:
+
+| Control del panel | Parámetro | Verificado |
+|---|---|---|
+| Kit de marca | `campaign.brand` | ✅ |
+| Formato (red + tamaño) | `format` | ✅ 4:5 y 1:1 confirmados en el proveedor |
+| Estilo predefinido | `style` | ✅ |
+| Paleta del kit | `colors` | ✅ |
+| Logo y cuál | `logo`, `logo_id` | ✅ `refs=1` en el proveedor |
+| Diseño (layouts) | `layout` | ✅ los 279 verificados por prompt |
+| Contenido generado por IA | `visual_content` | ✅ |
+| CTA con la web | `cta_url` | ✅ |
+| Teléfono / email / dirección | `phone`, `email`, `address` | ✅ |
+| Logos auxiliares (sellos) | `extra_logos` | ✅ `refs=3` |
+| Modo avanzado de diseño | — | ⛔ descartado: no se usa |
+| Modelo de imagen | — | ⬜ pendiente (hoy se toma de Admin) |
+| Imágenes de referencia propias | — | ⬜ pendiente |
+
+**Lección de método:** aceptar un parámetro no significa que llegue. Tres de estos
+(paleta, logo y layout) se aceptaban sin efecto alguno, y el layout no llegaba
+*nunca*. Verificar contra el prompt o contra los `refs` que recibe el proveedor
+cuesta segundos; comprobarlo generando imágenes cuesta horas y créditos.

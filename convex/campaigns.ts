@@ -161,6 +161,44 @@ export const listJobs = query({
   },
 });
 
+/**
+ * Lote con el detalle completo de cada publicacion, incluido su payload.
+ * Lo usa la exportacion, que necesita los textos para poder emparejar cada
+ * imagen con su publicacion y su fecha.
+ */
+export const getJobForExport = query({
+  args: {
+    clerk_user_id: v.string(),
+    job_id: v.id("campaign_jobs"),
+  },
+  handler: async (ctx, args) => {
+    await requireSameUser(ctx, args.clerk_user_id);
+
+    const job = await ctx.db.get(args.job_id);
+    if (!job || job.user_id !== args.clerk_user_id) return null;
+
+    const items = await ctx.db
+      .query("campaign_job_items")
+      .withIndex("by_job_position", (q) => q.eq("job_id", args.job_id))
+      .order("asc")
+      .collect();
+
+    return {
+      name: job.name,
+      status: job.status,
+      total: job.total,
+      completed: job.completed,
+      items: items.map((item) => ({
+        ref: item.ref,
+        status: item.status,
+        asset_key: item.asset_key ?? null,
+        scheduled_at: item.scheduled_at ?? null,
+        payload: item.payload ?? null,
+      })),
+    };
+  },
+});
+
 /** Siguientes publicaciones pendientes del lote, en orden. */
 export const claimPendingItems = query({
   args: {
