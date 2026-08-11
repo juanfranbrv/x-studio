@@ -278,10 +278,17 @@ export default defineSchema({
     api_trace: v.optional(v.any()), // Array of trace objects
     debug: v.optional(v.any()), // JSON
     clerk_user_id: v.optional(v.string()),
+    // Identificador estable y legible del kit de marca ("academia-bauset"), para
+    // poder referenciarlo desde fuera (API y manifiestos de campana) sin usar el
+    // _id de Convex. Unico POR USUARIO, no globalmente: dos cuentas distintas
+    // pueden tener una marca con el mismo nombre. Opcional para no romper filas
+    // existentes: se rellena con brands.backfillBrandSlugs.
+    slug: v.optional(v.string()),
     updated_at: v.string(),
   }).index("by_url", ["url"])
     .index("by_url_user", ["url", "clerk_user_id"])
-    .index("by_clerk_id", ["clerk_user_id"]),
+    .index("by_clerk_id", ["clerk_user_id"])
+    .index("by_clerk_slug", ["clerk_user_id", "slug"]),
 
   generations: defineTable({
     brand_id: v.id("brand_dna"),

@@ -1,6 +1,34 @@
 import { v } from "convex/values";
-import { mutation, query } from "./_generated/server";
+import { internalMutation, mutation, query } from "./_generated/server";
 import { requireIdentity, requireSameUser, requireAdmin } from "./lib/authz";
+import { ensureUniqueSlug, slugify } from "./lib/slug";
+import type { Id } from "./_generated/dataModel";
+import type { MutationCtx } from "./_generated/server";
+
+/**
+ * Devuelve un slug unico DENTRO DEL USUARIO. A diferencia de los estilos, los
+ * kits de marca son por cuenta: dos usuarios distintos pueden tener "Mi Oliva
+ * Gourmet" y ambos merecen el slug bonito.
+ */
+async function resolveUniqueBrandSlug(
+    ctx: MutationCtx,
+    args: { desired?: unknown; name: string; ownerId: string; selfId?: Id<"brand_dna"> },
+): Promise<string> {
+    const requested = typeof args.desired === "string" ? args.desired.trim() : "";
+    const base = slugify(requested || args.name);
+
+    const siblings = await ctx.db
+        .query("brand_dna")
+        .withIndex("by_clerk_id", (q) => q.eq("clerk_user_id", args.ownerId))
+        .collect();
+
+    const taken = siblings
+        .filter((row) => String(row._id) !== String(args.selfId ?? ""))
+        .map((row) => row.slug)
+        .filter((slug): slug is string => typeof slug === "string" && slug.length > 0);
+
+    return ensureUniqueSlug(base, taken);
+}
 
 export const getBrands = query({
     args: { owner_id: v.string() },
@@ -129,11 +157,28 @@ export const upsertBrandDNA = mutation({
             .first();
 
         if (existing) {
-            await ctx.db.patch(existing._id, args);
+            // El slug no se recalcula al actualizar: una vez publicado es un
+            // identificador con el que se integra desde fuera. Solo se asigna
+            // si el kit venia de antes de que existiera el campo.
+            const patch = existing.slug
+                ? args
+                : {
+                    ...args,
+                    slug: await resolveUniqueBrandSlug(ctx, {
+                        name: args.brand_name,
+                        ownerId: args.clerk_user_id,
+                        selfId: existing._id,
+                    }),
+                };
+            await ctx.db.patch(existing._id, patch);
             return existing._id;
-        } else {
-            return await ctx.db.insert("brand_dna", args);
         }
+
+        const slug = await resolveUniqueBrandSlug(ctx, {
+            name: args.brand_name,
+            ownerId: args.clerk_user_id,
+        });
+        return await ctx.db.insert("brand_dna", { ...args, slug });
     },
 });
 
@@ -229,6 +274,7 @@ export const listSummariesByClerkId = query({
                 return {
                     _id: brand._id,
                     brand_name: brand.brand_name,
+                    slug: brand.slug,
                     url: brand.url,
                     tagline: brand.tagline || "",
                     business_overview_length: String(brand.business_overview || "").trim().length,
@@ -246,6 +292,77 @@ export const listSummariesByClerkId = query({
                 };
             })
         );
+    },
+});
+
+/**
+ * Resuelve un kit de marca del usuario por su slug. Es el punto de entrada
+ * pensado para consumo externo (API / manifiestos de campana), donde el `_id`
+ * de Convex no sirve porque es opaco.
+ */
+export const getBrandDNABySlug = query({
+    args: { slug: v.string(), clerk_user_id: v.string() },
+    handler: async (ctx, args) => {
+        await requireSameUser(ctx, args.clerk_user_id);
+        const slug = slugify(args.slug);
+
+        const rows = await ctx.db
+            .query("brand_dna")
+            .withIndex("by_clerk_slug", (q) => q.eq("clerk_user_id", args.clerk_user_id).eq("slug", slug))
+            .collect();
+
+        return rows[0] ?? null;
+    },
+});
+
+/**
+ * Rellena el slug de los kits que aun no lo tienen, derivandolo del nombre.
+ * Idempotente y por usuario: los slugs solo compiten dentro de cada cuenta.
+ */
+async function runBackfillBrandSlugs(ctx: MutationCtx) {
+    const rows = await ctx.db.query("brand_dna").collect();
+
+    // Agrupa por propietario: la unicidad es por cuenta, no global.
+    const takenByOwner = new Map<string, string[]>();
+    for (const row of rows) {
+        const owner = row.clerk_user_id || "";
+        if (!takenByOwner.has(owner)) takenByOwner.set(owner, []);
+        if (typeof row.slug === "string" && row.slug.length > 0) {
+            takenByOwner.get(owner)!.push(row.slug);
+        }
+    }
+
+    const assigned: Array<{ brand_name: string; slug: string }> = [];
+
+    for (const row of rows) {
+        if (typeof row.slug === "string" && row.slug.length > 0) continue;
+        const owner = row.clerk_user_id || "";
+        const taken = takenByOwner.get(owner)!;
+        const slug = ensureUniqueSlug(row.brand_name, taken);
+        taken.push(slug);
+        await ctx.db.patch(row._id, { slug });
+        assigned.push({ brand_name: row.brand_name, slug });
+    }
+
+    return { success: true, total: rows.length, assigned: assigned.length, details: assigned };
+}
+
+export const backfillBrandSlugs = mutation({
+    args: {},
+    handler: async (ctx) => {
+        await requireAdmin(ctx);
+        return await runBackfillBrandSlugs(ctx);
+    },
+});
+
+/**
+ * Misma operacion, invocable desde el CLI de Convex durante el despliegue,
+ * donde no hay identidad de Clerk que validar.
+ */
+export const backfillBrandSlugsInternal = internalMutation({
+    args: {},
+    handler: async (ctx) => {
+        return await runBackfillBrandSlugs(ctx);
     },
 });
 
@@ -353,11 +470,16 @@ export const createEmptyBrandKit = mutation({
     handler: async (ctx, args) => {
         await requireSameUser(ctx, args.clerk_user_id);
         const now = new Date().toISOString();
+        const slug = await resolveUniqueBrandSlug(ctx, {
+            name: args.brand_name,
+            ownerId: args.clerk_user_id,
+        });
 
         // Create a minimal brand_dna record with empty defaults
         const brandId = await ctx.db.insert("brand_dna", {
             url: args.source_url || `manual-${Date.now()}`,
             brand_name: args.brand_name,
+            slug,
             tagline: "",
             business_overview: "",
             cta_url_enabled: false,
@@ -474,8 +596,17 @@ export const cloneBrandDNAToUser = mutation({
         const { _id, _creationTime, ...data } = source as any;
         const now = new Date().toISOString();
 
+        // El slug es unico por usuario: al clonar hay que recalcularlo contra
+        // los kits del destinatario, no arrastrar el del origen.
+        const slug = await resolveUniqueBrandSlug(ctx, {
+            desired: source.slug,
+            name: source.brand_name,
+            ownerId: args.target_clerk_user_id,
+        });
+
         return await ctx.db.insert("brand_dna", {
             ...data,
+            slug,
             clerk_user_id: args.target_clerk_user_id,
             updated_at: now,
         });
