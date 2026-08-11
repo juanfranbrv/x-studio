@@ -12,19 +12,56 @@ export function findSocialFormat(id: string) {
 }
 
 /** Todos los layouts disponibles, vengan de donde vengan, sin duplicados. */
+export function listLayouts() {
+    const porId = new Map<string, (typeof DEFAULT_LAYOUTS)[number]>()
+
+    const todos = [
+        ...DEFAULT_LAYOUTS,
+        ...LAB_ADVANCED_LAYOUTS,
+        ...Object.values(LAYOUTS_BY_INTENT).flatMap((group) => group ?? []),
+    ]
+
+    for (const layout of todos) {
+        if (layout?.id && !porId.has(layout.id)) porId.set(layout.id, layout)
+    }
+
+    return [...porId.values()]
+}
+
 export function listLayoutIds(): string[] {
-    const ids = new Set<string>()
+    return listLayouts().map((layout) => layout.id)
+}
 
-    for (const layout of [...DEFAULT_LAYOUTS, ...LAB_ADVANCED_LAYOUTS]) {
-        if (layout?.id) ids.add(layout.id)
-    }
-    for (const group of Object.values(LAYOUTS_BY_INTENT)) {
-        for (const layout of group ?? []) {
-            if (layout?.id) ids.add(layout.id)
-        }
-    }
+/**
+ * Layouts agrupados por intencion, que es como los ofrece el panel: al elegir
+ * un intent ("El Servicio", "La Oferta"...) se muestran SUS layouts, no los
+ * cientos que existen sumando todos. Exponer la lista plana seria dar a elegir
+ * entre opciones que en la interfaz nunca aparecen juntas.
+ */
+export function listLayoutsByIntent(): Array<{ intent: string; layouts: Array<{ id: string; name: string; description?: string }> }> {
+    return Object.entries(LAYOUTS_BY_INTENT)
+        .filter(([, group]) => Array.isArray(group) && group.length > 0)
+        .map(([intent, group]) => ({
+            intent,
+            layouts: (group ?? []).map((layout) => ({
+                id: layout.id,
+                name: layout.name,
+                description: layout.description,
+            })),
+        }))
+}
 
-    return [...ids]
+/** Layouts genericos, los que valen sea cual sea la intencion. */
+export function listBaseLayouts() {
+    return DEFAULT_LAYOUTS.map((layout) => ({
+        id: layout.id,
+        name: layout.name,
+        description: layout.description,
+    }))
+}
+
+export function listIntents(): string[] {
+    return listLayoutsByIntent().map((entry) => entry.intent)
 }
 
 export function isKnownLayout(id: string): boolean {
