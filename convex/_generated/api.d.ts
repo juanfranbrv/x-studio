@@ -13,6 +13,7 @@ import type * as adminAudio from "../adminAudio.js";
 import type * as assets from "../assets.js";
 import type * as billing from "../billing.js";
 import type * as brands from "../brands.js";
+import type * as campaigns from "../campaigns.js";
 import type * as carousel from "../carousel.js";
 import type * as carouselAdmin from "../carouselAdmin.js";
 import type * as carouselSeed from "../carouselSeed.js";
@@ -48,6 +49,7 @@ declare const fullApi: ApiFromModules<{
   assets: typeof assets;
   billing: typeof billing;
   brands: typeof brands;
+  campaigns: typeof campaigns;
   carousel: typeof carousel;
   carouselAdmin: typeof carouselAdmin;
   carouselSeed: typeof carouselSeed;

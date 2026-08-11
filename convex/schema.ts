@@ -470,4 +470,48 @@ export default defineSchema({
     .index("by_sort_order", ["sort_order"])
     .index("by_active_sort", ["is_active", "sort_order"])
     .index("by_slug", ["slug"]),
+
+  // --- Automatizacion por lotes (docs/API_AUTOMATIZACION.md) ---
+
+  // Un lote encolado: una campana entera enviada de una vez.
+  campaign_jobs: defineTable({
+    user_id: v.string(),              // clerk_id del propietario
+    brand_id: v.id("brand_dna"),
+    name: v.string(),                 // nombre de campana; agrupa en la Biblioteca
+    // De donde vino: la UI de lote y la API comparten tuberia, pero conviene
+    // saber quien encolo para diagnosticar y, mas adelante, para cuotas.
+    source: v.string(),               // 'ui' | 'api'
+    // Permite reintentar un envio sin duplicar generacion ni cobro.
+    idempotency_key: v.optional(v.string()),
+    status: v.string(),               // 'queued' | 'running' | 'done' | 'failed' | 'cancelled'
+    total: v.number(),
+    completed: v.number(),
+    failed: v.number(),
+    // Manifiesto tal y como entro, para poder reconstruir o reintentar el lote.
+    manifest: v.any(),
+    created_at: v.string(),
+    finished_at: v.optional(v.string()),
+  }).index("by_user", ["user_id"])
+    .index("by_user_created", ["user_id", "created_at"])
+    .index("by_user_idempotency", ["user_id", "idempotency_key"])
+    .index("by_status", ["status"]),
+
+  // Una publicacion dentro del lote. Se procesa y reintenta por separado: un
+  // fallo aislado no debe tumbar la campana entera.
+  campaign_job_items: defineTable({
+    job_id: v.id("campaign_jobs"),
+    user_id: v.string(),
+    ref: v.string(),                  // "BAU-01": nombra la imagen resultante
+    status: v.string(),               // 'pending' | 'running' | 'done' | 'failed' | 'skipped'
+    position: v.number(),             // orden dentro del lote
+    payload: v.any(),                 // post ya resuelto (defaults aplicados)
+    scheduled_at: v.optional(v.string()),
+    asset_key: v.optional(v.string()), // enlaza con la Biblioteca al terminar
+    error: v.optional(v.string()),
+    attempts: v.number(),
+    updated_at: v.string(),
+  }).index("by_job", ["job_id"])
+    .index("by_job_status", ["job_id", "status"])
+    .index("by_job_position", ["job_id", "position"])
+    .index("by_user", ["user_id"]),
 });
