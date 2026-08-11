@@ -241,6 +241,29 @@ Códigos estables y documentados, no mensajes en castellano dentro de un JSON:
 La validación del manifiesto ocurre **entera y antes** de encolar: o el lote entra
 completo, o no entra ninguno.
 
+## 9.bis Cosas aprendidas construyendo el worker (2026-08-11)
+
+Verificado contra el entorno real, no deducido:
+
+1. **La imagen generada llega como data URL de ~1,5-2 MB y NO cabe en un campo
+   de Convex** (`Value is too large (1.60 MiB > maximum size 1 MiB)`). Hay que
+   subirla a Convex Storage y guardar la URL resultante
+   (`src/lib/campaigns/store-image.ts`). Este fallo es especialmente caro porque
+   ocurre **despues** de generar: la imagen ya esta pagada cuando revienta.
+2. **El modelo de imagen se resuelve SIEMPRE desde `settings.getAIConfig`**
+   (Admin > Modelos), como hace `/api/generate`. Pasar el prompt sin modelo
+   acaba en `Image model provider no soportado`, porque los identificadores
+   llevan prefijo de proveedor (`openai/gpt-image-2-low`).
+3. **Un fallo con intentos restantes debe volver a `pending`, no a `failed`.**
+   Marcarlo como fallido de entrada inutiliza los reintentos y da por perdida
+   una publicacion que solo tropezo una vez.
+4. **Los endpoints v1 son vulnerables a la carrera de token Clerk->Convex** ya
+   documentada en el proyecto: una consulta puede devolver vacio si el token no
+   esta listo, y eso se traduciria en un `unknown_brand` enganoso. Observado en
+   vivo: la misma llamada fallo y, repetida, devolvio las 6 marcas.
+   **PENDIENTE**: distinguir fallo transitorio (503, reintentable) de referencia
+   que de verdad no existe (422), reutilizando `isTransientAuthError`.
+
 ## 10. Restricciones del entorno (leer antes de implementar)
 
 - **No hay separación dev/producción en Convex** (ver `AGENTS.md`). Las tablas de la

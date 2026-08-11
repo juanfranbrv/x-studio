@@ -161,6 +161,168 @@ export const listJobs = query({
   },
 });
 
+/** Siguientes publicaciones pendientes del lote, en orden. */
+export const claimPendingItems = query({
+  args: {
+    clerk_user_id: v.string(),
+    job_id: v.id("campaign_jobs"),
+    limit: v.number(),
+  },
+  handler: async (ctx, args) => {
+    await requireSameUser(ctx, args.clerk_user_id);
+
+    const job = await ctx.db.get(args.job_id);
+    if (!job || job.user_id !== args.clerk_user_id) return null;
+
+    const items = await ctx.db
+      .query("campaign_job_items")
+      .withIndex("by_job_status", (q) => q.eq("job_id", args.job_id).eq("status", "pending"))
+      .take(Math.min(args.limit, 25));
+
+    const brand = await ctx.db.get(job.brand_id);
+
+    return {
+      job: summarizeJob(job),
+      brand,
+      items: items.map((item) => ({
+        item_id: item._id,
+        ref: item.ref,
+        payload: item.payload,
+        scheduled_at: item.scheduled_at,
+        attempts: item.attempts,
+      })),
+    };
+  },
+});
+
+/**
+ * Devuelve una publicacion a la cola sin contarla como fallida: se usa cuando
+ * fallo pero le quedan intentos, para que la recoja la siguiente tanda.
+ */
+export const requeueItem = mutation({
+  args: {
+    clerk_user_id: v.string(),
+    item_id: v.id("campaign_job_items"),
+    error: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    await requireSameUser(ctx, args.clerk_user_id);
+    const item = await ctx.db.get(args.item_id);
+    if (!item || item.user_id !== args.clerk_user_id) throw new Error("Publicacion no encontrada.");
+
+    await ctx.db.patch(args.item_id, {
+      status: "pending",
+      error: args.error,
+      updated_at: new Date().toISOString(),
+    });
+
+    return { success: true };
+  },
+});
+
+/**
+ * Devuelve a la cola las publicaciones fallidas del lote. Util cuando el fallo
+ * era de configuracion (un modelo mal puesto) y no del contenido: se corrige y
+ * se reintenta sin volver a encolar la campana entera.
+ */
+export const retryFailedItems = mutation({
+  args: {
+    clerk_user_id: v.string(),
+    job_id: v.id("campaign_jobs"),
+  },
+  handler: async (ctx, args) => {
+    await requireSameUser(ctx, args.clerk_user_id);
+
+    const job = await ctx.db.get(args.job_id);
+    if (!job || job.user_id !== args.clerk_user_id) throw new Error("Lote no encontrado.");
+
+    const failed = await ctx.db
+      .query("campaign_job_items")
+      .withIndex("by_job_status", (q) => q.eq("job_id", args.job_id).eq("status", "failed"))
+      .collect();
+
+    const now = new Date().toISOString();
+    for (const item of failed) {
+      await ctx.db.patch(item._id, { status: "pending", attempts: 0, error: undefined, updated_at: now });
+    }
+
+    await ctx.db.patch(args.job_id, {
+      failed: 0,
+      status: failed.length > 0 ? "queued" : job.status,
+      finished_at: undefined,
+    });
+
+    return { success: true, requeued: failed.length };
+  },
+});
+
+/** Marca el arranque de una publicacion y cuenta el intento. */
+export const startItem = mutation({
+  args: {
+    clerk_user_id: v.string(),
+    item_id: v.id("campaign_job_items"),
+  },
+  handler: async (ctx, args) => {
+    await requireSameUser(ctx, args.clerk_user_id);
+    const item = await ctx.db.get(args.item_id);
+    if (!item || item.user_id !== args.clerk_user_id) throw new Error("Publicacion no encontrada.");
+
+    await ctx.db.patch(args.item_id, {
+      status: "running",
+      attempts: item.attempts + 1,
+      updated_at: new Date().toISOString(),
+    });
+
+    await ctx.db.patch(item.job_id, { status: "running" });
+    return { success: true };
+  },
+});
+
+/**
+ * Cierra una publicacion, con o sin exito, y actualiza los contadores del
+ * lote. Un fallo NO detiene la campana: el item queda en `failed` con su
+ * error y el resto sigue adelante.
+ */
+export const finishItem = mutation({
+  args: {
+    clerk_user_id: v.string(),
+    item_id: v.id("campaign_job_items"),
+    ok: v.boolean(),
+    asset_key: v.optional(v.string()),
+    error: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    await requireSameUser(ctx, args.clerk_user_id);
+    const item = await ctx.db.get(args.item_id);
+    if (!item || item.user_id !== args.clerk_user_id) throw new Error("Publicacion no encontrada.");
+
+    const now = new Date().toISOString();
+
+    await ctx.db.patch(args.item_id, {
+      status: args.ok ? "done" : "failed",
+      asset_key: args.asset_key,
+      error: args.ok ? undefined : (args.error || "Error desconocido"),
+      updated_at: now,
+    });
+
+    const job = await ctx.db.get(item.job_id);
+    if (!job) return { success: true };
+
+    const completed = job.completed + (args.ok ? 1 : 0);
+    const failed = job.failed + (args.ok ? 0 : 1);
+    const terminado = completed + failed >= job.total;
+
+    await ctx.db.patch(item.job_id, {
+      completed,
+      failed,
+      status: terminado ? (failed === job.total ? "failed" : "done") : "running",
+      finished_at: terminado ? now : undefined,
+    });
+
+    return { success: true, completed, failed, terminado };
+  },
+});
+
 /**
  * Cancela las publicaciones que aun no se han generado. Las ya hechas se
  * quedan: cancelar no debe tirar trabajo (ni creditos) ya gastado.
