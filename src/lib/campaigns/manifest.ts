@@ -35,6 +35,9 @@ export type ManifestPost = {
     format?: string
     style?: string
     layout?: string
+    /** Heredados de `campaign.defaults` al resolver el post. */
+    colors?: string[]
+    logo?: boolean
 }
 
 export type CampaignManifest = {
@@ -277,5 +280,9 @@ export function resolvePost(manifest: CampaignManifest, post: ManifestPost): Req
         format: post.format ?? defaults.format,
         style: post.style ?? defaults.style,
         layout: post.layout ?? defaults.layout,
+        // La paleta y el logo son de campana, pero viajan resueltos en cada
+        // post para que el worker no tenga que releer el manifiesto entero.
+        colors: post.colors ?? defaults.colors,
+        logo: post.logo ?? defaults.logo,
     }
 }

@@ -5,8 +5,10 @@ import type { Id } from '@/../convex/_generated/dataModel'
 import { authedFetchQuery, authedFetchMutation } from '@/lib/convex-server'
 import { generateContentImageUnified } from '@/lib/gemini'
 import type { BrandDNA } from '@/lib/brand-types'
-import { findSocialFormat } from '@/lib/campaigns/catalogs'
+import { findSocialFormat, findLayout } from '@/lib/campaigns/catalogs'
 import { persistGeneratedImage } from '@/lib/campaigns/store-image'
+import { resolveCampaignColors } from '@/lib/campaigns/brand-colors'
+import type { SelectedColor } from '@/lib/creation-flow-types'
 import type { ManifestPost } from '@/lib/campaigns/manifest'
 import { log } from '@/lib/logger'
 
@@ -37,9 +39,15 @@ type ClaimedItem = {
 }
 
 /** Traduce un post del manifiesto a las opciones que espera el generador. */
-function buildOptions(post: ManifestPost, style: { name?: string; analysis?: unknown } | null, model?: string) {
+function buildOptions(
+    post: ManifestPost,
+    style: { name?: string; analysis?: unknown } | null,
+    model: string | undefined,
+    selectedColors: SelectedColor[],
+) {
     const format = post.format ? findSocialFormat(post.format) : null
     const analysis = (style?.analysis ?? {}) as { keywords?: string[]; subjectLabel?: string }
+    const layout = post.layout ? findLayout(post.layout) : null
 
     return {
         headline: post.headline,
@@ -47,6 +55,11 @@ function buildOptions(post: ManifestPost, style: { name?: string; analysis?: unk
         platform: post.platform,
         aspectRatio: format?.aspectRatio,
         model,
+        // Sin `selectedColors` el prompt deja la paleta en "Sin definir" y el
+        // modelo se inventa los colores de marca: es lo que hace la interfaz
+        // al inicializar el kit, y aqui tiene que pasar lo mismo.
+        selectedColors,
+        layoutReference: layout?.referenceImage,
         // Mismo mapeo que hace el modulo de imagen al enviar su peticion.
         selectedStyles: style?.name ? [style.name] : [],
         styleAnalysisKeywords: Array.isArray(analysis.keywords) ? analysis.keywords : [],
@@ -156,10 +169,15 @@ export async function POST(request: NextRequest, context: { params: Promise<{ jo
                         ? await authedFetchQuery(api.stylePresets.getActiveBySlug, { slug: post.style })
                         : null
 
+                    const selectedColors = resolveCampaignColors(
+                        post.colors,
+                        (brandDoc as { colors?: unknown } | null)?.colors,
+                    )
+
                     const generated = await generateContentImageUnified(
                         brand,
                         buildPrompt(post),
-                        buildOptions(post, style, imageModel),
+                        buildOptions(post, style, imageModel, selectedColors),
                     )
 
                     // La imagen llega como data URL de varios MB: hay que

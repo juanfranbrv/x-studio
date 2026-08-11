@@ -31,6 +31,16 @@ export function isKnownLayout(id: string): boolean {
     return listLayoutIds().includes(id)
 }
 
+/** Devuelve el layout completo, para poder pasar su imagen de referencia. */
+export function findLayout(id: string) {
+    const todos = [
+        ...DEFAULT_LAYOUTS,
+        ...LAB_ADVANCED_LAYOUTS,
+        ...Object.values(LAYOUTS_BY_INTENT).flatMap((group) => group ?? []),
+    ]
+    return todos.find((layout) => layout?.id === id) ?? null
+}
+
 /** Ids de formato validos, para poder sugerirlos en el mensaje de error. */
 export function listSocialFormatIds(): string[] {
     return SOCIAL_FORMATS.map((format) => format.id)
