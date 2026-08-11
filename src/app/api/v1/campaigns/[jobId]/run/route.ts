@@ -11,6 +11,7 @@ import { resolveCampaignColors } from '@/lib/campaigns/brand-colors'
 import { buildCampaignContext, type ContextItem } from '@/lib/campaigns/brand-logo'
 import { P06B } from '@/lib/prompts/priorities/p06b-ai-image-description'
 import { buildLayoutDirective } from '@/lib/campaigns/layout-directive'
+import { buildBrandTextBlock, buildAuxiliaryLogoContext } from '@/lib/campaigns/brand-assets'
 import type { SelectedColor } from '@/lib/creation-flow-types'
 import type { ManifestPost } from '@/lib/campaigns/manifest'
 import { log } from '@/lib/logger'
@@ -79,7 +80,7 @@ function buildOptions(
  * trabaja hoy Juanfran y funciona); si no lo hay, se compone a partir de los
  * campos estructurados.
  */
-function buildPrompt(post: ManifestPost): string {
+function buildPrompt(post: ManifestPost, brandTextBlock: string): string {
     const base = post.prompt
         ? post.prompt
         : [
@@ -91,6 +92,9 @@ function buildPrompt(post: ManifestPost): string {
         ].filter(Boolean).join('\n\n')
 
     const partes = [base]
+
+    // Web, telefono o direccion del kit, cuando la campana los pide.
+    if (brandTextBlock) partes.push('', brandTextBlock)
 
     // La composicion del layout se adjunta aqui porque el servidor solo la
     // aplicaria a traves de `layoutReference`, y ningun layout del catalogo
@@ -196,15 +200,32 @@ export async function POST(request: NextRequest, context: { params: Promise<{ jo
                         (brandDoc as { colors?: unknown } | null)?.colors,
                     )
 
-                    const campaignContext = buildCampaignContext(brandDoc as { logo_url?: unknown; logos?: unknown } | null, {
+                    const brandForAssets = brandDoc as { logo_url?: unknown; logos?: unknown } | null
+
+                    const campaignContext = buildCampaignContext(brandForAssets, {
                         includeLogo: post.logo,
                         preferredLogo: post.logo_id,
                     })
 
+                    // Sellos y certificaciones: se anaden como referencias
+                    // adicionales, sin repetir el logo principal.
+                    const auxLogos = buildAuxiliaryLogoContext(
+                        brandForAssets,
+                        post.extra_logos,
+                        campaignContext[0]?.value ?? null,
+                    )
+
+                    const brandTextBlock = buildBrandTextBlock(brandForAssets, {
+                        cta_url: post.cta_url,
+                        phone: post.phone,
+                        email: post.email,
+                        address: post.address,
+                    })
+
                     const generated = await generateContentImageUnified(
                         brand,
-                        buildPrompt(post),
-                        buildOptions(post, style, imageModel, selectedColors, campaignContext),
+                        buildPrompt(post, brandTextBlock),
+                        buildOptions(post, style, imageModel, selectedColors, [...campaignContext, ...auxLogos]),
                     )
 
                     // La imagen llega como data URL de varios MB: hay que

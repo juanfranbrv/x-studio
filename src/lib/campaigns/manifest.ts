@@ -18,6 +18,16 @@ export type ManifestDefaults = {
     colors?: string[]
     logo?: boolean
     logo_id?: string
+    /**
+     * Activos del kit que deben aparecer en la imagen. `true` toma el valor
+     * del kit de marca; una cadena lo pisa con un valor concreto.
+     */
+    cta_url?: boolean | string
+    phone?: boolean | string
+    email?: boolean | string
+    address?: boolean | string
+    /** Logos auxiliares (sellos, certificaciones): true = todos, o lista de ids. */
+    extra_logos?: boolean | string[]
 }
 
 export type ManifestPost = {
@@ -49,6 +59,11 @@ export type ManifestPost = {
     logo?: boolean
     /** Cual de los logos del kit usar (id o posicion "logo-0"). */
     logo_id?: string
+    cta_url?: boolean | string
+    phone?: boolean | string
+    email?: boolean | string
+    address?: boolean | string
+    extra_logos?: boolean | string[]
 }
 
 export type CampaignManifest = {
@@ -95,6 +110,19 @@ function readStringArray(value: unknown): string[] {
  * menos un titular. Los prompts en prosa son validos por si solos (ver §4.2
  * del contrato): no se obliga a trocear el texto en campos.
  */
+/** `true`/`false` para usar o no el dato del kit; una cadena lo pisa. */
+function readAssetChoice(value: unknown): boolean | string | undefined {
+    if (typeof value === 'boolean') return value
+    const text = readString(value)
+    return text || undefined
+}
+
+function readLogoChoice(value: unknown): boolean | string[] | undefined {
+    if (typeof value === 'boolean') return value
+    const list = readStringArray(value)
+    return list.length > 0 ? list : undefined
+}
+
 function hasContent(post: ManifestPost): boolean {
     return Boolean(post.prompt || post.headline || post.body)
 }
@@ -158,6 +186,11 @@ export function validateManifest(input: unknown): ManifestValidation {
         colors: readStringArray(defaultsRaw.colors),
         logo: typeof defaultsRaw.logo === 'boolean' ? defaultsRaw.logo : undefined,
         logo_id: readString(defaultsRaw.logo_id) || undefined,
+        cta_url: readAssetChoice(defaultsRaw.cta_url),
+        phone: readAssetChoice(defaultsRaw.phone),
+        email: readAssetChoice(defaultsRaw.email),
+        address: readAssetChoice(defaultsRaw.address),
+        extra_logos: readLogoChoice(defaultsRaw.extra_logos),
     }
 
     const postsRaw = Array.isArray(input.posts) ? input.posts : null
@@ -212,6 +245,11 @@ export function validateManifest(input: unknown): ManifestValidation {
             hashtags: readStringArray(raw.hashtags),
             visual_content: readString(raw.visual_content) || readString(raw.visual_note) || undefined,
             visual_note: readString(raw.visual_note) || undefined,
+            cta_url: readAssetChoice(raw.cta_url),
+            phone: readAssetChoice(raw.phone),
+            email: readAssetChoice(raw.email),
+            address: readAssetChoice(raw.address),
+            extra_logos: readLogoChoice(raw.extra_logos),
             platform: validatePlatform(raw.platform, `${path}.platform`, errors, ref),
             format: readString(raw.format) || undefined,
             style: readString(raw.style) || undefined,
@@ -298,5 +336,10 @@ export function resolvePost(manifest: CampaignManifest, post: ManifestPost): Req
         colors: post.colors ?? defaults.colors,
         logo: post.logo ?? defaults.logo,
         logo_id: post.logo_id ?? defaults.logo_id,
+        cta_url: post.cta_url ?? defaults.cta_url,
+        phone: post.phone ?? defaults.phone,
+        email: post.email ?? defaults.email,
+        address: post.address ?? defaults.address,
+        extra_logos: post.extra_logos ?? defaults.extra_logos,
     }
 }

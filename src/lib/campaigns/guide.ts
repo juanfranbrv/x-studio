@@ -51,7 +51,11 @@ Responde UNICAMENTE con un objeto JSON valido, sin texto alrededor:
       "format": "<id de formato del catalogo>",
       "style": "<slug de estilo del catalogo, opcional>",
       "layout": "<id de layout del catalogo, opcional>",
-      "logo": true
+      "logo": true,
+      "cta_url": true,
+      "phone": false,
+      "address": false,
+      "extra_logos": false
     }
   },
   "posts": [
@@ -82,7 +86,15 @@ Responde UNICAMENTE con un objeto JSON valido, sin texto alrededor:
 4. **Solo puedes usar identificadores que aparezcan en los catalogos de abajo.**
    Un slug o id inventado hace que se rechace la campana entera.
 5. Lo que pongas en un post pisa lo que haya en "defaults".
-6. **"visual_content" describe QUE SE VE en la imagen** (la escena, el sujeto,
+6. **Datos de marca que apareceran en la imagen.** Con \`true\` se toma el valor
+   del kit; con una cadena se pisa con otro valor; con \`false\` no aparece:
+   - \`cta_url\`: la web de la marca. Casi siempre conviene ponerla a \`true\`,
+     porque es la llamada a la accion de la publicacion.
+   - \`phone\`, \`email\`, \`address\`: datos de contacto. Usalos solo cuando la
+     publicacion lo pida; llenar la imagen de datos la ensucia.
+   - \`extra_logos\`: sellos y certificaciones (Cambridge, Pearson...).
+     \`true\` incluye todos los del kit; tambien admite una lista de ids.
+7. **"visual_content" describe QUE SE VE en la imagen** (la escena, el sujeto,
    el ambiente), no el texto que aparece escrito. Ejemplo: "Un pequeno robot
    con luces LED moviendose sobre un tablero educativo con circuitos". Si no lo
    indicas, la plataforma lo decide por su cuenta; indicarlo es la unica forma
