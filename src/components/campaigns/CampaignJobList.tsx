@@ -4,7 +4,8 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { useToast } from '@/hooks/use-toast'
 import { Loader2 } from '@/components/ui/spinner'
-import { IconRefresh, IconDelete } from '@/components/ui/icons'
+import { IconRefresh, IconDelete, IconClose } from '@/components/ui/icons'
+import { CampaignJobThumbnails } from '@/components/campaigns/CampaignJobThumbnails'
 
 export type CampaignJob = {
     job_id: string
@@ -27,9 +28,19 @@ const ESTADOS: Record<string, { etiqueta: string; clase: string }> = {
 export function CampaignJobList({ jobs, onRefresh }: { jobs: CampaignJob[]; onRefresh: () => void }) {
     const { toast } = useToast()
     const [ocupado, setOcupado] = useState<string | null>(null)
+    const [deteniendo, setDeteniendo] = useState<string | null>(null)
     // Se procesa por tandas y se encadenan solas: asi ninguna peticion se
     // acerca al limite de tiempo del servidor con lotes largos.
     const enMarcha = useRef<Set<string>>(new Set())
+    // Lotes cuya generacion ha pedido detenerse el usuario.
+    const abortados = useRef<Set<string>>(new Set())
+    // Cambia en cada refresco para que las miniaturas se recarguen solas
+    // mientras el lote avanza.
+    const [tick, setTick] = useState(0)
+
+    useEffect(() => {
+        setTick((valor) => valor + 1)
+    }, [jobs])
 
     const procesarTanda = useCallback(async (jobId: string): Promise<number> => {
         const response = await fetch(`/api/v1/campaigns/${jobId}/run`, {
@@ -45,11 +56,18 @@ export function CampaignJobList({ jobs, onRefresh }: { jobs: CampaignJob[]; onRe
     const generar = async (job: CampaignJob) => {
         if (enMarcha.current.has(job.job_id)) return
         enMarcha.current.add(job.job_id)
+        abortados.current.delete(job.job_id)
         setOcupado(job.job_id)
 
         try {
             let restantes = 1
             while (restantes > 0) {
+                // Se comprueba entre tandas, no dentro: la tanda en curso se
+                // deja terminar para no tirar imagenes ya pagadas.
+                if (abortados.current.has(job.job_id)) {
+                    toast({ title: 'Generación detenida', description: 'Lo ya generado se conserva.' })
+                    return
+                }
                 restantes = await procesarTanda(job.job_id)
                 onRefresh()
             }
@@ -62,19 +80,28 @@ export function CampaignJobList({ jobs, onRefresh }: { jobs: CampaignJob[]; onRe
             })
         } finally {
             enMarcha.current.delete(job.job_id)
+            abortados.current.delete(job.job_id)
             setOcupado(null)
             onRefresh()
         }
     }
 
-    const cancelar = async (job: CampaignJob) => {
-        setOcupado(job.job_id)
+    /**
+     * Detener no es solo cancelar en el servidor: hay que cortar tambien el
+     * bucle de tandas del navegador, o seguiria pidiendo la siguiente.
+     */
+    const detener = async (job: CampaignJob) => {
+        abortados.current.add(job.job_id)
+        setDeteniendo(job.job_id)
         try {
             await fetch(`/api/v1/campaigns/${job.job_id}/cancel`, { method: 'POST' })
-            toast({ title: 'Campaña cancelada', description: 'Lo ya generado se conserva.' })
+            toast({
+                title: 'Generación abortada',
+                description: 'Las publicaciones ya generadas se conservan y puedes descargarlas.',
+            })
             onRefresh()
         } finally {
-            setOcupado(null)
+            setDeteniendo(null)
         }
     }
 
@@ -150,11 +177,21 @@ export function CampaignJobList({ jobs, onRefresh }: { jobs: CampaignJob[]; onRe
                                     <Button
                                         type="button"
                                         size="sm"
-                                        variant="ghost"
-                                        onClick={() => cancelar(job)}
-                                        disabled={trabajando}
+                                        variant={trabajando ? 'destructive' : 'ghost'}
+                                        onClick={() => detener(job)}
+                                        disabled={deteniendo === job.job_id}
+                                        title={trabajando ? 'Detener la generación' : 'Cancelar las pendientes'}
                                     >
-                                        <IconDelete className="size-4" />
+                                        {deteniendo === job.job_id ? (
+                                            <Loader2 className="size-4 animate-spin" />
+                                        ) : trabajando ? (
+                                            <>
+                                                <IconClose className="mr-2 size-4" />
+                                                Detener
+                                            </>
+                                        ) : (
+                                            <IconDelete className="size-4" />
+                                        )}
                                     </Button>
                                 ) : null}
                             </div>
@@ -166,6 +203,10 @@ export function CampaignJobList({ jobs, onRefresh }: { jobs: CampaignJob[]; onRe
                                 style={{ width: `${porcentaje}%` }}
                             />
                         </div>
+
+                        {job.completed > 0 ? (
+                            <CampaignJobThumbnails jobId={job.job_id} refreshKey={tick} />
+                        ) : null}
                     </article>
                 )
             })}
