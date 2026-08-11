@@ -17,6 +17,7 @@ export type ManifestDefaults = {
     layout?: string
     colors?: string[]
     logo?: boolean
+    logo_id?: string
 }
 
 export type ManifestPost = {
@@ -38,6 +39,8 @@ export type ManifestPost = {
     /** Heredados de `campaign.defaults` al resolver el post. */
     colors?: string[]
     logo?: boolean
+    /** Cual de los logos del kit usar (id o posicion "logo-0"). */
+    logo_id?: string
 }
 
 export type CampaignManifest = {
@@ -146,6 +149,7 @@ export function validateManifest(input: unknown): ManifestValidation {
         layout: readString(defaultsRaw.layout) || undefined,
         colors: readStringArray(defaultsRaw.colors),
         logo: typeof defaultsRaw.logo === 'boolean' ? defaultsRaw.logo : undefined,
+        logo_id: readString(defaultsRaw.logo_id) || undefined,
     }
 
     const postsRaw = Array.isArray(input.posts) ? input.posts : null
@@ -284,5 +288,6 @@ export function resolvePost(manifest: CampaignManifest, post: ManifestPost): Req
         // post para que el worker no tenga que releer el manifiesto entero.
         colors: post.colors ?? defaults.colors,
         logo: post.logo ?? defaults.logo,
+        logo_id: post.logo_id ?? defaults.logo_id,
     }
 }

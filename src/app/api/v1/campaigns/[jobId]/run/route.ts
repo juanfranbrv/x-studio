@@ -8,6 +8,7 @@ import type { BrandDNA } from '@/lib/brand-types'
 import { findSocialFormat, findLayout } from '@/lib/campaigns/catalogs'
 import { persistGeneratedImage } from '@/lib/campaigns/store-image'
 import { resolveCampaignColors } from '@/lib/campaigns/brand-colors'
+import { buildCampaignContext, type ContextItem } from '@/lib/campaigns/brand-logo'
 import type { SelectedColor } from '@/lib/creation-flow-types'
 import type { ManifestPost } from '@/lib/campaigns/manifest'
 import { log } from '@/lib/logger'
@@ -44,6 +45,7 @@ function buildOptions(
     style: { name?: string; analysis?: unknown } | null,
     model: string | undefined,
     selectedColors: SelectedColor[],
+    context: ContextItem[],
 ) {
     const format = post.format ? findSocialFormat(post.format) : null
     const analysis = (style?.analysis ?? {}) as { keywords?: string[]; subjectLabel?: string }
@@ -59,6 +61,9 @@ function buildOptions(
         // modelo se inventa los colores de marca: es lo que hace la interfaz
         // al inicializar el kit, y aqui tiene que pasar lo mismo.
         selectedColors,
+        // El logo viaja aqui, como imagen de referencia: describirlo con
+        // palabras hace que el modelo se invente uno parecido.
+        context,
         layoutReference: layout?.referenceImage,
         // Mismo mapeo que hace el modulo de imagen al enviar su peticion.
         selectedStyles: style?.name ? [style.name] : [],
@@ -174,10 +179,15 @@ export async function POST(request: NextRequest, context: { params: Promise<{ jo
                         (brandDoc as { colors?: unknown } | null)?.colors,
                     )
 
+                    const campaignContext = buildCampaignContext(brandDoc as { logo_url?: unknown; logos?: unknown } | null, {
+                        includeLogo: post.logo,
+                        preferredLogo: post.logo_id,
+                    })
+
                     const generated = await generateContentImageUnified(
                         brand,
                         buildPrompt(post),
-                        buildOptions(post, style, imageModel, selectedColors),
+                        buildOptions(post, style, imageModel, selectedColors, campaignContext),
                     )
 
                     // La imagen llega como data URL de varios MB: hay que

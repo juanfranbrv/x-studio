@@ -179,7 +179,35 @@ export const claimPendingItems = query({
       .withIndex("by_job_status", (q) => q.eq("job_id", args.job_id).eq("status", "pending"))
       .take(Math.min(args.limit, 25));
 
-    const brand = await ctx.db.get(job.brand_id);
+    const brandDoc = await ctx.db.get(job.brand_id);
+
+    // Los logos pueden estar guardados como storageId o como ruta interna: se
+    // resuelven aqui a URLs servibles, porque el worker los adjunta como
+    // imagen de referencia y el proveedor tiene que poder descargarlos.
+    const needsResolve = (url: string) => !url.startsWith("http") || url.includes("/_storage/");
+    const extractId = (url: string) => (url.includes("/_storage/") ? url.split("/_storage/").pop()! : url);
+    const resolveUrl = async (url: unknown): Promise<string | null> => {
+      const value = typeof url === "string" ? url.trim() : "";
+      if (!value) return null;
+      if (!needsResolve(value)) return value;
+      return (await ctx.storage.getUrl(extractId(value) as never)) || value;
+    };
+
+    const brand = brandDoc
+      ? {
+        ...brandDoc,
+        logo_url: await resolveUrl(brandDoc.logo_url),
+        logos: Array.isArray(brandDoc.logos)
+          ? await Promise.all(
+            brandDoc.logos.map(async (logo: unknown) => {
+              if (typeof logo === "string") return { url: await resolveUrl(logo) };
+              const entry = (logo ?? {}) as Record<string, unknown>;
+              return { ...entry, url: await resolveUrl(entry.url) };
+            }),
+          )
+          : [],
+      }
+      : null;
 
     return {
       job: summarizeJob(job),
