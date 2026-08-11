@@ -1,7 +1,7 @@
 import type { BrandDNA } from './brand-types'
 import { IMAGE_GENERATION_BASE_PROMPT } from './prompts/image-generator-base'
 import * as P11 from './prompts/priorities/p11-system-persona'
-import { LAYOUTS_BY_INTENT, DEFAULT_LAYOUTS, LayoutOption } from './creation-flow-types'
+import { LAYOUTS_BY_INTENT, DEFAULT_LAYOUTS, LayoutOption, type SocialPlatform } from './creation-flow-types'
 import { buildContextInstructions } from './prompts/image-generation/context-builder'
 import { buildLayoutInstruction } from './prompts/image-generation/layout-rules'
 import { buildTypographyInstructions } from './prompts/image-generation/typography-builder'
@@ -9,7 +9,9 @@ import { buildTypographyInstructions } from './prompts/image-generation/typograp
 export interface ImageGenerationOptions {
     headline?: string
     cta?: string
-    platform?: 'instagram' | 'tiktok' | 'youtube' | 'linkedin'
+    // Alineado con SocialPlatform: el catalogo de formatos ya incluye Facebook
+    // y X, pero este tipo se habia quedado corto y los rechazaba.
+    platform?: SocialPlatform
     context?: Array<{
         type: string
         value: string

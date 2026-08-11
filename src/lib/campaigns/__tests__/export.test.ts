@@ -52,10 +52,36 @@ describe('buildExportEntries', () => {
             ref: 'BAU-01',
             file: 'BAU-01.png',
             scheduled_at: '2026-08-11T09:30:00+02:00',
-            platform: 'instagram',
+            optimized_for: 'instagram',
             headline: 'Titular uno',
             hashtags: ['#A', '#B'],
         })
+    })
+
+    it('publica en Facebook e Instagram cuando el lote no lo especifica', () => {
+        // Los lotes generados antes de que existiera publish_to no deben
+        // exportarse como si fueran de una sola red.
+        expect(entries[0].publish_to).toEqual(['facebook', 'instagram'])
+    })
+
+    it('respeta las redes indicadas por la campana', () => {
+        const result = buildExportEntries([
+            { ref: 'X', status: 'done', asset_key: 'u', payload: { publish_to: ['linkedin'] } },
+        ])
+        expect(result[0].publish_to).toEqual(['linkedin'])
+    })
+
+    it('distingue donde se publica de para que red se optimizo', () => {
+        const result = buildExportEntries([
+            {
+                ref: 'X',
+                status: 'done',
+                asset_key: 'u',
+                payload: { platform: 'instagram', publish_to: ['facebook', 'instagram'] },
+            },
+        ])
+        expect(result[0].optimized_for).toBe('instagram')
+        expect(result[0].publish_to).toEqual(['facebook', 'instagram'])
     })
 
     it('deja en null lo que no exista, sin inventar', () => {
@@ -88,8 +114,28 @@ describe('escapeCsv', () => {
 describe('buildCampaignCsv', () => {
     const csv = buildCampaignCsv(buildExportEntries(items))
 
+    it('empieza con el BOM de UTF-8 para que Excel no rompa los acentos', () => {
+        expect(csv.charCodeAt(0)).toBe(0xfeff)
+    })
+
+    it('conserva los acentos intactos', () => {
+        const conAcentos = buildCampaignCsv(
+            buildExportEntries([
+                { ref: 'X', status: 'done', asset_key: 'u', payload: { headline: 'Mañana la cuenta atrás' } },
+            ]),
+        )
+        expect(conAcentos).toContain('Mañana la cuenta atrás')
+        expect(conAcentos).not.toContain('MaÃ±ana')
+    })
+
     it('empieza por la cabecera', () => {
-        expect(csv.split('\r\n')[0]).toBe('ref,file,scheduled_at,platform,headline,body,cta,hashtags')
+        expect(csv.replace('﻿', '').split('\r\n')[0]).toBe(
+            'ref,file,scheduled_at,publish_to,optimized_for,headline,body,cta,hashtags',
+        )
+    })
+
+    it('lista las redes de publicacion en su columna', () => {
+        expect(csv).toContain('"facebook, instagram"')
     })
 
     it('incluye una fila por publicacion exportable', () => {

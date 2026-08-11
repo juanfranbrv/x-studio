@@ -20,14 +20,33 @@ export type ExportEntry = {
     ref: string
     file: string
     scheduled_at: string | null
-    platform: string | null
+    /** Redes donde hay que publicar la pieza. */
+    publish_to: string[]
+    /** Red para la que se optimizo la imagen (encuadre). */
+    optimized_for: string | null
     headline: string | null
     body: string | null
     cta: string | null
     hashtags: string[]
 }
 
-const CSV_COLUMNS = ['ref', 'file', 'scheduled_at', 'platform', 'headline', 'body', 'cta', 'hashtags'] as const
+const CSV_COLUMNS = [
+    'ref',
+    'file',
+    'scheduled_at',
+    'publish_to',
+    'optimized_for',
+    'headline',
+    'body',
+    'cta',
+    'hashtags',
+] as const
+
+/**
+ * Redes por defecto cuando el lote se genero antes de que existiera
+ * `publish_to`: sin esto, las campanas ya generadas exportarian una sola red.
+ */
+const PUBLISH_TO_POR_DEFECTO = ['facebook', 'instagram']
 
 function text(value: unknown): string | null {
     return typeof value === 'string' && value.trim() ? value.trim() : null
@@ -54,11 +73,16 @@ export function buildExportEntries(items: ExportItem[]): ExportEntry[] {
             ? payload.hashtags.filter((tag): tag is string => typeof tag === 'string')
             : []
 
+        const publishTo = Array.isArray(payload.publish_to)
+            ? payload.publish_to.filter((red): red is string => typeof red === 'string' && red.trim().length > 0)
+            : []
+
         return {
             ref: item.ref,
             file: fileNameFor(item.ref),
             scheduled_at: item.scheduled_at ?? text(payload.scheduled_at),
-            platform: text(payload.platform),
+            publish_to: publishTo.length > 0 ? publishTo : PUBLISH_TO_POR_DEFECTO,
+            optimized_for: text(payload.platform),
             headline: text(payload.headline),
             body: text(payload.body),
             cta: text(payload.cta),
@@ -74,15 +98,25 @@ export function escapeCsv(value: unknown): string {
     return `"${raw.replaceAll('"', '""')}"`
 }
 
+/**
+ * Marca de orden de bytes UTF-8.
+ *
+ * Sin ella, Excel abre el CSV como ANSI y destroza cualquier acento: "Mañana"
+ * se convierte en "MaÃ±ana". El fichero estaba bien codificado, pero quien lo
+ * abre no tiene forma de saberlo. Con el BOM, Excel lo reconoce solo.
+ */
+const BOM_UTF8 = '\uFEFF'
+
 export function buildCampaignCsv(entries: ExportEntry[]): string {
     const filas = entries.map((entry) =>
         CSV_COLUMNS.map((column) => {
-            const value = column === 'hashtags' ? entry.hashtags.join(' ') : entry[column]
-            return escapeCsv(value)
+            if (column === 'hashtags') return escapeCsv(entry.hashtags.join(' '))
+            if (column === 'publish_to') return escapeCsv(entry.publish_to.join(', '))
+            return escapeCsv(entry[column])
         }).join(','),
     )
 
-    return [CSV_COLUMNS.join(','), ...filas].join('\r\n')
+    return BOM_UTF8 + [CSV_COLUMNS.join(','), ...filas].join('\r\n')
 }
 
 export function buildCampaignJson(campaignName: string, entries: ExportEntry[]): string {

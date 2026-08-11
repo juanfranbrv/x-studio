@@ -6,12 +6,31 @@
  * un credito ni deje medio lote a medias.
  */
 
-export type CampaignPlatform = 'instagram' | 'tiktok' | 'youtube' | 'linkedin'
+export type CampaignPlatform = 'instagram' | 'facebook' | 'tiktok' | 'youtube' | 'linkedin' | 'x'
 
-export const CAMPAIGN_PLATFORMS: CampaignPlatform[] = ['instagram', 'tiktok', 'youtube', 'linkedin']
+export const CAMPAIGN_PLATFORMS: CampaignPlatform[] = [
+    'instagram',
+    'facebook',
+    'linkedin',
+    'tiktok',
+    'youtube',
+    'x',
+]
+
+/**
+ * Redes donde se publica por defecto.
+ *
+ * Ojo con la distincion: `platform` dice para que red se OPTIMIZA la imagen
+ * (afecta al encuadre y al prompt), mientras que `publish_to` dice donde se
+ * PUBLICA. Una misma imagen cuadrada suele ir a Facebook e Instagram a la vez,
+ * y quien programa el calendario necesita saberlo.
+ */
+export const DEFAULT_PUBLISH_TO: CampaignPlatform[] = ['facebook', 'instagram']
 
 export type ManifestDefaults = {
     platform?: CampaignPlatform
+    /** Redes donde se publicara. Por defecto Facebook e Instagram. */
+    publish_to?: CampaignPlatform[]
     format?: string
     style?: string
     layout?: string
@@ -51,6 +70,7 @@ export type ManifestPost = {
     /** @deprecated Alias historico de `visual_content`. */
     visual_note?: string
     platform?: CampaignPlatform
+    publish_to?: CampaignPlatform[]
     format?: string
     style?: string
     layout?: string
@@ -123,6 +143,14 @@ function readLogoChoice(value: unknown): boolean | string[] | undefined {
     return list.length > 0 ? list : undefined
 }
 
+/** Lista de redes de publicacion, quedandose solo con las conocidas. */
+function readPublishTo(value: unknown): CampaignPlatform[] | undefined {
+    const lista = readStringArray(value).filter((item): item is CampaignPlatform =>
+        CAMPAIGN_PLATFORMS.includes(item as CampaignPlatform),
+    )
+    return lista.length > 0 ? lista : undefined
+}
+
 function hasContent(post: ManifestPost): boolean {
     return Boolean(post.prompt || post.headline || post.body)
 }
@@ -180,6 +208,7 @@ export function validateManifest(input: unknown): ManifestValidation {
     const defaultsRaw = isPlainObject(campaignRaw?.defaults) ? campaignRaw!.defaults as Record<string, unknown> : {}
     const defaults: ManifestDefaults = {
         platform: validatePlatform(defaultsRaw.platform, 'campaign.defaults.platform', errors),
+        publish_to: readPublishTo(defaultsRaw.publish_to),
         format: readString(defaultsRaw.format) || undefined,
         style: readString(defaultsRaw.style) || undefined,
         layout: readString(defaultsRaw.layout) || undefined,
@@ -251,6 +280,7 @@ export function validateManifest(input: unknown): ManifestValidation {
             address: readAssetChoice(raw.address),
             extra_logos: readLogoChoice(raw.extra_logos),
             platform: validatePlatform(raw.platform, `${path}.platform`, errors, ref),
+            publish_to: readPublishTo(raw.publish_to),
             format: readString(raw.format) || undefined,
             style: readString(raw.style) || undefined,
             layout: readString(raw.layout) || undefined,
@@ -345,6 +375,10 @@ export function resolvePost(manifest: CampaignManifest, post: ManifestPost): Req
     return {
         ...post,
         platform: post.platform ?? defaults.platform,
+        // Si nadie lo dice, se publica en Facebook e Instagram: es el caso
+        // habitual y olvidarlo hace que el calendario se programe en una sola
+        // red sin que nadie lo haya decidido.
+        publish_to: post.publish_to ?? defaults.publish_to ?? DEFAULT_PUBLISH_TO,
         format: post.format ?? defaults.format,
         style: post.style ?? defaults.style,
         layout: post.layout ?? defaults.layout,
