@@ -1,12 +1,13 @@
 ﻿import { v } from "convex/values";
-import { mutation, query } from "./_generated/server";
+import { internalMutation, mutation, query } from "./_generated/server";
 import { requireAdmin } from "./lib/authz";
+import { ensureUniqueSlug, slugify } from "./lib/slug";
 import { paginationOptsValidator } from "convex/server";
+import type { Id } from "./_generated/dataModel";
+import type { MutationCtx } from "./_generated/server";
 
 const ADMIN_EMAILS = ["juanfranbrv@gmail.com"];
 const isAdmin = (email: string) => ADMIN_EMAILS.includes((email || "").toLowerCase().trim());
-const MAX_ACTIVE_PRESETS = 16;
-const MAX_ADMIN_PRESETS = 24;
 const MAX_INLINE_IMAGE_DATA_URL_CHARS = 240_000;
 const MAX_STYLE_PROMPT_CHARS = 800;
 
@@ -36,6 +37,36 @@ function ensureOptionalImageUrl(url: unknown): string | undefined {
     throw new Error("No se admite data URL en thumbnail_url.");
   }
   return value;
+}
+
+/**
+ * Devuelve un slug unico para el preset. Convex no tiene indices unicos, asi
+ * que la unicidad se comprueba aqui contra `by_slug`, excluyendo el propio
+ * registro cuando se trata de una edicion.
+ */
+async function resolveUniqueSlug(
+  ctx: MutationCtx,
+  args: { desired?: unknown; name: string; selfId?: Id<"style_presets"> },
+): Promise<string> {
+  const requested = typeof args.desired === "string" ? args.desired.trim() : "";
+  const base = slugify(requested || args.name);
+
+  const collisions = await ctx.db
+    .query("style_presets")
+    .withIndex("by_slug", (q) => q.eq("slug", base))
+    .collect();
+
+  const isFree = collisions.every((row) => String(row._id) === String(args.selfId ?? ""));
+  if (isFree) return base;
+
+  // Hay choque: reune los slugs ocupados para elegir el primer sufijo libre.
+  const all = await ctx.db.query("style_presets").collect();
+  const taken = all
+    .filter((row) => String(row._id) !== String(args.selfId ?? ""))
+    .map((row) => row.slug)
+    .filter((slug): slug is string => typeof slug === "string" && slug.length > 0);
+
+  return ensureUniqueSlug(base, taken);
 }
 
 function compactAnalysis(analysis: unknown) {
@@ -117,40 +148,10 @@ function buildAnalysisForClient(stylePrompt: unknown, preview: unknown) {
   };
 }
 
-function toListItem(row: {
-  _id: unknown;
-  name: unknown;
-  description?: unknown;
-  image_url: unknown;
-  thumbnail_url?: unknown;
-  style_prompt?: unknown;
-  analysis_preview?: unknown;
-  analysis?: unknown;
-  is_active: unknown;
-  sort_order: unknown;
-  updated_at: unknown;
-  created_at?: unknown;
-  updated_by?: unknown;
-}) {
-  const analysis = buildAnalysisForClient(row.style_prompt, row.analysis_preview ?? row.analysis);
-  return {
-    _id: row._id,
-    name: row.name,
-    description: row.description,
-    image_url: compactImageUrl(row.thumbnail_url ?? row.image_url),
-    style_prompt: normalizeStylePrompt(row.style_prompt) || extractStylePrompt(row.analysis_preview ?? row.analysis),
-    analysis_preview: analysis,
-    is_active: row.is_active,
-    sort_order: row.sort_order,
-    updated_at: row.updated_at,
-    created_at: row.created_at,
-    updated_by: row.updated_by,
-  };
-}
-
 function toAdminListItem(row: {
   _id: unknown;
   name: unknown;
+  slug?: unknown;
   description?: unknown;
   image_url: unknown;
   thumbnail_url?: unknown;
@@ -163,6 +164,7 @@ function toAdminListItem(row: {
   return {
     _id: row._id,
     name: row.name,
+    slug: row.slug,
     description: row.description,
     image_url: compactImageUrl(row.thumbnail_url ?? row.image_url),
     full_image_url: compactImageUrl(row.image_url),
@@ -175,60 +177,6 @@ function toAdminListItem(row: {
   };
 }
 
-export const listActive = query({
-  args: {},
-  handler: async (ctx) => {
-    const rows = await ctx.db
-      .query("style_presets")
-      .withIndex("by_active_sort", (q) => q.eq("is_active", true))
-      .order("asc")
-      .take(MAX_ACTIVE_PRESETS);
-
-    return rows.map((row) => ({
-      ...toListItem(row),
-    }));
-  },
-});
-
-export const listActivePaginated = query({
-  args: {
-    paginationOpts: paginationOptsValidator,
-  },
-  handler: async (ctx, args) => {
-    const page = await ctx.db
-      .query("style_presets")
-      .withIndex("by_active_sort", (q) => q.eq("is_active", true))
-      .order("asc")
-      .paginate(args.paginationOpts);
-
-    return {
-      ...page,
-      page: page.page.map((row) => toListItem(row)),
-    };
-  },
-});
-
-export const listActiveImagesPaginated = query({
-  args: {
-    paginationOpts: paginationOptsValidator,
-  },
-  handler: async (ctx, args) => {
-    const page = await ctx.db
-      .query("style_presets")
-      .withIndex("by_active_sort", (q) => q.eq("is_active", true))
-      .order("asc")
-      .paginate(args.paginationOpts);
-
-    return {
-      ...page,
-      page: page.page.map((row) => ({
-        _id: row._id,
-        image_url: compactImageUrl(row.thumbnail_url ?? row.image_url),
-      })),
-    };
-  },
-});
-
 export const listActiveImages = query({
   args: {},
   handler: async (ctx) => {
@@ -240,23 +188,8 @@ export const listActiveImages = query({
 
     return rows.map((row) => ({
       _id: row._id,
+      slug: row.slug,
       image_url: compactImageUrl(row.thumbnail_url ?? row.image_url),
-    }));
-  },
-});
-
-export const listAll = query({
-  args: { admin_email: v.string() },
-  handler: async (ctx, args) => {
-    if (!isAdmin(args.admin_email)) throw new Error("Unauthorized");
-    await requireAdmin(ctx);
-    const rows = await ctx.db
-      .query("style_presets")
-      .withIndex("by_sort_order")
-      .take(MAX_ADMIN_PRESETS);
-
-    return rows.map((row) => ({
-      ...toAdminListItem(row),
     }));
   },
 });
@@ -313,6 +246,7 @@ export const getByIdForAdmin = query({
     return {
       _id: preset._id,
       name: preset.name,
+      slug: preset.slug,
       image_url: compactImageUrl(preset.thumbnail_url ?? preset.image_url),
       full_image_url: compactImageUrl(preset.image_url),
       thumbnail_url: compactImageUrl(preset.thumbnail_url),
@@ -336,6 +270,7 @@ export const getActiveById = query({
     return {
       _id: preset._id,
       name: preset.name,
+      slug: preset.slug,
       analysis: buildAnalysisForClient(preset.style_prompt, preset.analysis_preview ?? preset.analysis),
       image_url: compactImageUrl(preset.thumbnail_url ?? preset.image_url),
       full_image_url: compactImageUrl(preset.image_url),
@@ -368,6 +303,7 @@ export const create = mutation({
   args: {
     admin_email: v.string(),
     name: v.string(),
+    slug: v.optional(v.string()),
     description: v.optional(v.string()),
     image_url: v.string(),
     thumbnail_url: v.optional(v.string()),
@@ -393,8 +329,12 @@ export const create = mutation({
       analysis: args.analysis,
     });
 
+    const name = args.name.trim();
+    const slug = await resolveUniqueSlug(ctx, { desired: args.slug, name });
+
     return await ctx.db.insert("style_presets", {
-      name: args.name.trim(),
+      name,
+      slug,
       description: args.description?.trim() || undefined,
       image_url: ensureValidImageUrl(args.image_url),
       thumbnail_url: ensureOptionalImageUrl(args.thumbnail_url),
@@ -414,6 +354,7 @@ export const update = mutation({
     admin_email: v.string(),
     id: v.id("style_presets"),
     name: v.optional(v.string()),
+    slug: v.optional(v.string()),
     description: v.optional(v.string()),
     image_url: v.optional(v.string()),
     thumbnail_url: v.optional(v.string()),
@@ -434,6 +375,21 @@ export const update = mutation({
       updated_by: args.admin_email,
     };
     if (typeof args.name === "string") patch.name = args.name.trim();
+    if (args.slug !== undefined) {
+      // Un slug ya publicado es un identificador con el que otros integran, asi
+      // que solo se recalcula cuando el admin lo pide explicitamente.
+      patch.slug = await resolveUniqueSlug(ctx, {
+        desired: args.slug,
+        name: (patch.name as string | undefined) ?? preset.name,
+        selfId: args.id,
+      });
+    } else if (!preset.slug) {
+      // Preset heredado sin slug: se le asigna uno al vuelo en la primera edicion.
+      patch.slug = await resolveUniqueSlug(ctx, {
+        name: (patch.name as string | undefined) ?? preset.name,
+        selfId: args.id,
+      });
+    }
     if (args.description !== undefined) patch.description = args.description?.trim() || undefined;
     if (typeof args.image_url === "string") patch.image_url = ensureValidImageUrl(args.image_url);
     if (args.thumbnail_url !== undefined) patch.thumbnail_url = ensureOptionalImageUrl(args.thumbnail_url);
@@ -454,6 +410,142 @@ export const update = mutation({
 
     await ctx.db.patch(args.id, patch);
     return args.id;
+  },
+});
+
+/**
+ * Catalogo completo de estilos activos para consumo externo (API). Devuelve
+ * SIEMPRE todos los activos, sin el tope de MAX_ACTIVE_PRESETS que aplica la
+ * UI: quien integra por API tiene que poder elegir cualquiera de los que haya
+ * en la plataforma en ese momento. Carga ligera a proposito (sin imagenes).
+ */
+export const listCatalog = query({
+  args: {},
+  handler: async (ctx) => {
+    const rows = await ctx.db
+      .query("style_presets")
+      .withIndex("by_active_sort", (q) => q.eq("is_active", true))
+      .order("asc")
+      .collect();
+
+    return rows.map((row) => ({
+      slug: row.slug ?? "",
+      name: row.name,
+      description: row.description,
+      sort_order: row.sort_order,
+    }));
+  },
+});
+
+/**
+ * Datos minimos para bautizar presets con IA: lo que describe el estilo, sin
+ * arrastrar imagenes ni payloads pesados.
+ */
+export const listForNamingForAdmin = query({
+  args: {
+    admin_email: v.string(),
+  },
+  handler: async (ctx, args) => {
+    if (!isAdmin(args.admin_email)) throw new Error("Unauthorized");
+    await requireAdmin(ctx);
+
+    const rows = await ctx.db.query("style_presets").withIndex("by_sort_order").order("asc").collect();
+
+    return rows.map((row) => {
+      const preview = compactAnalysis(row.analysis_preview ?? row.analysis);
+      return {
+        _id: row._id,
+        name: row.name,
+        slug: row.slug,
+        is_active: row.is_active,
+        style_prompt: normalizeStylePrompt(row.style_prompt) || extractStylePrompt(row.analysis_preview ?? row.analysis),
+        keywords: preview.keywords,
+        subject_label: preview.subjectLabel,
+        lighting: preview.lighting,
+      };
+    });
+  },
+});
+
+/**
+ * Resuelve un estilo activo por su slug. Es el punto de entrada pensado para
+ * consumo externo (API / manifiestos), donde el `_id` de Convex no sirve
+ * porque cambia entre deployments.
+ */
+export const getActiveBySlug = query({
+  args: {
+    slug: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const slug = slugify(args.slug);
+    const rows = await ctx.db
+      .query("style_presets")
+      .withIndex("by_slug", (q) => q.eq("slug", slug))
+      .collect();
+
+    const preset = rows.find((row) => row.is_active);
+    if (!preset) return null;
+
+    return {
+      _id: preset._id,
+      name: preset.name,
+      slug: preset.slug,
+      analysis: buildAnalysisForClient(preset.style_prompt, preset.analysis_preview ?? preset.analysis),
+      image_url: compactImageUrl(preset.thumbnail_url ?? preset.image_url),
+      full_image_url: compactImageUrl(preset.image_url),
+      style_prompt: normalizeStylePrompt(preset.style_prompt) || extractStylePrompt(preset.analysis_preview ?? preset.analysis),
+      updated_at: preset.updated_at,
+    };
+  },
+});
+
+/**
+ * Rellena el slug de los presets que aun no lo tienen, derivandolo del nombre.
+ * Idempotente: los que ya tienen slug se dejan intactos.
+ */
+async function runBackfillSlugs(ctx: MutationCtx) {
+  const rows = await ctx.db.query("style_presets").withIndex("by_sort_order").collect();
+  const taken = rows
+    .map((row) => row.slug)
+    .filter((slug): slug is string => typeof slug === "string" && slug.length > 0);
+
+  const assigned: Array<{ name: string; slug: string }> = [];
+
+  for (const row of rows) {
+    if (typeof row.slug === "string" && row.slug.length > 0) continue;
+    const slug = ensureUniqueSlug(row.name, taken);
+    taken.push(slug);
+    await ctx.db.patch(row._id, { slug });
+    assigned.push({ name: row.name, slug });
+  }
+
+  return {
+    success: true,
+    total: rows.length,
+    assigned: assigned.length,
+    details: assigned,
+  };
+}
+
+export const backfillSlugs = mutation({
+  args: {
+    admin_email: v.string(),
+  },
+  handler: async (ctx, args) => {
+    if (!isAdmin(args.admin_email)) throw new Error("Unauthorized");
+    await requireAdmin(ctx);
+    return await runBackfillSlugs(ctx);
+  },
+});
+
+/**
+ * Misma operacion, invocable desde el CLI de Convex (`npx convex run`) durante
+ * el despliegue, donde no hay identidad de Clerk que validar.
+ */
+export const backfillSlugsInternal = internalMutation({
+  args: {},
+  handler: async (ctx) => {
+    return await runBackfillSlugs(ctx);
   },
 });
 

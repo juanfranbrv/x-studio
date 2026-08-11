@@ -926,3 +926,52 @@ Si Clerk exige verificacion completa del dominio para correo o cuenta hospedada,
   2. ajustar anchuras de zona
   3. reducir ligeramente `support/meta`
   4. proteger el `headline` y la CTA el mayor tiempo posible
+
+## Identificador estable de estilos (slug) y bautizo con IA
+
+**Por que existe el slug.** Los `style_presets` se referenciaban solo por el `_id`
+de Convex, que es opaco y **distinto en cada deployment**: un manifiesto o una
+integracion que funcione en dev fallaria en produccion. Por eso la tabla tiene
+`slug` (unico, indice `by_slug`), derivado del nombre con `convex/lib/slug.ts`.
+
+- El slug es el identificador **publico**: es lo que viaja hacia fuera (API y
+  manifiestos de campana). `stylePresets.getActiveBySlug` lo resuelve.
+- **Renombrar un preset NO recalcula su slug.** Un identificador publicado es un
+  compromiso con quien integra; solo cambia si un admin lo edita a mano.
+- `stylePresets.backfillSlugs` (y su gemelo `backfillSlugsInternal`, invocable
+  desde el CLI) rellena los que falten. Es idempotente.
+- `stylePresets.listCatalog` devuelve **todos** los estilos activos, sin el tope
+  `MAX_ACTIVE_PRESETS` que aplica la UI: quien integra por API tiene que poder
+  elegir cualquiera de los que haya en la plataforma en ese momento.
+
+**Bautizo con IA** (`src/app/actions/generate-style-preset-names.ts`): propone
+nombres descriptivos a partir del `style_prompt` que cada preset ya guarda.
+Trabaja en modo propuesta (revisar antes de aplicar) y por defecto solo sobre
+nombres genericos o duplicados.
+
+Dos cosas aprendidas al construirlo, verificadas contra el modelo real:
+
+1. **Sin `responseSchema` el modelo devuelve prosa**, no el array pedido: se
+   pone a parafrasear los estilos. La salida estructurada
+   (`responseMimeType: application/json` + `responseSchema`) es obligatoria aqui.
+2. **`maxOutputTokens` incluye el razonamiento interno del modelo.** Un lote de
+   12 estilos gasta ~2.900 tokens en `thoughtsTokenCount` y solo ~600 en la
+   respuesta. Con 4096 los lotes salian truncados de forma intermitente y se
+   perdian propuestas **en silencio** (`finishReason: MAX_TOKENS` no lanza
+   excepcion). Por eso el presupuesto es 8192 y se loguea cualquier
+   `finishReason` distinto de `STOP`, ademas de la cobertura final.
+
+`thinkingConfig.thinkingBudget` NO es admisible en este modelo: devuelve HTTP 400.
+
+## Topologia de Convex (resuelto y cerrado)
+
+La informacion definitiva vive en `AGENTS.md`, seccion "CONVEX: LEE ESTO ANTES DE
+TOCAR NADA". Resumen de una linea para no tener que abrirlo:
+
+**Solo hay un Convex real, `prestigious-pigeon-784`. Convex lo etiqueta "Development"
+pero es el que sirve `postlaboratory.com`. El deployment llamado "production"
+(`watchful-retriever-328`) esta vacio y no lo usa nadie.**
+
+Verificado el 2026-08-11 contra el dashboard y contra el bundle JS de produccion.
+Esto explica por que la seccion "Herramienta local de migracion a produccion" tiene
+origen y destino en el mismo deployment: es correcto, no es una errata.

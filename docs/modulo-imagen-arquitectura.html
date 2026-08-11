@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Módulo de Imagen · Arquitectura del flujo (x-studio)</title>
+<style>
+  :root{
+    --bg:#ffffff; --bg2:#f4f3f1; --tp:#1a1a1a; --ts:#6b6b6b;
+    --bd:#e2e0dc; --blue:#2f6df0; --amber:#c98a2b; --bgblue:#eef3fe; --bgamber:#fbf3e6;
+    --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+    --sans:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg2);color:var(--tp);font-family:var(--sans);line-height:1.6;font-size:16px}
+  .wrap{max-width:960px;margin:0 auto;padding:48px 24px 80px}
+  header.hero{margin-bottom:40px}
+  .kicker{font-size:12px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:var(--blue)}
+  h1{font-size:34px;line-height:1.15;margin:6px 0 10px}
+  h2{font-size:24px;margin:48px 0 8px;padding-top:18px;border-top:1px solid var(--bd)}
+  h3{font-size:18px;margin:28px 0 6px}
+  p,li{color:var(--tp)}
+  .lead{font-size:18px;color:var(--ts)}
+  .card{background:var(--bg);border:1px solid var(--bd);border-radius:16px;padding:22px 24px;margin:18px 0}
+  .fig{background:var(--bg);border:1px solid var(--bd);border-radius:16px;padding:18px;margin:22px 0;overflow-x:auto}
+  .fig svg{display:block;width:100%;height:auto;min-width:680px}
+  figcaption{font-size:13px;color:var(--ts);margin-top:8px;text-align:center}
+  code,.mono{font-family:var(--mono);font-size:.9em;background:var(--bg2);padding:1px 6px;border-radius:6px}
+  .fig .mono,.fig code{background:none;padding:0}
+  table{width:100%;border-collapse:collapse;margin:16px 0;font-size:14.5px}
+  th,td{text-align:left;padding:10px 12px;border-bottom:1px solid var(--bd);vertical-align:top}
+  th{font-size:12px;letter-spacing:.05em;text-transform:uppercase;color:var(--ts)}
+  td code{font-size:.85em}
+  .pill{display:inline-block;font-size:11px;font-weight:800;letter-spacing:.04em;padding:2px 8px;border-radius:999px}
+  .pB{color:var(--blue);background:var(--bgblue)}
+  .pA{color:var(--amber);background:var(--bgamber)}
+  .note{background:var(--bgblue);border:1px solid var(--blue);border-radius:14px;padding:18px 20px;margin:20px 0}
+  .note strong{color:var(--blue)}
+  ol.steps{counter-reset:s;list-style:none;padding:0;margin:18px 0}
+  ol.steps>li{position:relative;padding:14px 16px 14px 56px;border:1px solid var(--bd);background:var(--bg);border-radius:12px;margin:10px 0}
+  ol.steps>li::before{counter-increment:s;content:counter(s);position:absolute;left:14px;top:14px;width:28px;height:28px;border-radius:8px;background:var(--blue);color:#fff;font-weight:800;display:flex;align-items:center;justify-content:center;font-size:14px}
+  ol.steps>li.srv::before{background:var(--amber)}
+  ol.steps b{display:block;margin-bottom:2px}
+  .files{font-family:var(--mono);font-size:12.5px;color:var(--ts);word-break:break-word}
+  footer{margin-top:56px;padding-top:18px;border-top:1px solid var(--bd);font-size:13px;color:var(--ts)}
+  .legend{display:flex;gap:24px;flex-wrap:wrap;font-size:13px;color:var(--ts);margin:6px 0 0}
+  .legend span{display:inline-flex;align-items:center;gap:8px}
+  .sw{width:14px;height:14px;border-radius:4px;border:1.6px solid}
+  .swB{border-color:var(--blue)} .swA{border-color:var(--amber)}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="hero">
+  <div class="kicker">x-studio · Referencia arquitectónica</div>
+  <h1>Módulo de Imagen: del prompt a la imagen</h1>
+  <p class="lead">Cómo viaja una petición desde que escribes el prompt hasta que aparece la imagen generada, y cómo se construye por dentro el prompt final. Trazado directamente sobre el código.</p>
+</header>
+
+<section>
+  <h2>La idea central</h2>
+  <p>El módulo está organizado en <strong>tres “mundos” muy separados</strong>. Casi todos los problemas de mantenimiento nacen de confundirlos:</p>
+  <div class="card">
+    <p><strong>1 · El navegador (la página)</strong> — <code>src/app/image/page.tsx</code>. El “cerebro de la pantalla”: guarda lo que escribes, gestiona sesiones, construye el encargo y pinta el resultado.</p>
+    <p><strong>2 · El servidor (la API)</strong> — <code>src/app/api/generate/route.ts</code>. El “portero y despachador”: valida quién eres, cobra el crédito y delega.</p>
+    <p><strong>3 · El motor de IA</strong> — <code>src/lib/gemini.ts</code>. El “taller”: habla con el proveedor de imágenes real y devuelve los píxeles.</p>
+    <p style="margin-bottom:0">Por debajo, <strong>Convex</strong> (base de datos) guarda usuario, créditos, configuración de modelos y las sesiones de trabajo.</p>
+  </div>
+</section>
+
+<section>
+  <h2>El flujo completo, paso a paso</h2>
+  <figure class="fig">
+    <svg viewBox="0 0 860 1240" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Diagrama del flujo del módulo de imagen en tres zonas: navegador, servidor y proveedor de IA / Convex" font-family="ui-sans-serif, system-ui, sans-serif">
+      <defs>
+        <marker id="arr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#6b6b6b"/></marker>
+        <style>
+          .zone{fill:#f4f3f1}.zlabel{fill:#6b6b6b;font-size:12px;font-weight:700;letter-spacing:.08em}
+          .box{fill:#fff;stroke:#e2e0dc;stroke-width:1.5}.boxC{stroke:#2f6df0}.boxS{stroke:#c98a2b}
+          .num{fill:#2f6df0;font-size:13px;font-weight:800}.numS{fill:#c98a2b}
+          .t{fill:#1a1a1a;font-size:14.5px;font-weight:700}.s{fill:#6b6b6b;font-size:11.5px}
+          .code{fill:#6b6b6b;font-size:10.5px;font-family:ui-monospace,monospace}
+          .flow{stroke:#9a9a9a;stroke-width:1.8;fill:none;marker-end:url(#arr)}
+          .ret{stroke:#2f6df0;stroke-width:1.8;fill:none;stroke-dasharray:5 4;marker-end:url(#arr)}
+        </style>
+      </defs>
+      <rect class="zone" x="16" y="56" width="828" height="372" rx="14"/>
+      <rect class="zone" x="16" y="448" width="828" height="300" rx="14"/>
+      <rect class="zone" x="16" y="768" width="828" height="232" rx="14"/>
+      <rect class="zone" x="16" y="1020" width="828" height="196" rx="14"/>
+      <text class="t" x="40" y="38" font-size="18" font-weight="800">Módulo de imagen · del prompt a la imagen</text>
+      <text class="zlabel" x="40" y="80">NAVEGADOR · src/app/image/page.tsx</text>
+      <text class="zlabel" x="40" y="472">SERVIDOR · /api/generate + src/lib</text>
+      <text class="zlabel" x="40" y="792">PROVEEDOR IA · router por modelo</text>
+      <text class="zlabel" x="40" y="1044">PERSISTENCIA · Convex (al guardar)</text>
+      <rect class="box boxC" x="40" y="92" width="780" height="64"/><text class="num" x="60" y="120">1</text>
+      <text class="t" x="84" y="118">El usuario escribe el prompt</text>
+      <text class="s" x="84" y="138">PromptCard / ControlsPanel guardan el texto en estado (promptValue)</text>
+      <text class="code" x="600" y="138">useCreationFlow</text>
+      <rect class="box boxC" x="40" y="172" width="780" height="74"/><text class="num" x="60" y="200">2</text>
+      <text class="t" x="84" y="198">(Opcional) “Analizar” el prompt</text>
+      <text class="s" x="84" y="218">parseLazyIntentAction → modelo de TEXTO → detecta intención y</text>
+      <text class="s" x="84" y="234">rellena headline, CTA, caption, textos y sugerencias</text>
+      <text class="code" x="590" y="218">parse-intent.ts</text>
+      <rect class="box boxC" x="40" y="262" width="780" height="86"/><text class="num" x="60" y="292">3</text>
+      <text class="t" x="84" y="290">“Generar” → se construye el prompt FINAL</text>
+      <text class="s" x="84" y="310">buildGenerationRequestPayload reúne marca, colores, logo, layout y</text>
+      <text class="s" x="84" y="326">referencias; buildImagePrompt arma el texto definitivo para el modelo</text>
+      <text class="code" x="560" y="310">prompt-builder.ts</text>
+      <rect class="box boxC" x="40" y="364" width="780" height="52"/><text class="num" x="60" y="394">4</text>
+      <text class="t" x="84" y="386">POST /api/generate</text>
+      <text class="s" x="84" y="405">handleGenerate envía el payload (con promptAlreadyBuilt: true)</text>
+      <rect class="box boxS" x="40" y="484" width="780" height="78"/><text class="num numS" x="60" y="514">5</text>
+      <text class="t" x="84" y="510">Portero: autenticación y créditos</text>
+      <text class="s" x="84" y="530">Clerk valida sesión · Convex comprueba estado activo y créditos ≥ 1</text>
+      <text class="s" x="84" y="546">si falta el modelo, lo lee de app_settings (panel Admin)</text>
+      <text class="code" x="610" y="530">route.ts</text>
+      <rect class="box boxS" x="40" y="578" width="780" height="74"/><text class="num numS" x="60" y="606">6</text>
+      <text class="t" x="84" y="604">generateContentImageUnified()</text>
+      <text class="s" x="84" y="624">Punto único de entrada. Adjunta imágenes de contexto/logo/layout</text>
+      <text class="s" x="84" y="640">y decide el proveedor según el prefijo del modelo</text>
+      <text class="code" x="640" y="624">gemini.ts</text>
+      <rect class="box boxS" x="40" y="668" width="780" height="64"/><text class="num numS" x="60" y="696">7</text>
+      <text class="t" x="84" y="694">Registro de coste y consumo de 1 crédito</text>
+      <text class="s" x="84" y="714">logEconomicEvent + consumeCredits (no bloquean si la imagen ya salió)</text>
+      <rect class="box boxS" x="40" y="804" width="780" height="58"/><text class="num numS" x="60" y="832">8</text>
+      <text class="t" x="84" y="828">Router por prefijo del modelo</text>
+      <text class="s" x="84" y="848">wisdom/ · naga/ · replicate/ · atlas/ · openai/ · google/</text>
+      <rect class="box boxS" x="40" y="884" width="120" height="40"/><text class="s" x="100" y="908" text-anchor="middle">Wisdom Gate</text>
+      <rect class="box boxS" x="172" y="884" width="120" height="40"/><text class="s" x="232" y="908" text-anchor="middle">NagaAI</text>
+      <rect class="box boxS" x="304" y="884" width="120" height="40"/><text class="s" x="364" y="908" text-anchor="middle">Replicate</text>
+      <rect class="box boxS" x="436" y="884" width="120" height="40"/><text class="s" x="496" y="908" text-anchor="middle">Atlas</text>
+      <rect class="box boxS" x="568" y="884" width="120" height="40"/><text class="s" x="628" y="908" text-anchor="middle">OpenAI</text>
+      <rect class="box boxS" x="700" y="884" width="120" height="40"/><text class="s" x="760" y="908" text-anchor="middle">Google</text>
+      <text class="s" x="40" y="956">Cada proveedor llama a su API (con reintentos y timeout 90s) y</text>
+      <text class="s" x="40" y="972">devuelve la imagen como data URL (base64) o URL remota</text>
+      <rect class="box boxC" x="40" y="1056" width="385" height="84"/><text class="num" x="60" y="1084">9</text>
+      <text class="t" x="84" y="1082">La imagen vuelve y se muestra</text>
+      <text class="s" x="84" y="1102">setGeneratedImage → CanvasPanel la pinta</text>
+      <text class="s" x="84" y="1118">queda en memoria de sesión (aún no en BD)</text>
+      <rect class="box boxS" x="445" y="1056" width="375" height="84"/><text class="num numS" x="465" y="1084">10</text>
+      <text class="t" x="489" y="1082">Guardar sesión = persistir</text>
+      <text class="s" x="489" y="1102">persist-image sube los bytes a Convex storage</text>
+      <text class="s" x="489" y="1118">y el snapshot va a la tabla work_sessions</text>
+      <text class="s" x="445" y="1162">Sin “Guardar”, la imagen vive solo en el navegador.</text>
+      <path class="flow" d="M430,156 L430,172"/><path class="flow" d="M430,246 L430,262"/>
+      <path class="flow" d="M430,348 L430,364"/><path class="flow" d="M430,416 L430,484"/>
+      <path class="flow" d="M430,562 L430,578"/><path class="flow" d="M430,652 L430,668"/>
+      <path class="flow" d="M430,732 L430,804"/><path class="flow" d="M430,862 L430,884"/>
+      <path class="flow" d="M430,976 L430,1056"/>
+      <path class="ret" d="M232,884 C232,1010 232,1010 232,1056"/>
+    </svg>
+    <figcaption>Azul = navegador (cliente) · Naranja = servidor / proveedor. La flecha discontinua es la imagen “volviendo” al cliente.</figcaption>
+  </figure>
+
+  <ol class="steps">
+    <li><b>1 · Escribes el prompt</b>Se guarda en <code>promptValue</code> y en <code>useCreationFlow</code>, la memoria de la sesión que recuerda todas tus elecciones.</li>
+    <li><b>2 · (Opcional) “Analizar”</b>Tu frase suelta se manda a un <strong>modelo de texto</strong> (<code>parseLazyIntentAction</code>) que rellena solo titular, CTA, copy y detecta la intención.</li>
+    <li><b>3 · “Generar” → se monta el prompt FINAL</b><code>buildGenerationRequestPayload</code> recolecta todo y <code>buildImagePrompt</code> ensambla un prompt mucho más largo. Lo que escribiste es solo una parte. (Ver sección siguiente.)</li>
+    <li><b>4 · POST /api/generate</b>Se envía el prompt ya construido, marcado <code>promptAlreadyBuilt: true</code>.</li>
+    <li class="srv"><b>5 · El portero</b>Clerk valida la sesión; Convex comprueba cuenta activa y crédito ≥ 1. Si no llega el modelo, lo lee de <code>app_settings</code> (panel Admin).</li>
+    <li class="srv"><b>6 · El despachador único</b><code>generateContentImageUnified()</code> adjunta imágenes de contexto/logo/layout y elige proveedor.</li>
+    <li class="srv"><b>7 · Coste y crédito</b>Registra el evento económico y consume 1 crédito (sin bloquear la respuesta).</li>
+    <li class="srv"><b>8 · Router por proveedor</b>Se elige por el <strong>prefijo del modelo</strong>: <code>wisdom/</code>, <code>naga/</code>, <code>replicate/</code>, <code>atlas/</code>, <code>openai/</code>, <code>google/</code>. Cada uno con reintentos y timeout de 90 s.</li>
+    <li><b>9 · Vuelve la imagen y se muestra</b>Normalmente como <strong>data URL en base64</strong>. <code>setGeneratedImage</code> la añade al historial y el <strong>CanvasPanel</strong> la pinta. De momento solo vive en el navegador.</li>
+    <li class="srv"><b>10 · Persistencia (solo al guardar)</b><code>persist-image</code> sube los bytes a <strong>Convex storage</strong> y el snapshot se escribe en la tabla <code>work_sessions</code>.</li>
+  </ol>
+
+  <h3>Las cuatro piezas que conviene tener siempre en la cabeza</h3>
+  <table>
+    <thead><tr><th>Pieza</th><th>Fichero</th><th>Su papel</th><th>Por qué importa</th></tr></thead>
+    <tbody>
+      <tr><td><b>Memoria de sesión</b></td><td><code>src/hooks/useCreationFlow.ts</code></td><td>Guarda todas tus elecciones</td><td>Si algo “no se aplica”, casi siempre es aquí</td></tr>
+      <tr><td><b>Constructor del prompt</b></td><td><code>src/lib/prompt-builder.ts</code></td><td>Convierte tu frase + marca en el prompt real</td><td>El modelo nunca ve solo tu texto</td></tr>
+      <tr><td><b>Portero / servidor</b></td><td><code>src/app/api/generate/route.ts</code></td><td>Auth, créditos, modelo por defecto</td><td>Los 401/402/403 nacen aquí</td></tr>
+      <tr><td><b>Router de proveedores</b></td><td><code>src/lib/gemini.ts</code></td><td>Elige proveedor por prefijo y llama a su API</td><td>Cambiar de modelo = cambiar de rama entera</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<section>
+  <h2>Paso 3 en detalle: cómo se construye el prompt final</h2>
+  <p>El paso 3 no es un cuadro, son <strong>dos sub-fases</strong>. Primero se reúnen los materiales; luego se rellena una plantilla de texto fija con 7 ranuras.</p>
+
+  <div class="legend">
+    <span><span class="sw swB"></span> Depende de TUS elecciones (cambia en cada generación)</span>
+    <span><span class="sw swA"></span> Fijo en la plantilla (se añade siempre, no lo ves)</span>
+  </div>
+
+  <figure class="fig">
+    <svg viewBox="0 0 900 1380" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Anatomía de la construcción del prompt final: fase de recolección y plantilla con siete ranuras" font-family="ui-sans-serif, system-ui, sans-serif">
+      <defs>
+        <marker id="a2" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#6b6b6b"/></marker>
+        <style>
+          .zone{fill:#f4f3f1}.t{fill:#1a1a1a;font-weight:700}.s{fill:#6b6b6b;font-size:11.5px}
+          .mono{font-family:ui-monospace,monospace}.box{fill:#fff;stroke-width:1.6}
+          .blue{stroke:#2f6df0}.amber{stroke:#c98a2b}
+          .tagB{fill:#2f6df0;font-size:10px;font-weight:800;letter-spacing:.04em}
+          .tagA{fill:#c98a2b;font-size:10px;font-weight:800;letter-spacing:.04em}
+          .flow{stroke:#9a9a9a;stroke-width:1.8;fill:none;marker-end:url(#a2)}
+          .zlabel{fill:#6b6b6b;font-size:12px;font-weight:700;letter-spacing:.08em}
+        </style>
+      </defs>
+      <text class="t" x="36" y="34" font-size="18">Paso 3 · Cómo se construye el prompt final</text>
+      <rect x="36" y="48" width="14" height="14" rx="3" class="box blue"/><text class="s" x="56" y="60">Depende de TUS elecciones (cambia en cada generación)</text>
+      <rect x="430" y="48" width="14" height="14" rx="3" class="box amber"/><text class="s" x="450" y="60">Fijo en la plantilla (se añade siempre, no lo ves)</text>
+      <rect class="zone" x="36" y="78" width="828" height="150" rx="14"/>
+      <text class="zlabel" x="56" y="102">FASE 3A · RECOLECTAR “LA MESA” · buildGenerationRequestPayload (page.tsx)</text>
+      <rect class="box blue" x="56" y="116" width="180" height="44" rx="9"/><text class="s" x="146" y="134" text-anchor="middle">Logo principal</text><text class="s" x="146" y="150" text-anchor="middle">(si lo incluyes)</text>
+      <rect class="box blue" x="248" y="116" width="180" height="44" rx="9"/><text class="s" x="338" y="134" text-anchor="middle">Imágenes de referencia</text><text class="s" x="338" y="150" text-anchor="middle">subidas / Brand Kit</text>
+      <rect class="box blue" x="440" y="116" width="180" height="44" rx="9"/><text class="s" x="530" y="134" text-anchor="middle">Colores + tono</text><text class="s" x="530" y="150" text-anchor="middle">de la marca</text>
+      <rect class="box blue" x="632" y="116" width="210" height="44" rx="9"/><text class="s" x="737" y="134" text-anchor="middle">Layout / composición</text><text class="s" x="737" y="150" text-anchor="middle">+ estilos + formato</text>
+      <rect class="box blue" x="56" y="170" width="370" height="44" rx="9"/><text class="s" x="241" y="188" text-anchor="middle">Imagen actual (si estás corrigiendo) → modo edición</text><text class="s" x="241" y="204" text-anchor="middle">referenceImageRoles decide el papel de cada imagen</text>
+      <rect class="box blue" x="440" y="170" width="402" height="44" rx="9"/><text class="s" x="641" y="188" text-anchor="middle">Tu texto + titular/CTA/caption (del análisis del paso 2)</text><text class="s" x="641" y="204" text-anchor="middle">todo esto vive en useCreationFlow (la memoria de sesión)</text>
+      <path class="flow" d="M450,228 L450,250"/><text class="s mono" x="462" y="246">buildImagePrompt() rellena la plantilla ▼</text>
+      <text class="zlabel" x="36" y="274">FASE 3B · RELLENAR LA PLANTILLA · IMAGE_GENERATION_BASE_PROMPT (prompt-builder.ts)</text>
+      <rect class="box amber" x="36" y="288" width="828" height="70" rx="11"/><text class="tagA" x="54" y="310">FIJO</text>
+      <text class="t mono" x="54" y="330" font-size="13">{{systemRole}}</text>
+      <text class="s" x="54" y="348">Persona “diseñador experto de élite” · p11-system-persona.ts</text>
+      <text class="s" x="600" y="330">Marca el rol, el listón de calidad</text><text class="s" x="600" y="348">y el objetivo (pieza premium).</text>
+      <rect class="box blue" x="36" y="368" width="828" height="64" rx="11"/><text class="tagB" x="54" y="390">TUYO</text>
+      <text class="t mono" x="54" y="410" font-size="13">DATOS DE MARCA: {{colorList}} · {{tone}}</text>
+      <text class="s" x="54" y="426">Colores seleccionados (con su rol: fondo/acento) + tono de voz.</text>
+      <rect class="box blue" x="36" y="442" width="828" height="86" rx="11"/><text class="tagB" x="54" y="464">TUYO</text>
+      <text class="t mono" x="54" y="484" font-size="13">{{contextInstructions}}  ·  “los recursos en la mesa”</text>
+      <text class="s" x="54" y="502">context-builder.ts traduce cada imagen/recurso a una línea con etiqueta [Ref]:</text>
+      <text class="s" x="54" y="518">logo = “sagrado”, imagen = “PRODUCTO PRINCIPAL, no inventes”, texto = “debe salir”.</text>
+      <rect class="box blue" x="36" y="538" width="828" height="78" rx="11"/><text class="tagB" x="54" y="560">TUYO (si eliges layout)</text>
+      <text class="t mono" x="54" y="580" font-size="13">{{layoutReferencePart}}  ·  planimetría obligatoria</text>
+      <text class="s" x="54" y="598">layout-rules.ts: “calca la geometría del template, ignora sus colores/fotos”.</text>
+      <text class="s" x="54" y="614">Además se adjunta la imagen del layout como referencia visual aparte.</text>
+      <rect class="box blue" x="36" y="626" width="828" height="92" rx="11"/><text class="tagB" x="54" y="648">TUYO (estilo/fuentes)</text>
+      <text class="t mono" x="54" y="668" font-size="13">{{typographyInstructions}}  ·  el bloque más complejo</text>
+      <text class="s" x="54" y="686">typography-builder.ts decide un “fingerprint” tipográfico según el estilo detectado</text>
+      <text class="s" x="54" y="702">y elige entre 2 modos: respetar las fuentes del Kit, o dejar que el estilo mande.</text>
+      <text class="s" x="54" y="718">Incluye “anti-fuga”: el nombre de la fuente nunca debe imprimirse en la imagen.</text>
+      <rect class="box blue" x="36" y="728" width="828" height="60" rx="11"/><text class="tagB" x="54" y="750">TUYO</text>
+      <text class="t mono" x="54" y="770" font-size="13">SOLICITUD DEL USUARIO: "{{userPrompt}}"</text>
+      <text class="s" x="600" y="762">Tu frase original.</text><text class="s" x="600" y="780">Es solo una línea del total.</text>
+      <rect class="box amber" x="36" y="798" width="828" height="96" rx="11"/><text class="tagA" x="54" y="820">FIJO</text>
+      <text class="t mono" x="54" y="840" font-size="13">SMART MODE  +  REGLAS CRÍTICAS — INTOCABLES</text>
+      <text class="s" x="54" y="858">Lógica de relleno automático si tu prompt es breve, y barreras de seguridad:</text>
+      <text class="s" x="54" y="874">logos sagrados · no alucinar productos · solo los textos dados · auto-fit (nada cortado) ·</text>
+      <text class="s" x="54" y="890">márgenes seguros · prohibido usar colores fuera de la paleta de marca.</text>
+      <path class="flow" d="M450,894 L450,922"/>
+      <rect class="zone" x="36" y="930" width="828" height="120" rx="14"/><text class="zlabel" x="56" y="956">RESULTADO</text>
+      <rect class="box amber" x="56" y="968" width="786" height="66" rx="10"/>
+      <text class="t" x="449" y="996" text-anchor="middle" font-size="14">Un prompt largo y estructurado + las imágenes adjuntas (logo, refs, layout)</text>
+      <text class="s" x="449" y="1018" text-anchor="middle">Se marca promptAlreadyBuilt: true y se manda a /api/generate (paso 4). El servidor ya NO lo reconstruye.</text>
+      <rect class="box blue" x="36" y="1066" width="828" height="92" rx="12"/>
+      <text class="t" x="56" y="1092" font-size="14">Por qué esto te ayuda a controlar la IA</text>
+      <text class="s" x="56" y="1114">· Si un resultado “ignora” un color o un logo, casi nunca es el modelo: es qué ranura se rellenó (Fase 3A).</text>
+      <text class="s" x="56" y="1132">· Cambiar el “carácter” global del diseñador → se toca la plantilla FIJA (image-generator-base + p11).</text>
+      <text class="s" x="56" y="1150">· El Modal de Debug del Studio te muestra el prompt final exacto: úsalo para ver qué se envió de verdad.</text>
+      <text class="s mono" x="36" y="1186">Ficheros: prompt-builder.ts · image-generator-base.ts · context-builder.ts · layout-rules.ts · typography-builder.ts · p11-system-persona.ts</text>
+    </svg>
+    <figcaption>Las 7 ranuras de la plantilla <code>IMAGE_GENERATION_BASE_PROMPT</code> y de dónde sale cada una.</figcaption>
+  </figure>
+
+  <h3>Fase 3A — Recolectar “la mesa”</h3>
+  <p>Antes de escribir nada, el código pone todos los materiales sobre una mesa recorriendo tu sesión (<code>useCreationFlow</code>): el <b>logo principal</b> (si lo incluyes), las <b>imágenes de referencia</b> (subidas o del Brand Kit, cada una con un <b>rol</b> que decide si es estilo, contenido o logo auxiliar), los <b>colores y el tono</b>, el <b>layout, estilos y formato</b>, la <b>imagen actual</b> si estás corrigiendo (modo edición), y <b>tu texto</b> con los campos del análisis. El resultado es un objeto <code>requestPayload</code> con todo clasificado: aún no hay “prompt”, solo materiales etiquetados.</p>
+
+  <h3>Fase 3B — Rellenar la plantilla</h3>
+  <p>Existe una plantilla de texto fija (<code>image-generator-base.ts</code>) con 7 huecos <code>{{...}}</code>. <code>buildImagePrompt</code> rellena cada hueco con un mini-constructor especializado:</p>
+  <ol>
+    <li><span class="pill pA">FIJO</span> <code>{{systemRole}}</code> — la persona “diseñador de élite” (<code>p11-system-persona.ts</code>). Define calidad y objetivo.</li>
+    <li><span class="pill pB">TUYO</span> <b>DATOS DE MARCA</b> — colores seleccionados (con rol fondo/acento) y tono de voz.</li>
+    <li><span class="pill pB">TUYO</span> <code>{{contextInstructions}}</code> — <code>context-builder.ts</code> convierte cada material en una frase con etiqueta <code>[Ref: "..."]</code> y su instrucción: logo “sagrado”, imagen “producto principal, no lo recrees”, texto “debe aparecer”.</li>
+    <li><span class="pill pB">TUYO</span> <code>{{layoutReferencePart}}</code> — <code>layout-rules.ts</code>: calca la geometría del template, ignora sus colores/fotos. La imagen del layout se adjunta aparte.</li>
+    <li><span class="pill pB">TUYO</span> <code>{{typographyInstructions}}</code> — el bloque más complejo. <code>typography-builder.ts</code> deduce un “fingerprint” tipográfico según el estilo, elige entre respetar las fuentes del Kit o dejar que el estilo mande, e impide que el nombre de la fuente se imprima en la imagen.</li>
+    <li><span class="pill pB">TUYO</span> <b>SOLICITUD DEL USUARIO</b> — tu frase original. Una sola línea dentro del documento.</li>
+    <li><span class="pill pA">FIJO</span> <b>SMART MODE + REGLAS CRÍTICAS</b> — relleno automático si el prompt es breve y muro de seguridad: logos intocables, no alucinar productos, solo los textos dados, auto-fit, márgenes, nada de colores fuera de paleta.</li>
+  </ol>
+
+  <div class="note">
+    <strong>Cómo usar esto para controlar la IA:</strong>
+    <ul style="margin:8px 0 0">
+      <li>Si una generación “ignora” un color, un logo o una referencia, el origen casi nunca es el modelo: es <b>qué se recogió en la Fase 3A</b>.</li>
+      <li>Las ranuras <b>fijas</b> gobiernan el carácter global; se cambian en <code>image-generator-base.ts</code> / <code>p11-system-persona.ts</code>, no en la UI.</li>
+      <li>El <b>Modal de Debug</b> del Studio (<code>setDebugPromptData</code> → <code>PromptDebugModal</code>) muestra el <code>finalPrompt</code> exacto enviado. Es la herramienta para dejar de adivinar.</li>
+    </ul>
+  </div>
+</section>
+
+<section>
+  <h2>Dos observaciones honestas</h2>
+  <div class="card">
+    <p><strong>·</strong> <code>image/page.tsx</code> es un <b>monolito</b> (~2.800 líneas) que mezcla UI, sesiones, persistencia y orquestación. No es un bug, pero es la razón principal de que “cueste entender cómo pasan las cosas”. Ya figura como candidato a trocear.</p>
+    <p style="margin-bottom:0"><strong>·</strong> El acoplamiento real está en <code>useCreationFlow</code> + <code>prompt-builder</code>: ahí es donde tus decisiones de UI se convierten en el prompt. Es el punto a entender a fondo.</p>
+  </div>
+</section>
+
+<footer>
+  <p class="files">Ficheros clave: src/app/image/page.tsx · src/hooks/useCreationFlow.ts · src/app/actions/parse-intent.ts · src/lib/prompt-builder.ts · src/lib/prompts/image-generator-base.ts · src/lib/prompts/priorities/p11-system-persona.ts · src/lib/prompts/image-generation/{context-builder,layout-rules,typography-builder}.ts · src/app/api/generate/route.ts · src/lib/gemini.ts · src/app/api/work-sessions/persist-image/route.ts · convex/work_sessions.ts</p>
+  <p>Documento generado a partir del análisis del código. Módulo de imagen de x-studio.</p>
+</footer>
+
+</div>
+</body>
+</html>

@@ -14,14 +14,20 @@ import { Switch } from '@/components/ui/switch'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Textarea } from '@/components/ui/textarea'
-import { IconGripVertical, IconEdit, IconPlus, IconRefresh, IconSearch, IconDelete } from '@/components/ui/icons'
+import { IconGripVertical, IconEdit, IconPlus, IconRefresh, IconSearch, IconDelete, IconSparkles } from '@/components/ui/icons'
 import { useToast } from '@/hooks/use-toast'
 import { uploadBrandImage } from '@/app/actions/upload-image'
 import { revalidateStylePresets } from '@/app/actions/revalidate-style-presets'
+import {
+  applyStylePresetNames,
+  generateStylePresetNames,
+  type StylePresetNameProposal,
+} from '@/app/actions/generate-style-preset-names'
 
 type PresetRow = {
   _id: Id<'style_presets'>
   name: string
+  slug?: string
   image_url: string
   full_image_url?: string
   thumbnail_url?: string
@@ -221,6 +227,11 @@ export function StylePresetsManager({ adminEmail }: StylePresetsManagerProps) {
   const reorderPresets = useMutation(api.stylePresets.reorder)
   const removePreset = useMutation(api.stylePresets.remove)
 
+  const [isNaming, setIsNaming] = useState(false)
+  const [isApplyingNames, setIsApplyingNames] = useState(false)
+  const [nameProposals, setNameProposals] = useState<StylePresetNameProposal[]>([])
+  const [namingError, setNamingError] = useState('')
+
   const [isCreating, setIsCreating] = useState(false)
   const [newName, setNewName] = useState('')
   const [newActive, setNewActive] = useState(true)
@@ -339,10 +350,48 @@ export function StylePresetsManager({ adminEmail }: StylePresetsManagerProps) {
       if (!matchesFilter) return false
 
       if (!search) return true
-      const haystack = `${preset.name} ${preset.sort_order}`.toLowerCase()
+      const haystack = `${preset.name} ${preset.slug ?? ''} ${preset.sort_order}`.toLowerCase()
       return haystack.includes(search)
     })
   }, [listFilter, listSearch, presets])
+
+  const proposeNamesWithAI = async () => {
+    setIsNaming(true)
+    setNamingError('')
+    try {
+      const result = await generateStylePresetNames(adminEmail, { onlyGeneric: true })
+      if (!result.success) {
+        setNamingError(result.error || 'No se pudieron generar nombres.')
+        return
+      }
+      setNameProposals(result.proposals)
+      toast({
+        title: result.proposals.length ? 'Propuestas listas' : 'Nada que renombrar',
+        description: result.proposals.length
+          ? `${result.proposals.length} nombres propuestos. Revísalos antes de aplicar.`
+          : 'No hay estilos con nombre genérico o duplicado.',
+      })
+    } finally {
+      setIsNaming(false)
+    }
+  }
+
+  const applyProposedNames = async () => {
+    if (!nameProposals.length) return
+    setIsApplyingNames(true)
+    try {
+      const result = await applyStylePresetNames(adminEmail, nameProposals)
+      if (!result.success) {
+        setNamingError(result.error || 'No se pudieron aplicar los nombres.')
+        return
+      }
+      await revalidateStylePresets()
+      setNameProposals([])
+      toast({ title: 'Nombres aplicados', description: `${result.applied} estilos renombrados.` })
+    } finally {
+      setIsApplyingNames(false)
+    }
+  }
 
   const analyzeNewImage = async () => {
     if (!newImageDataUrl) {
@@ -676,8 +725,63 @@ export function StylePresetsManager({ adminEmail }: StylePresetsManagerProps) {
                     <SelectItem value="inactive">Inactivos</SelectItem>
                   </SelectContent>
                 </Select>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="h-9"
+                  onClick={proposeNamesWithAI}
+                  disabled={isNaming || isApplyingNames}
+                  title="Propone nombres descriptivos con IA para los estilos con nombre genérico o repetido"
+                >
+                  {isNaming ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <IconSparkles className="w-4 h-4 mr-2" />}
+                  Bautizar con IA
+                </Button>
               </div>
             </div>
+
+            {namingError ? (
+              <p className="text-xs text-destructive">{namingError}</p>
+            ) : null}
+
+            {nameProposals.length > 0 ? (
+              <div className="rounded-xl border border-border/70 bg-background p-3 space-y-3">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <p className="text-sm font-medium">
+                    {nameProposals.length} propuestas sin aplicar
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setNameProposals([])}
+                      disabled={isApplyingNames}
+                    >
+                      Descartar
+                    </Button>
+                    <Button type="button" size="sm" onClick={applyProposedNames} disabled={isApplyingNames}>
+                      {isApplyingNames ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
+                      Aplicar {nameProposals.length}
+                    </Button>
+                  </div>
+                </div>
+                <div className="max-h-72 overflow-y-auto space-y-1.5 pr-1">
+                  {nameProposals.map((proposal) => (
+                    <div
+                      key={proposal.id}
+                      className="grid grid-cols-[1fr_auto_1fr] items-center gap-2 text-xs border-b border-border/40 pb-1.5 last:border-0"
+                    >
+                      <span className="text-muted-foreground truncate">{proposal.currentName}</span>
+                      <span className="text-muted-foreground">→</span>
+                      <span className="truncate">
+                        <span className="font-medium">{proposal.name}</span>
+                        <span className="ml-2 font-mono text-[10px] text-muted-foreground">{proposal.slug}</span>
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : null}
           </div>
 
           <div className="grid grid-cols-1 xl:grid-cols-2 2xl:grid-cols-3 gap-4">
@@ -776,6 +880,28 @@ export function StylePresetsManager({ adminEmail }: StylePresetsManagerProps) {
                         }}
                       />
                     </div>
+                    <div className="grid grid-cols-[auto_1fr] items-center gap-2">
+                      <Label className="text-[11px] text-muted-foreground">Slug</Label>
+                      <Input
+                        key={`${String(preset._id)}-slug-${preset.slug ?? ''}`}
+                        defaultValue={preset.slug ?? ''}
+                        placeholder="identificador-para-la-api"
+                        title="Identificador estable con el que se elige este estilo desde la API. Si lo dejas vacio se deriva del nombre."
+                        className="h-8 bg-background font-mono text-xs"
+                        onBlur={async (e) => {
+                          const value = e.target.value.trim()
+                          if (value === (preset.slug ?? '')) return
+                          setSavingId(String(preset._id))
+                          try {
+                            await updatePreset({ admin_email: adminEmail, id: preset._id, slug: value })
+                            await revalidateStylePresets()
+                          } finally {
+                            setSavingId(null)
+                          }
+                        }}
+                      />
+                    </div>
+
                     <div className="flex items-center justify-end">
                       <div className="inline-flex items-center gap-1 text-[11px] text-muted-foreground">
                         <IconGripVertical className="w-3.5 h-3.5" />

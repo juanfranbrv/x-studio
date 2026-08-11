@@ -7,6 +7,47 @@
 - Cuando se documente una decisión técnica nueva, debe añadirse también ahí.
 
 - Para reglas de coherencia visual, tipografia, botones, dropdowns y jerarquia de UI, consulta tambien docs/UI_SYSTEM_RULES.md antes de introducir controles nuevos o retocar patrones existentes.
+
+## ⛔ CONVEX: LEE ESTO ANTES DE TOCAR NADA (verificado en el dashboard el 2026-08-11)
+
+**ESTE PROYECTO NO TIENE SEPARACION ENTRE DESARROLLO Y PRODUCCION EN CONVEX.**
+
+**SOLO HAY UN CONVEX REAL: `prestigious-pigeon-784`. AUNQUE CONVEX LO ETIQUETE COMO
+"DEVELOPMENT", ES EL QUE USA LA WEB PUBLICA `postlaboratory.com`.**
+
+**CONSECUENCIA: TRABAJAR EN LOCAL ES TRABAJAR EN PRODUCCION. CADA `npx convex dev`
+PUBLICA EN LA WEB REAL Y CADA DATO QUE SE TOCA ES DATO REAL DE USUARIOS.
+NO EXISTE UN ENTORNO DE PRUEBAS. NO LLAMES "DEV" A ESTE DEPLOYMENT.**
+
+**EL DEPLOYMENT LLAMADO "PRODUCTION" (`watchful-retriever-328`) ESTA VACIO Y NO LO USA
+NADIE: 0 LLAMADAS, TABLA `users` VACIA, ULTIMO DEPLOY HACE 2 MESES.
+`CONVEX_PROD_DEPLOY_KEY` APUNTA A ESE CASCARON: NO LA USES CREYENDO QUE DESPLIEGAS A
+LA WEB REAL, PORQUE DESPLIEGA AL SITIO EQUIVOCADO.**
+
+Evidencia (por si alguien vuelve a dudar):
+
+| Cosa | Valor real |
+|---|---|
+| Deployment que sirve `postlaboratory.com` | `prestigious-pigeon-784` (visto en el bundle JS de produccion) |
+| Etiqueta que le pone Convex | `Development` |
+| Deployment etiquetado `Production` | `watchful-retriever-328` — vacio, sin trafico |
+| `NEXT_PUBLIC_CONVEX_URL`, `CONVEX_PROD_URL`, `MIGRATION_SOURCE_URL`, `MIGRATION_TARGET_URL` | los cuatro → `prestigious-pigeon-784` |
+| `CONVEX_DEPLOY_KEY` | `dev:prestigious-pigeon-784` (la real, la que usa el CLI) |
+| `CONVEX_PROD_DEPLOY_KEY` | `prod:watchful-retriever-328` (el cascaron vacio) |
+| `warmhearted-schnauzer-446` | MUERTO, no responde. Si aparece en codigo o docs, es basura heredada |
+
+Reglas practicas que se derivan:
+
+1. **Antes de cualquier `npx convex dev --once` o `convex deploy`, avisa de que eso
+   publica en produccion y pide confirmacion.** No es un despliegue de pruebas.
+2. **El login del CLI de Convex es global por maquina** (`~/.convex/config.json`), asi
+   que loguearse para otro proyecto rompe el acceso a este. Por eso existe
+   `CONVEX_DEPLOY_KEY` en `.env.local`: el CLI la usa y ya no depende del login.
+3. El migrador `/admin/migrate` tiene origen y destino en el MISMO deployment: solo
+   copia de un usuario a otro. Es correcto, no es un bug.
+4. Riesgos abiertos y NO resueltos: el deployment con todos los datos **no tiene
+   backups** ("No backup yet") y corre con limites de tier Development (el dashboard
+   ya avisa "Queries hit concurrency limit").
 ## 🧠 Instrucciones Críticas de Comportamiento (Persona & Workflow)
 
 ### 1. Razonamiento y Planificación (Core)

@@ -443,6 +443,11 @@ export default defineSchema({
   // Predefined style presets (admin-managed) with precomputed visual analysis.
   style_presets: defineTable({
     name: v.string(),
+    // Identificador estable y legible del estilo ("editorial-minimal"). A
+    // diferencia de _id, no cambia entre deployments, asi que es el que se
+    // expone hacia fuera (API y manifiestos de campana). Opcional para no
+    // romper las filas existentes: se rellena con stylePresets.backfillSlugs.
+    slug: v.optional(v.string()),
     description: v.optional(v.string()),
     image_url: v.string(),
     thumbnail_url: v.optional(v.string()),
@@ -456,5 +461,6 @@ export default defineSchema({
     updated_by: v.optional(v.string()),
   }).index("by_active", ["is_active"])
     .index("by_sort_order", ["sort_order"])
-    .index("by_active_sort", ["is_active", "sort_order"]),
+    .index("by_active_sort", ["is_active", "sort_order"])
+    .index("by_slug", ["slug"]),
 });
