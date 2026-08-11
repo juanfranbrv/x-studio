@@ -63,6 +63,7 @@ Responde UNICAMENTE con un objeto JSON valido, sin texto alrededor:
       "body": "<cuerpo, opcional>",
       "cta": "<llamada a la accion, opcional>",
       "hashtags": ["#Ejemplo"],
+      "visual_content": "<que se ve en la imagen, opcional pero recomendado>",
       "style": "<slug de estilo, opcional: pisa el de la campana>",
       "format": "<id de formato, opcional: pisa el de la campana>"
     }
@@ -81,6 +82,11 @@ Responde UNICAMENTE con un objeto JSON valido, sin texto alrededor:
 4. **Solo puedes usar identificadores que aparezcan en los catalogos de abajo.**
    Un slug o id inventado hace que se rechace la campana entera.
 5. Lo que pongas en un post pisa lo que haya en "defaults".
+6. **"visual_content" describe QUE SE VE en la imagen** (la escena, el sujeto,
+   el ambiente), no el texto que aparece escrito. Ejemplo: "Un pequeno robot
+   con luces LED moviendose sobre un tablero educativo con circuitos". Si no lo
+   indicas, la plataforma lo decide por su cuenta; indicarlo es la unica forma
+   de controlar la imagen. Descripcion visual concreta y en una o dos frases.
 
 # Catalogos disponibles
 

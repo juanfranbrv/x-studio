@@ -31,6 +31,14 @@ export type ManifestPost = {
     body?: string
     cta?: string
     hashtags?: string[]
+    /**
+     * Contenido visual de la imagen: que se ve. Equivale a lo que en la
+     * interfaz aparece como "Contenido generado por IA" (las sugerencias),
+     * pero escrito por quien disena la campana en lugar de propuesto por la
+     * plataforma.
+     */
+    visual_content?: string
+    /** @deprecated Alias historico de `visual_content`. */
     visual_note?: string
     platform?: CampaignPlatform
     format?: string
@@ -202,6 +210,7 @@ export function validateManifest(input: unknown): ManifestValidation {
             body: readString(raw.body) || undefined,
             cta: readString(raw.cta) || undefined,
             hashtags: readStringArray(raw.hashtags),
+            visual_content: readString(raw.visual_content) || readString(raw.visual_note) || undefined,
             visual_note: readString(raw.visual_note) || undefined,
             platform: validatePlatform(raw.platform, `${path}.platform`, errors, ref),
             format: readString(raw.format) || undefined,

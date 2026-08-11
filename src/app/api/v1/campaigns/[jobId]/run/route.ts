@@ -9,6 +9,7 @@ import { findSocialFormat, findLayout } from '@/lib/campaigns/catalogs'
 import { persistGeneratedImage } from '@/lib/campaigns/store-image'
 import { resolveCampaignColors } from '@/lib/campaigns/brand-colors'
 import { buildCampaignContext, type ContextItem } from '@/lib/campaigns/brand-logo'
+import { P06B } from '@/lib/prompts/priorities/p06b-ai-image-description'
 import type { SelectedColor } from '@/lib/creation-flow-types'
 import type { ManifestPost } from '@/lib/campaigns/manifest'
 import { log } from '@/lib/logger'
@@ -78,18 +79,25 @@ function buildOptions(
  * campos estructurados.
  */
 function buildPrompt(post: ManifestPost): string {
-    if (post.prompt) return post.prompt
+    const base = post.prompt
+        ? post.prompt
+        : [
+            post.goal ? `Objetivo: ${post.goal}` : '',
+            post.headline ? `Título: ${post.headline}` : '',
+            post.body ? `Texto:\n${post.body}` : '',
+            post.cta ? `Llamada a la acción: ${post.cta}` : '',
+            post.hashtags?.length ? post.hashtags.join(' ') : '',
+        ].filter(Boolean).join('\n\n')
 
-    const partes = [
-        post.goal ? `Objetivo: ${post.goal}` : '',
-        post.headline ? `Título: ${post.headline}` : '',
-        post.body ? `Texto:\n${post.body}` : '',
-        post.cta ? `Llamada a la acción: ${post.cta}` : '',
-        post.visual_note ? `Indicación visual: ${post.visual_note}` : '',
-        post.hashtags?.length ? post.hashtags.join(' ') : '',
-    ].filter(Boolean)
+    // El contenido visual se inyecta con la MISMA instruccion que usa la
+    // interfaz al aplicar una sugerencia, para que el resultado sea el mismo
+    // se pida desde el panel o desde una campana.
+    const visual = (post.visual_content || post.visual_note || '').trim()
+    if (!visual) return base
 
-    return partes.join('\n\n')
+    return [base, '', P06B.PRIORITY_HEADER, '', P06B.AI_IMAGE_DESCRIPTION_INSTRUCTION(visual)]
+        .filter((part) => part !== undefined)
+        .join('\n')
 }
 
 export async function POST(request: NextRequest, context: { params: Promise<{ jobId: string }> }) {
