@@ -111,12 +111,43 @@ describe('validateManifest', () => {
         expect(result.errors.some((e) => e.path.endsWith('.scheduled_at'))).toBe(true)
     })
 
-    it('avisa (sin fallar) de los posts sin fecha', () => {
+    it('avisa (sin fallar) de los posts sin fecha, agrupados', () => {
         const m = clonar()
-        m.posts = [{ ref: 'BAU-01', prompt: 'x' }]
+        m.posts = [{ ref: 'BAU-01', prompt: 'x' }, { ref: 'BAU-02', prompt: 'y' }]
         const result = validateManifest(m)
         expect(result.ok).toBe(true)
-        expect(result.warnings.some((w) => w.ref === 'BAU-01')).toBe(true)
+        const aviso = result.warnings.find((w) => w.path.includes('scheduled_at'))
+        expect(aviso?.message).toContain('2 publicaciones sin fecha')
+        expect(aviso?.message).toContain('BAU-01, BAU-02')
+    })
+
+    it('avisa cuando ninguna publicacion tiene estilo', () => {
+        const m = clonar()
+        delete (m.campaign as Record<string, unknown>).defaults
+        const result = validateManifest(m)
+        expect(result.ok).toBe(true)
+        const aviso = result.warnings.find((w) => w.path.includes('style'))
+        expect(aviso?.message).toContain('Ninguna publicación indica estilo')
+    })
+
+    it('no avisa de estilo si la campana lo define en los defaults', () => {
+        const result = validateManifest(manifestoValido)
+        expect(result.ok).toBe(true)
+        expect(result.warnings.some((w) => w.path.includes('style'))).toBe(false)
+    })
+
+    it('avisa solo de las publicaciones sueltas que se quedan sin estilo', () => {
+        const m = clonar()
+        ;(m.campaign as { defaults: Record<string, unknown> }).defaults.style = undefined
+        m.posts = [
+            { ref: 'A', prompt: 'x', style: 'retrato-natural-calido' },
+            { ref: 'B', prompt: 'y' },
+        ]
+        const result = validateManifest(m)
+        expect(result.ok).toBe(true)
+        const aviso = result.warnings.find((w) => w.path.includes('style'))
+        expect(aviso?.message).toContain('1 publicaciones sin estilo')
+        expect(aviso?.message).toContain('B')
     })
 
     it('rechaza una lista de posts vacia', () => {

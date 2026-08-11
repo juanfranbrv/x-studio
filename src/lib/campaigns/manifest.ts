@@ -264,18 +264,35 @@ export function validateManifest(input: unknown): ManifestValidation {
             })
         }
 
-        if (!scheduledAt) {
-            warnings.push({
-                path: `${path}.scheduled_at`,
-                ref,
-                message: 'Sin fecha: la pieza ira a la tira "sin fecha" del calendario.',
-            })
-        }
-
         posts.push(post)
     }
 
     if (errors.length > 0) return { ok: false, errors, warnings }
+
+    // Los avisos van agrupados: con sesenta publicaciones, sesenta lineas
+    // diciendo lo mismo no se leen.
+    const sinFecha = posts.filter((post) => !post.scheduled_at)
+    if (sinFecha.length > 0) {
+        warnings.push({
+            path: 'posts[].scheduled_at',
+            message: `${sinFecha.length} publicaciones sin fecha (${sinFecha.slice(0, 5).map((p) => p.ref).join(', ')}${sinFecha.length > 5 ? '...' : ''}): no se podrán programar por fecha.`,
+        })
+    }
+
+    // Sin estilo, cada imagen sale con el aspecto que decida el modelo y la
+    // campana pierde coherencia. No es un error (se puede generar igual), pero
+    // avisar antes es la diferencia entre corregir una linea y descubrirlo con
+    // treinta imagenes ya pagadas.
+    const sinEstilo = posts.filter((post) => !post.style && !defaults.style)
+    if (sinEstilo.length > 0) {
+        warnings.push({
+            path: 'campaign.defaults.style',
+            message:
+                sinEstilo.length === posts.length
+                    ? `Ninguna publicación indica estilo: el aspecto lo elegirá la plataforma y variará entre unas y otras. Pon "style" en los valores por defecto de la campaña para que todas compartan aspecto.`
+                    : `${sinEstilo.length} publicaciones sin estilo (${sinEstilo.slice(0, 5).map((p) => p.ref).join(', ')}${sinEstilo.length > 5 ? '...' : ''}): su aspecto lo elegirá la plataforma.`,
+        })
+    }
 
     return {
         ok: true,

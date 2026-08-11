@@ -27,6 +27,7 @@ export function CampaignManifestForm({ onEnqueued }: Props) {
     const [texto, setTexto] = useState('')
     const [ocupado, setOcupado] = useState(false)
     const [issues, setIssues] = useState<Issue[]>([])
+    const [avisos, setAvisos] = useState<Issue[]>([])
     const [resumen, setResumen] = useState<string | null>(null)
 
     const parsear = (): unknown | null => {
@@ -45,6 +46,7 @@ export function CampaignManifestForm({ onEnqueued }: Props) {
 
         setOcupado(true)
         setIssues([])
+        setAvisos([])
         setResumen(null)
 
         try {
@@ -64,6 +66,8 @@ export function CampaignManifestForm({ onEnqueued }: Props) {
                 })
                 return
             }
+
+            setAvisos(data.warnings ?? [])
 
             if (dryRun) {
                 setResumen(`${data.total} publicaciones · marca ${data.brand?.name ?? '—'}`)
@@ -126,6 +130,23 @@ export function CampaignManifestForm({ onEnqueued }: Props) {
                 <p className="rounded-lg border border-primary/40 bg-primary/5 px-3 py-2 text-sm">
                     Comprobada: {resumen}. Nada generado todavía.
                 </p>
+            ) : null}
+
+            {avisos.length > 0 ? (
+                <div className="space-y-1 rounded-lg border border-amber-500/40 bg-amber-500/5 p-3">
+                    <p className="text-sm font-medium text-amber-700 dark:text-amber-500">
+                        Se puede generar, pero revisa esto antes:
+                    </p>
+                    <ul className="max-h-40 space-y-1 overflow-y-auto text-xs text-muted-foreground">
+                        {avisos.map((aviso, index) => (
+                            <li key={`aviso-${index}`}>
+                                {aviso.ref ? <span className="font-mono font-medium">{aviso.ref}</span> : null}
+                                {aviso.ref ? ' · ' : null}
+                                {aviso.message}
+                            </li>
+                        ))}
+                    </ul>
+                </div>
             ) : null}
 
             {issues.length > 0 ? (
