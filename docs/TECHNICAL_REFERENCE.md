@@ -975,3 +975,62 @@ pero es el que sirve `postlaboratory.com`. El deployment llamado "production"
 Verificado el 2026-08-11 contra el dashboard y contra el bundle JS de produccion.
 Esto explica por que la seccion "Herramienta local de migracion a produccion" tiene
 origen y destino en el mismo deployment: es correcto, no es una errata.
+
+## Paridad de prompt entre el panel de imagen y las campañas (2026-08-12)
+
+**Regla: existe UNA sola forma de construir un prompt de imagen, la pila de
+prioridades, y ambas vías la usan enviando `promptAlreadyBuilt: true`.**
+
+Durante un tiempo no fue así y se notaba a simple vista: las imágenes generadas
+por lote tenían "otro aire" que las hechas a mano en el panel. La causa no era el
+modelo ni el estilo, sino que cada vía compilaba el prompt de una manera:
+
+| | Panel (`useCreationFlow`) | Lote (antes) |
+|---|---|---|
+| Compilación | cliente, pila P12→P02 | servidor, `buildImagePrompt` |
+| `promptAlreadyBuilt` | `true` | ausente |
+| Plantilla base | no se aplica | **sí se aplica** |
+| URL | P09b: elemento HERO | dato de contacto + *"visually secondary and compact"* |
+| Idioma, contrato tipográfico, encaje de texto, roles de color, specs técnicas | sí | no |
+| Hashtags | nunca en la imagen | se inyectaban |
+
+La contradicción clave estaba en `IMAGE_GENERATION_BASE_PROMPT`, que ordena
+*"CTA URL must be visually secondary and compact"* / *"never dominant"*, justo lo
+contrario de lo que pide `P09b` (URL como píldora protagonista). El panel nunca
+veía esas líneas porque salta la plantilla; el lote sí.
+
+Solución (2026-08-12):
+
+- `src/lib/campaigns/prompt.ts` — `buildCampaignImagePrompt` replica la pila del
+  panel reutilizando los mismos módulos `P**`, e incluye `stripHashtags`.
+- `src/lib/prompts/image-generation/style-directive.ts` — helpers de estilo
+  (`buildVisualStyleDirective`, `extractStyleSignals`,
+  `sanitizeStructuralPromptForModel`) extraídos del hook de cliente para que las
+  dos vías compartan definición en lugar de copiarla.
+- El worker (`/api/v1/campaigns/{jobId}/run`) envía `promptAlreadyBuilt: true`.
+
+### El carrusel sufría el mismo choque
+
+Al documentar lo anterior apareció que la contradicción **no era exclusiva de las
+campañas**. El carrusel compone su prompt con `buildFinalPrompt`
+(`src/lib/prompts/carousel/builder/final-prompt.ts`), que **sí** aplica P09b
+(`URL_HERO_INSTRUCTION`, `CRITICAL_HIERARCHY_INSTRUCTION`), pero lo envía **sin**
+`promptAlreadyBuilt`. Es decir: el mismo prompt le decía al modelo "la URL debe
+ser el elemento protagonista" y unas líneas después "la URL nunca debe dominar,
+máximo 35% del lienzo".
+
+Arreglado el 2026-08-12 en el origen: las seis líneas prescriptivas de
+`IMAGE_GENERATION_BASE_PROMPT` se sustituyen por una que **delega la jerarquía en
+la petición**. Así P09b gobierna la URL en las tres vías (panel, campañas,
+carrusel) sin que la plantilla la contradiga, y el carrusel conserva todo lo demás
+que sí necesita de ella (protección de logos, recursos arrastrados, tipografía,
+prohibición de colores ajenos) — por eso NO se le puso `promptAlreadyBuilt: true`:
+perdería esos bloques.
+
+`src/lib/prompts/__tests__/image-generator-base.test.ts` fija la regla para que la
+contradicción no vuelva a colarse.
+
+**Aviso para quien añada una vía nueva de generación:** decide conscientemente si
+compilas el prompt tú (pila de prioridades + `promptAlreadyBuilt: true`, como el
+panel y las campañas) o si te apoyas en la plantilla base (como el carrusel). Lo
+que no puede pasar es mezclar reglas de jerarquía de las dos fuentes.

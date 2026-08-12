@@ -108,8 +108,40 @@ separados se mantienen por razones reales —se validan antes de gastar crédito
 agente puede componerlos programáticamente— pero **no se obliga a trocear el texto**, y
 un manifiesto hecho solo de prompts en prosa es perfectamente válido.
 
-Si vienen ambos, `prompt` manda y los campos se usan como metadatos de la publicación
-(que es lo que acaba necesitando el agente de Postiz).
+Si vienen ambos, `prompt` aporta el CONTEXTO de intención (equivale al mensaje original
+del usuario en el panel) y los campos aportan el texto que debe imprimirse en la imagen,
+además de servir de metadatos de la publicación (que es lo que acaba necesitando el
+agente de Postiz).
+
+### 4.2.1 Los hashtags no entran nunca en la imagen (2026-08-12)
+
+`hashtags` es copy de la publicación: viaja al CSV/ZIP del lote y de ahí al programador,
+pero **nunca al prompt de imagen**. Las almohadillas impresas dentro del diseño son la
+señal más visible de que una pieza está automatizada, y el panel manual jamás las mete.
+
+Como el manifiesto lo suele escribir una IA, los hashtags se cuelan a veces dentro de
+`prompt`, `headline` o `body`: `stripHashtags` (`src/lib/campaigns/prompt.ts`) los
+elimina de todos esos campos antes de construir el prompt, y la guía del planificador
+(§ regla 9) lo prohíbe explícitamente.
+
+### 4.2.2 La web es el elemento protagonista, no un dato de contacto (2026-08-12)
+
+El panel de imagen construye el prompt en el cliente y lo envía con
+`promptAlreadyBuilt: true`, apilando las prioridades P12/P10/P09/**P09b**/P07/P05/P04/P02.
+P09b da a la URL tratamiento de HERO (píldora, peso tipográfico, color de acento) con el
+CTA como copy secundario encima.
+
+El lote hacía lo contrario: mandaba texto suelto y dejaba que el servidor lo envolviera
+con `buildImagePrompt`, cuya plantilla base (`IMAGE_GENERATION_BASE_PROMPT`) ordena lo
+opuesto — *"CTA URL must be visually secondary and compact"*, *"never dominant"* — y
+además emitía la web dentro del bloque de datos de contacto. Resultado: en automático la
+URL salía pequeña y plana; a mano salía como botón protagonista.
+
+Desde 2026-08-12 el lote construye el prompt con `buildCampaignImagePrompt`
+(`src/lib/campaigns/prompt.ts`), que **replica la misma pila de prioridades que el panel**
+reutilizando los mismos módulos, y lo envía también con `promptAlreadyBuilt: true`. Los
+helpers de estilo compartidos viven en `src/lib/prompts/image-generation/style-directive.ts`
+para que las dos vías no se separen con el tiempo.
 
 ### 4.3 Identificadores estables (ya resuelto)
 
@@ -202,10 +234,26 @@ bauset-agosto-2026.zip
 - **Las imágenes se nombran con la `ref` del post** (`BAU-01.png`), tal y como pedía el
   plan de campaña original.
 - **`campaign.json` es lo que hace útil el ZIP.** Sin él, el agente de Postiz tendría
-  que adivinar qué texto y qué fecha corresponden a cada imagen. Contiene, por post:
-  `ref`, `file`, `scheduled_at`, `platform`, `headline`, `body`, `cta`, `hashtags`.
+  que adivinar qué texto y qué fecha corresponden a cada imagen.
 - Se incluye también `campaign.csv` con lo mismo en plano, porque muchos programadores
   de redes importan CSV directamente.
+
+Cada post lleva **dos bloques** (ampliado el 2026-08-12):
+
+| Bloque | Campos | Para qué |
+|---|---|---|
+| Publicación | `ref`, `file`, `scheduled_at`, `publish_to`, `optimized_for`, `headline`, `body`, `cta`, `hashtags` | programar el calendario |
+| Producción | `group`, `goal`, `visual_content`, `style`, `layout`, `format`, `colors`, `logo`, `brand_assets`, `prompt` | auditar y repetir la pieza |
+
+Hasta esa fecha solo se exportaba el primer bloque, así que el paquete no decía **con
+qué estilo ni con qué descripción visual** se había generado cada imagen: los datos
+estaban en el `payload` guardado, pero no salían del sistema. `brand_assets` lista los
+datos del kit que la campaña pidió imprimir (`cta_url`, `phone`, `email`, `address`,
+`extra_logos`); `visual_content` acepta el alias histórico `visual_note`.
+
+Los campos vienen del post **ya resuelto** (`resolvePost`), así que reflejan lo que de
+verdad se usó, incluidos los heredados de `campaign.defaults`. Las campañas anteriores
+también los exportan: el payload ya estaba guardado, solo faltaba sacarlo.
 
 Descargable desde la UI (botón en la campaña) y desde la API. Debe poder pedirse
 **parcialmente**: solo los posts en estado `done`, para no tener que esperar a que
