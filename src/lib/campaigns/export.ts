@@ -6,6 +6,12 @@
  * adivinar que texto y que fecha corresponden a cada imagen. Por eso ademas de
  * las imagenes se incluye `campaign.json` y `campaign.csv` con la
  * correspondencia completa.
+ *
+ * Cada fila lleva DOS bloques: el de publicacion (texto, fecha, redes) y el de
+ * produccion (estilo, contenido visual, composicion, formato, activos de marca
+ * y prosa de intencion). El segundo se anadio el 2026-08-12: sin el, el
+ * paquete no decia con que estilo ni con que descripcion visual se genero cada
+ * pieza, asi que no habia forma de auditarla ni de repetirla igual.
  */
 
 export type ExportItem = {
@@ -16,6 +22,15 @@ export type ExportItem = {
     payload?: Record<string, unknown> | null
 }
 
+/**
+ * Una fila del paquete. Se ordena en dos bloques:
+ *
+ * 1. PUBLICACION: lo que necesita quien programa el calendario.
+ * 2. PRODUCCION: lo que se le pidio a la plataforma para esa imagen (estilo,
+ *    contenido visual, composicion, activos de marca...). Sin este bloque el
+ *    ZIP no permite auditar por que salio una pieza como salio, ni rehacerla
+ *    igual: los datos existen en el manifiesto pero no salian del sistema.
+ */
 export type ExportEntry = {
     ref: string
     file: string
@@ -28,6 +43,26 @@ export type ExportEntry = {
     body: string | null
     cta: string | null
     hashtags: string[]
+    // --- Produccion -------------------------------------------------------
+    /** Subcampana a la que pertenece la pieza. */
+    group: string | null
+    goal: string | null
+    /** Que se ve en la imagen: la descripcion que guio al generador. */
+    visual_content: string | null
+    /** Slug del estilo visual aplicado. */
+    style: string | null
+    /** Id de la composicion aplicada. */
+    layout: string | null
+    /** Id del formato (encuadre y proporcion). */
+    format: string | null
+    /** Paleta usada, si la campana la fijo por encima de la del kit. */
+    colors: string[]
+    /** Si se incrusto el logo principal de la marca. */
+    logo: boolean | null
+    /** Datos del kit que la campana pidio imprimir: cta_url, phone, email... */
+    brand_assets: string[]
+    /** Prosa de intencion del manifiesto. Va al final por longitud. */
+    prompt: string | null
 }
 
 const CSV_COLUMNS = [
@@ -40,7 +75,28 @@ const CSV_COLUMNS = [
     'body',
     'cta',
     'hashtags',
+    'group',
+    'goal',
+    'visual_content',
+    'style',
+    'layout',
+    'format',
+    'colors',
+    'logo',
+    'brand_assets',
+    'prompt',
 ] as const
+
+/** Columnas que se serializan uniendo una lista con un separador propio. */
+const CSV_LIST_SEPARATORS: Partial<Record<(typeof CSV_COLUMNS)[number], string>> = {
+    hashtags: ' ',
+    publish_to: ', ',
+    colors: ' ',
+    brand_assets: ', ',
+}
+
+/** Activos del kit que la campana puede pedir que aparezcan en la imagen. */
+const BRAND_ASSET_KEYS = ['cta_url', 'phone', 'email', 'address', 'extra_logos'] as const
 
 /**
  * Redes por defecto cuando el lote se genero antes de que existiera
@@ -50,6 +106,26 @@ const PUBLISH_TO_POR_DEFECTO = ['facebook', 'instagram']
 
 function text(value: unknown): string | null {
     return typeof value === 'string' && value.trim() ? value.trim() : null
+}
+
+function stringList(value: unknown): string[] {
+    if (!Array.isArray(value)) return []
+    return value.filter((item): item is string => typeof item === 'string' && item.trim().length > 0)
+}
+
+/**
+ * Nombres de los activos de marca que la campana activo. Un activo cuenta como
+ * activo tanto si se pidio del kit (`true`) como si se piso con un valor
+ * concreto (una cadena) o con una lista de logos.
+ */
+function activeBrandAssets(payload: Record<string, unknown>): string[] {
+    return BRAND_ASSET_KEYS.filter((key) => {
+        const value = payload[key]
+        if (value === true) return true
+        if (typeof value === 'string') return value.trim().length > 0
+        if (Array.isArray(value)) return value.length > 0
+        return false
+    })
 }
 
 /** Nombre de fichero de una publicacion: su referencia, como pedia el plan. */
@@ -73,9 +149,7 @@ export function buildExportEntries(items: ExportItem[]): ExportEntry[] {
             ? payload.hashtags.filter((tag): tag is string => typeof tag === 'string')
             : []
 
-        const publishTo = Array.isArray(payload.publish_to)
-            ? payload.publish_to.filter((red): red is string => typeof red === 'string' && red.trim().length > 0)
-            : []
+        const publishTo = stringList(payload.publish_to)
 
         return {
             ref: item.ref,
@@ -87,6 +161,18 @@ export function buildExportEntries(items: ExportItem[]): ExportEntry[] {
             body: text(payload.body),
             cta: text(payload.cta),
             hashtags,
+            group: text(payload.group),
+            goal: text(payload.goal),
+            // `visual_note` es el alias historico del campo: los lotes viejos
+            // lo guardaron asi y tienen que exportarse igual.
+            visual_content: text(payload.visual_content) ?? text(payload.visual_note),
+            style: text(payload.style),
+            layout: text(payload.layout),
+            format: text(payload.format),
+            colors: stringList(payload.colors),
+            logo: typeof payload.logo === 'boolean' ? payload.logo : null,
+            brand_assets: activeBrandAssets(payload),
+            prompt: text(payload.prompt),
         }
     })
 }
@@ -110,9 +196,10 @@ const BOM_UTF8 = '\uFEFF'
 export function buildCampaignCsv(entries: ExportEntry[]): string {
     const filas = entries.map((entry) =>
         CSV_COLUMNS.map((column) => {
-            if (column === 'hashtags') return escapeCsv(entry.hashtags.join(' '))
-            if (column === 'publish_to') return escapeCsv(entry.publish_to.join(', '))
-            return escapeCsv(entry[column])
+            const separator = CSV_LIST_SEPARATORS[column]
+            const value = entry[column]
+            if (separator && Array.isArray(value)) return escapeCsv(value.join(separator))
+            return escapeCsv(value)
         }).join(','),
     )
 

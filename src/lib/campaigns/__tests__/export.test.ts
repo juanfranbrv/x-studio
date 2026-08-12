@@ -16,7 +16,24 @@ const items: ExportItem[] = [
         status: 'done',
         asset_key: 'https://cdn/uno.png',
         scheduled_at: '2026-08-11T09:30:00+02:00',
-        payload: { platform: 'instagram', headline: 'Titular uno', cta: 'Visita la web', hashtags: ['#A', '#B'] },
+        payload: {
+            platform: 'instagram',
+            headline: 'Titular uno',
+            cta: 'Visita la web',
+            hashtags: ['#A', '#B'],
+            group: 'Adultos',
+            goal: 'Cerrar matriculas de septiembre',
+            visual_content: 'Un portatil sobre una mesa de madera con una taza',
+            style: 'editorial-plano',
+            layout: 'clean',
+            format: 'ig-portrait',
+            colors: ['#ffd400', '#e2262b'],
+            logo: true,
+            cta_url: true,
+            phone: false,
+            extra_logos: ['cambridge'],
+            prompt: 'Publicacion sobre el seguimiento del alumnado',
+        },
     },
     { ref: 'BAU-02', status: 'pending', asset_key: null, payload: {} },
     { ref: 'BAU-03', status: 'failed', asset_key: null, payload: {} },
@@ -89,6 +106,39 @@ describe('buildExportEntries', () => {
         expect(entries[1].scheduled_at).toBeNull()
         expect(entries[1].hashtags).toEqual([])
     })
+
+    it('exporta como se produjo la pieza, no solo como se publica', () => {
+        expect(entries[0]).toMatchObject({
+            group: 'Adultos',
+            goal: 'Cerrar matriculas de septiembre',
+            visual_content: 'Un portatil sobre una mesa de madera con una taza',
+            style: 'editorial-plano',
+            layout: 'clean',
+            format: 'ig-portrait',
+            colors: ['#ffd400', '#e2262b'],
+            logo: true,
+            prompt: 'Publicacion sobre el seguimiento del alumnado',
+        })
+    })
+
+    it('lista solo los activos de marca que la campana activo', () => {
+        expect(entries[0].brand_assets).toEqual(['cta_url', 'extra_logos'])
+    })
+
+    it('acepta el alias historico visual_note', () => {
+        const result = buildExportEntries([
+            { ref: 'X', status: 'done', asset_key: 'u', payload: { visual_note: 'Aula luminosa' } },
+        ])
+        expect(result[0].visual_content).toBe('Aula luminosa')
+    })
+
+    it('deja los campos de produccion vacios cuando la campana no los indico', () => {
+        expect(entries[1].style).toBeNull()
+        expect(entries[1].visual_content).toBeNull()
+        expect(entries[1].logo).toBeNull()
+        expect(entries[1].brand_assets).toEqual([])
+        expect(entries[1].colors).toEqual([])
+    })
 })
 
 describe('escapeCsv', () => {
@@ -130,8 +180,19 @@ describe('buildCampaignCsv', () => {
 
     it('empieza por la cabecera', () => {
         expect(csv.replace('﻿', '').split('\r\n')[0]).toBe(
-            'ref,file,scheduled_at,publish_to,optimized_for,headline,body,cta,hashtags',
+            'ref,file,scheduled_at,publish_to,optimized_for,headline,body,cta,hashtags,'
+            + 'group,goal,visual_content,style,layout,format,colors,logo,brand_assets,prompt',
         )
+    })
+
+    it('saca a su columna el estilo y el contenido visual', () => {
+        expect(csv).toContain('editorial-plano')
+        expect(csv).toContain('Un portatil sobre una mesa de madera con una taza')
+    })
+
+    it('une listas de produccion en una sola celda', () => {
+        expect(csv).toContain('#ffd400 #e2262b')
+        expect(csv).toContain('"cta_url, extra_logos"')
     })
 
     it('lista las redes de publicacion en su columna', () => {
