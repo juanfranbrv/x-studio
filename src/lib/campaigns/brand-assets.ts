@@ -5,9 +5,10 @@ import type { ContextItem } from '@/lib/campaigns/brand-logo'
  * la llamada a la accion con la web, los datos de contacto y los logos
  * auxiliares (sellos, certificaciones, colaboradores).
  *
- * El formato de las lineas replica el que ya usa la plataforma al componer el
- * contexto de texto (`CTA:`, `URL:`, `ASSET_...`), para no introducir un
- * dialecto nuevo que el modelo interprete de otra manera.
+ * Aqui solo se RESUELVE que valor usar. Como se redacta cada uno dentro del
+ * prompt (la web como elemento protagonista, los contactos en su bloque
+ * aparte) es cosa de `campaigns/prompt.ts`, que replica la pila de prioridades
+ * del panel de imagen.
  */
 
 type BrandLike = {
@@ -46,34 +47,6 @@ export type BrandTextOptions = {
     phone?: AssetChoice
     email?: AssetChoice
     address?: AssetChoice
-}
-
-/**
- * Lineas de texto de marca que deben aparecer en la imagen. Se devuelven como
- * bloque etiquetado para que el generador las trate como contenido obligatorio
- * y no como sugerencia.
- */
-export function buildBrandTextBlock(brand: BrandLike | null | undefined, options: BrandTextOptions): string {
-    if (!brand) return ''
-
-    const url = resolveAsset(options.cta_url, brand.url)
-    const phone = resolveAsset(options.phone, brand.phones)
-    const email = resolveAsset(options.email, brand.emails)
-    const address = resolveAsset(options.address, brand.addresses)
-
-    const lineas = [
-        url ? `URL: ${url}` : '',
-        phone ? `ASSET_TELEFONO: ${phone}` : '',
-        email ? `ASSET_EMAIL: ${email}` : '',
-        address ? `ASSET_DIRECCION: ${address}` : '',
-    ].filter(Boolean)
-
-    if (lineas.length === 0) return ''
-
-    return [
-        'DATOS DE CONTACTO (deben aparecer legibles en la imagen, sin alterarlos):',
-        ...lineas,
-    ].join('\n')
 }
 
 /**

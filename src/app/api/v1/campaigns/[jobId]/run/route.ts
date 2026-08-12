@@ -9,9 +9,8 @@ import { findSocialFormat, findLayout } from '@/lib/campaigns/catalogs'
 import { persistGeneratedImage } from '@/lib/campaigns/store-image'
 import { resolveCampaignColors } from '@/lib/campaigns/brand-colors'
 import { buildCampaignContext, type ContextItem } from '@/lib/campaigns/brand-logo'
-import { P06B } from '@/lib/prompts/priorities/p06b-ai-image-description'
-import { buildLayoutDirective } from '@/lib/campaigns/layout-directive'
-import { buildBrandTextBlock, buildAuxiliaryLogoContext } from '@/lib/campaigns/brand-assets'
+import { buildCampaignImagePrompt, stripHashtags } from '@/lib/campaigns/prompt'
+import { buildAuxiliaryLogoContext } from '@/lib/campaigns/brand-assets'
 import type { SelectedColor } from '@/lib/creation-flow-types'
 import type { ManifestPost } from '@/lib/campaigns/manifest'
 import { log } from '@/lib/logger'
@@ -42,7 +41,13 @@ type ClaimedItem = {
     attempts: number
 }
 
-/** Traduce un post del manifiesto a las opciones que espera el generador. */
+/**
+ * Traduce un post del manifiesto a las opciones que espera el generador.
+ *
+ * El prompt llega YA construido (`promptAlreadyBuilt`), igual que hace el panel
+ * de imagen: la plantilla base del servidor contradice la jerarquia de la URL
+ * definida en P09b y dejaria la web como un dato de contacto pequeno.
+ */
 function buildOptions(
     post: ManifestPost,
     style: { name?: string; analysis?: unknown } | null,
@@ -55,11 +60,14 @@ function buildOptions(
     const layout = post.layout ? findLayout(post.layout) : null
 
     return {
-        headline: post.headline,
-        cta: post.cta,
+        // Saneados igual que en el prompt: hoy el generador no usa estos dos
+        // campos, pero si algun dia los usa no puede colarse una almohadilla.
+        headline: stripHashtags(post.headline),
+        cta: stripHashtags(post.cta),
         platform: post.platform,
         aspectRatio: format?.aspectRatio,
         model,
+        promptAlreadyBuilt: true,
         // Sin `selectedColors` el prompt deja la paleta en "Sin definir" y el
         // modelo se inventa los colores de marca: es lo que hace la interfaz
         // al inicializar el kit, y aqui tiene que pasar lo mismo.
@@ -73,44 +81,6 @@ function buildOptions(
         styleAnalysisKeywords: Array.isArray(analysis.keywords) ? analysis.keywords : [],
         styleAnalysisSubject: typeof analysis.subjectLabel === 'string' ? analysis.subjectLabel : undefined,
     }
-}
-
-/**
- * El texto que se manda a generar. Un prompt en prosa manda tal cual (es como
- * trabaja hoy Juanfran y funciona); si no lo hay, se compone a partir de los
- * campos estructurados.
- */
-function buildPrompt(post: ManifestPost, brandTextBlock: string): string {
-    const base = post.prompt
-        ? post.prompt
-        : [
-            post.goal ? `Objetivo: ${post.goal}` : '',
-            post.headline ? `Título: ${post.headline}` : '',
-            post.body ? `Texto:\n${post.body}` : '',
-            post.cta ? `Llamada a la acción: ${post.cta}` : '',
-            post.hashtags?.length ? post.hashtags.join(' ') : '',
-        ].filter(Boolean).join('\n\n')
-
-    const partes = [base]
-
-    // Web, telefono o direccion del kit, cuando la campana los pide.
-    if (brandTextBlock) partes.push('', brandTextBlock)
-
-    // La composicion del layout se adjunta aqui porque el servidor solo la
-    // aplicaria a traves de `layoutReference`, y ningun layout del catalogo
-    // tiene imagen de referencia (ver layout-directive.ts).
-    const layoutDirective = buildLayoutDirective(post.layout)
-    if (layoutDirective) partes.push('', layoutDirective)
-
-    // El contenido visual se inyecta con la MISMA instruccion que usa la
-    // interfaz al aplicar una sugerencia, para que el resultado sea el mismo
-    // se pida desde el panel o desde una campana.
-    const visual = (post.visual_content || post.visual_note || '').trim()
-    if (visual) {
-        partes.push('', P06B.PRIORITY_HEADER, '', P06B.AI_IMAGE_DESCRIPTION_INSTRUCTION(visual))
-    }
-
-    return partes.join('\n')
 }
 
 export async function POST(request: NextRequest, context: { params: Promise<{ jobId: string }> }) {
@@ -215,16 +185,28 @@ export async function POST(request: NextRequest, context: { params: Promise<{ jo
                         campaignContext[0]?.value ?? null,
                     )
 
-                    const brandTextBlock = buildBrandTextBlock(brandForAssets, {
-                        cta_url: post.cta_url,
-                        phone: post.phone,
-                        email: post.email,
-                        address: post.address,
+                    const styleAnalysis = (style?.analysis ?? {}) as { keywords?: string[]; subjectLabel?: string }
+                    const format = post.format ? findSocialFormat(post.format) : null
+
+                    const finalPrompt = buildCampaignImagePrompt({
+                        post,
+                        brand: brandDoc as Parameters<typeof buildCampaignImagePrompt>[0]['brand'],
+                        colors: selectedColors,
+                        style: style?.name || styleAnalysis.keywords?.length
+                            ? {
+                                name: style?.name,
+                                keywords: Array.isArray(styleAnalysis.keywords) ? styleAnalysis.keywords : [],
+                                subject: typeof styleAnalysis.subjectLabel === 'string' ? styleAnalysis.subjectLabel : undefined,
+                            }
+                            : null,
+                        format: format ? { name: format.name, aspectRatio: format.aspectRatio } : null,
+                        hasPrimaryLogo: campaignContext.length > 0,
+                        auxiliaryLogoCount: auxLogos.length,
                     })
 
                     const generated = await generateContentImageUnified(
                         brand,
-                        buildPrompt(post, brandTextBlock),
+                        finalPrompt,
                         buildOptions(post, style, imageModel, selectedColors, [...campaignContext, ...auxLogos]),
                     )
 

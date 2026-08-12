@@ -48,6 +48,13 @@ import { P06B } from '@/lib/prompts/priorities/p06b-ai-image-description'
 import * as P05 from '@/lib/prompts/priorities/p05-visual-style'
 import * as P04 from '@/lib/prompts/priorities/p04-brand-colors'
 import * as P02 from '@/lib/prompts/priorities/p02-technical-specs'
+// Compartidos con el generador por lotes: una sola definicion para que el
+// panel y las campanas construyan el prompt igual.
+import {
+    buildVisualStyleDirective,
+    extractStyleSignals,
+    sanitizeStructuralPromptForModel,
+} from '@/lib/prompts/image-generation/style-directive'
 
 export const NO_TEXT_TOKEN = '[NO_TEXT]'
 
@@ -85,31 +92,6 @@ const resolveSelectedBrandKitLogo = (
         }
         return `logo-${idx}` === selectedLogoId
     })
-}
-
-const sanitizeStructuralPromptForModel = (raw?: string | null): string => {
-    if (!raw) return ''
-
-    const normalized = raw
-        .replace(/\r/g, '\n')
-        .split('\n')
-        .map((line) => line.trim())
-        .filter(Boolean)
-        .filter((line) => {
-            // Remove markdown headings and metadata labels that confuse the image model.
-            if (/^#{1,6}\s/.test(line)) return false
-            if (/^\*\*(arquetipo|twist|estructura|jerarqu[ií]a visual|distribuci[oó]n|variation knobs|do-not-break)\*\*:/i.test(line)) return false
-            if (/^(arquetipo|twist|estructura|jerarqu[ií]a visual|distribuci[oó]n|variation knobs|do-not-break)\s*:/i.test(line)) return false
-            if (/^(nombre|composici[oó]n|composition prompt|blueprint|icono)\s*:/i.test(line)) return false
-            return true
-        })
-        .map((line) => line.replace(/^(\d+\.\s+|[-*]\s+)/, ''))
-        .map((line) => line.replace(/\*\*/g, ''))
-        .join(' ')
-        .replace(/\s+/g, ' ')
-        .trim()
-
-    return normalized
 }
 
 export interface UseCreationFlowOptions {
@@ -2666,81 +2648,6 @@ function buildSimpleTypographyDirection(
         return ''
     }
     return `TYPOGRAPHY DIRECTION: Keep typography simple and readable.`
-}
-
-function buildVisualStyleDirective(
-    customStyle?: string,
-    analysis?: GenerationState['firstVisionAnalysis'] | null
-): string {
-    const referenceSignals = (analysis?.keywords || [])
-        .map((k) => k.trim())
-        .filter(Boolean)
-    const tokens = [customStyle?.trim(), ...referenceSignals].join(' ').toLowerCase()
-
-    const has = (keywords: string[]) => keywords.some((k) => tokens.includes(k))
-    const artDirectionAnchors: string[] = []
-
-    if (has(['pop art', 'comic', 'halftone', 'ben-day', 'print texture'])) {
-        artDirectionAnchors.push('Pop Art/comic print language with controlled halftone behavior')
-    }
-    if (has(['vector', 'flat', 'cel', 'cartoon', 'illustration'])) {
-        artDirectionAnchors.push('contemporary vector illustration language from children media and mobile game key art')
-    }
-    if (has(['geometric', 'grid', 'minimal'])) {
-        artDirectionAnchors.push('modernist reduction principles similar to Swiss-influenced poster composition')
-    }
-    if (has(['editorial', 'magazine', 'serif', 'headline'])) {
-        artDirectionAnchors.push('editorial hierarchy discipline inspired by modern publishing systems')
-    }
-    if (has(['dynamic', 'energy', 'motion', 'impact'])) {
-        artDirectionAnchors.push('high-energy compositional rhythm common in commercial campaign illustration')
-    }
-
-    const uniqueAnchors = Array.from(new Set(artDirectionAnchors)).slice(0, 3)
-    const hasReferenceStyleExtraction = referenceSignals.length > 0
-    const allowAnchors = !!customStyle?.trim()
-    const anchorClause =
-        allowAnchors && uniqueAnchors.length > 0
-            ? ` Use these art-direction anchors: ${uniqueAnchors.join('; ')}.`
-            : ''
-
-    const styleSource =
-        referenceSignals.length > 0 && customStyle?.trim()
-            ? `${customStyle.trim()} + ${referenceSignals.join(', ')}`
-            : referenceSignals.length > 0
-                ? referenceSignals.join(', ')
-                : (customStyle?.trim() || 'the style reference and the selected brand language')
-
-    return `STYLE DIRECTIVES: Render the image in this exact aesthetic direction based on ${styleSource}. Match the reference medium faithfully (photographic, illustrative, painterly, or hybrid) and preserve coherent visual construction, controlled contrast, clean finishing, and readable layering while respecting the detected stylistic language.${anchorClause}`
-}
-
-function extractStyleSignals(
-    customStyle?: string,
-    analysis?: GenerationState['firstVisionAnalysis'] | null
-): string[] {
-    const raw = [customStyle || '', ...(analysis?.keywords || [])]
-        .join(' ')
-        .toLowerCase()
-
-    const has = (tokens: string[]) => tokens.some((token) => raw.includes(token))
-    const signals: string[] = []
-
-    if (has(['pop art', 'roy lichtenstein', 'comic'])) signals.push('pop-art comic language')
-    if (has(['halftone', 'ben-day', 'dot pattern', 'printed dots'])) signals.push('halftone print texture accents')
-    if (has(['outline', 'thick line', 'bold black'])) signals.push('thick high-contrast contour outlines')
-    if (has(['flat color', 'color blocking', 'flat shading'])) signals.push('flat color blocking with minimal gradients')
-    if (has(['cell shaded', 'cel-shaded', 'hard shadow'])) signals.push('hard-edged cel-style shadows')
-    if (has(['retro', 'vintage', 'nostalgic'])) signals.push('retro commercial mood')
-    if (has(['energetic', 'dynamic', 'high contrast', 'high-impact'])) signals.push('energetic high-impact composition')
-    if (has(['frontal', 'close-up'])) signals.push('frontal close-up composition')
-    if (has(['vector', 'illustration', 'cartoon'])) signals.push('clean vector illustration finish')
-
-    const blockedColorTerms = ['red', 'blue', 'green', 'yellow', 'orange', 'purple', 'magenta', 'cyan', 'primary', 'secondary']
-    return Array.from(
-        new Set(
-            signals.filter((entry) => !blockedColorTerms.some((term) => entry.includes(term)))
-        )
-    ).slice(0, 8)
 }
 
 function inferTypographyFromVision(analysis?: GenerationState['firstVisionAnalysis'] | null): TypographyProfile {

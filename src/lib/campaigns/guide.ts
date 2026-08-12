@@ -104,6 +104,12 @@ Responde UNICAMENTE con un objeto JSON valido, sin texto alrededor:
    con luces LED moviendose sobre un tablero educativo con circuitos". Si no lo
    indicas, la plataforma lo decide por su cuenta; indicarlo es la unica forma
    de controlar la imagen. Descripcion visual concreta y en una o dos frases.
+9. **Los hashtags van SOLO en "hashtags", nunca dentro de la imagen.** Son
+   texto del copy de la publicacion: no los escribas en "prompt", "headline",
+   "body" ni "cta". Una imagen con almohadillas impresas se ve amateur.
+10. **El texto que debe aparecer impreso va en "headline", "body" y "cta".**
+   "prompt" es contexto de intencion para el generador, no copy literal: lo que
+   escribas ahi orienta la pieza, pero no se imprime palabra por palabra.
 
 # Catalogos disponibles
 

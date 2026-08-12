@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildAuxiliaryLogoContext, buildBrandTextBlock, resolveAsset } from '../brand-assets'
+import { buildAuxiliaryLogoContext, resolveAsset } from '../brand-assets'
 
 const kit = {
     url: 'bauset.es',
@@ -30,30 +30,6 @@ describe('resolveAsset', () => {
     it('devuelve null si el kit no tiene el dato', () => {
         expect(resolveAsset(true, undefined)).toBeNull()
         expect(resolveAsset(true, [])).toBeNull()
-    })
-})
-
-describe('buildBrandTextBlock', () => {
-    it('incluye web, telefono y direccion cuando se piden', () => {
-        const block = buildBrandTextBlock(kit, { cta_url: true, phone: true, address: true })
-        expect(block).toContain('URL: bauset.es')
-        expect(block).toContain('ASSET_TELEFONO: 961 49 00 00')
-        expect(block).toContain('ASSET_DIRECCION: Avda. Santa Maria, 31 Meliana')
-    })
-
-    it('exige que aparezcan sin alterarlos', () => {
-        expect(buildBrandTextBlock(kit, { cta_url: true })).toContain('sin alterarlos')
-    })
-
-    it('solo incluye lo pedido', () => {
-        const block = buildBrandTextBlock(kit, { cta_url: true })
-        expect(block).toContain('URL:')
-        expect(block).not.toContain('TELEFONO')
-    })
-
-    it('devuelve vacio si no se pide nada o no hay marca', () => {
-        expect(buildBrandTextBlock(kit, {})).toBe('')
-        expect(buildBrandTextBlock(null, { cta_url: true })).toBe('')
     })
 })
 
