@@ -2143,10 +2143,14 @@ RESPONDE ÚNICAMENTE con el texto generado, sin comillas ni explicaciones adicio
         // ---------------------------------------------------------------------
         // PRIORITY 2 - TECHNICAL SPECIFICATIONS
         // ---------------------------------------------------------------------
+        // Las vinetas se pintan con el acento REAL de esta generacion. Antes
+        // iba un hex fijo que no era de ninguna marca y contradecia a P04.
+        const acentoHex = colorsToUse.find((c) => c.role === 'Acento')?.color
+
         sections.push(
             P02.PRIORITY_HEADER,
             ``,
-            P02.COMPOSITION_RULES,
+            P02.buildCompositionRules(acentoHex),
             ``
         )
 

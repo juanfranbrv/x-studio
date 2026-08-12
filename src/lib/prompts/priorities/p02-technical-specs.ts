@@ -11,7 +11,39 @@ export const PRIORITY_HEADER = `╔═══════════════
 ║  PRIORITY 2 - TECHNICAL SPECIFICATIONS                          ║
 ╚═════════════════════════════════════════════════════════════════╝`
 
-export const COMPOSITION_RULES = `BACKGROUND: NEVER use transparency, transparency grids, checkered patterns (gray/white squares), or simulate transparent backgrounds in any way. The image must be a complete, ready-to-use marketing asset with a fully rendered background.
+/**
+ * Un hex de verdad, no cualquier cadena. El valor se inyecta literalmente en
+ * el prompt: si llega basura, el modelo la lee como si fuera un color.
+ */
+const HEX_COLOR = /^#(?:[0-9a-f]{3}|[0-9a-f]{6})$/i
+
+/**
+ * Color de las vinetas de las listas.
+ *
+ * Estuvo fijado a un `#ed2aed` (un magenta que no es de ninguna marca, resto
+ * de alguna prueba). Al ser una constante estatica, ese hex viajaba en TODAS
+ * las generaciones y contradecia a la paleta de PRIORITY 4: el prompt pedia
+ * usar solo colores de marca y acto seguido nombraba uno ajeno.
+ *
+ * Ahora se resuelve con el acento real de la generacion; si no lo hay, se
+ * remite a PRIORITY 4 en vez de inventar un valor.
+ */
+function buildMarkerColorRule(acentoHex?: string): string {
+    const hex = acentoHex?.trim()
+    return hex && HEX_COLOR.test(hex)
+        ? `   - COLOR: The markers MUST be strictly in the 'ACENTO' color (${hex}).`
+        : `   - COLOR: The markers MUST be strictly in the 'ACENTO' color defined in PRIORITY 4. Do NOT introduce any hue outside the brand palette.`
+}
+
+/**
+ * Especificaciones tecnicas de composicion.
+ *
+ * @param acentoHex Acento real de esta generacion (`#rgb` o `#rrggbb`).
+ *                  Si se omite o no es un hex valido, la regla de las vinetas
+ *                  remite a la paleta de PRIORITY 4.
+ */
+export function buildCompositionRules(acentoHex?: string): string {
+    return `BACKGROUND: NEVER use transparency, transparency grids, checkered patterns (gray/white squares), or simulate transparent backgrounds in any way. The image must be a complete, ready-to-use marketing asset with a fully rendered background.
 OUTPUT: Complete, finished marketing image ready for social media. No transparency, no placeholders, no mock-ups.
 TEXT RENDERING: NEVER render meta labels, production shorthand, or control tokens such as the standalone letters C T A, "URL", "SUBJECT", "KEYWORDS", "PRIORITY", "HEADLINE", or "STYLE DIRECTIVES" as visible text. NEVER render internal font names/families as visible text. Only render the actual provided content.
 TYPOGRAPHY COMPLIANCE: Typography compliance is mandatory and has precedence over aesthetic freedom.
@@ -46,8 +78,9 @@ STRICT LAYOUT RULES (NO PARAGRAPHS):
      J) Outlined Square with Thick Stroke (Box style)
      K) Bold Plus Sign (+) (Swiss Cross style)
 
-   - COLOR: The markers MUST be strictly in the 'ACENTO' color (#ed2aed).
+${buildMarkerColorRule(acentoHex)}
 
 5. ALIGNMENT: The bullets must align perfectly on the left margin.
 CONTACT SEPARATION RULE: Phone numbers, emails, URLs and social handles MUST be rendered outside list/enumeration modules, in their own separate contact area.
 CASING RULE: Use sentence case for all generated text. Do NOT capitalize every word. Only capitalize the first word of a sentence and proper nouns/acronyms.`
+}

@@ -316,7 +316,11 @@ export function buildCampaignImagePrompt(input: CampaignPromptInput): string {
     // -----------------------------------------------------------------------
     // PRIORITY 2 - ESPECIFICACIONES TECNICAS
     // -----------------------------------------------------------------------
-    sections.push(P02.PRIORITY_HEADER, ``, P02.COMPOSITION_RULES, ``)
+    // Las vinetas se pintan con el acento REAL de la campana, no con un hex
+    // fijo que contradiga la paleta de PRIORITY 4.
+    const acentoHex = colors.find((c) => c.role === 'Acento')?.color
+
+    sections.push(P02.PRIORITY_HEADER, ``, P02.buildCompositionRules(acentoHex), ``)
 
     if (format?.name || format?.aspectRatio) {
         if (format.name) sections.push(`FORMAT: ${format.name}`)
