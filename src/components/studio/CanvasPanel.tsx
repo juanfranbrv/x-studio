@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
+import { CalendarClock } from 'lucide-react'
 import JSZip from 'jszip'
 import {
     Select,
@@ -44,6 +45,7 @@ export interface Generation {
 
 import { GenerateButton } from './creation-flow/GenerateButton'
 import { TextLayersEditor } from './TextLayersEditor'
+import { ScheduleToPostizDialog } from './ScheduleToPostizDialog'
 
 export interface CanvasPanelProps {
     currentImage: string | null
@@ -86,6 +88,10 @@ export interface CanvasPanelProps {
     isAdmin?: boolean
     sessionName?: string | null
     previewLayoutMode?: PreviewLayoutMode
+    // `image:{sessionId}:{generationId}` de la imagen actual (mismo formato que
+    // arma la Biblioteca en convex/contentLibrary.shared.ts). null si aun no se
+    // puede resolver (p.ej. no hay sesion o generacion identificada todavia).
+    assetKey?: string | null
 }
 
 export function CanvasPanel({
@@ -123,6 +129,7 @@ export function CanvasPanel({
     isAdmin = false,
     sessionName = null,
     previewLayoutMode = 'default',
+    assetKey = null,
 }: CanvasPanelProps) {
     const { t } = useTranslation()
     const tt = (key: string, defaultValue: string, options?: Record<string, unknown>) =>
@@ -136,6 +143,7 @@ export function CanvasPanel({
     const [isDragActive, setIsDragActive] = useState(false)
     const [isDraggingOver, setIsDraggingOver] = useState(false)
     const [isTemplateModalOpen, setIsTemplateModalOpen] = useState(false)
+    const [isScheduleDialogOpen, setIsScheduleDialogOpen] = useState(false)
     const [viewportHeight, setViewportHeight] = useState(800) // Default fallback
     const [viewportWidth, setViewportWidth] = useState(1200)
     const [isMobile, setIsMobile] = useState(false)
@@ -640,11 +648,19 @@ export function CanvasPanel({
             <div className="absolute left-3 right-3 top-3 z-40 flex h-16 items-start justify-between px-3 pt-1 pointer-events-none md:left-4 md:right-4">
 
                 {/* Left: Canvas info */}
-                {false ? (
-                    <div />
-                ) : (
-                    <div />
-                )}
+                <div className="pointer-events-auto">
+                    {isAdmin && currentImage && assetKey && (
+                        <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setIsScheduleDialogOpen(true)}
+                        >
+                            <CalendarClock className="h-4 w-4" />
+                            {tt('common:preview.scheduleToPostiz', 'Programar en Postiz')}
+                        </Button>
+                    )}
+                </div>
 
                 {/* Right: Actions - Hidden on mobile (actions now with RESULTADO section) */}
                 {/* Zoom Controls & Actions */}
@@ -1303,6 +1319,20 @@ export function CanvasPanel({
                 onSelect={handleSelectTemplate}
                 selectedTemplateId={selectedContext.find(c => c.type === 'template')?.id}
             />
+
+            {assetKey && currentImage && (
+                <ScheduleToPostizDialog
+                    open={isScheduleDialogOpen}
+                    onOpenChange={setIsScheduleDialogOpen}
+                    assetKey={assetKey}
+                    imageUrl={currentImage}
+                    initialContent={(() => {
+                        const caption = (creationState.caption || generatedCopy || '').trim()
+                        const hashtags = generatedHashtags.length > 0 ? generatedHashtags.join(' ') : ''
+                        return hashtags ? `${caption}\n\n${hashtags}` : caption
+                    })()}
+                />
+            )}
         </div >
     )
 }

@@ -2491,6 +2491,22 @@ export default function ImagePage() {
         )
     }
 
+    // Localiza la generacion que coincide con la imagen actual para construir
+    // el asset_key `image:{sessionId}:{generationId}` que usa la Biblioteca
+    // (convex/contentLibrary.shared.ts). null si aun no hay sesion o si no se
+    // encuentra la generacion (p.ej. justo tras cargar una sesion antigua).
+    const currentGenerationForSchedule = creationFlow.state.generatedImage
+        ? sessionGenerations.find((generation) =>
+              generation.image_url === creationFlow.state.generatedImage ||
+              generation.original_image_url === creationFlow.state.generatedImage ||
+              generation.preview_image_url === creationFlow.state.generatedImage
+          )
+        : null
+    const scheduleAssetKey =
+        currentSessionId && currentGenerationForSchedule
+            ? `image:${currentSessionId}:${currentGenerationForSchedule.id}`
+            : null
+
     const editPromptBar = (
         <StudioEditPromptBar
             editPrompt={editPrompt}
@@ -2565,6 +2581,7 @@ export default function ImagePage() {
                             Boolean(activeSessionMeta?.title_customized)
                         )}
                         previewLayoutMode={previewLayoutMode}
+                        assetKey={scheduleAssetKey}
                     />
                     {!isMobile && (
                         <FeedbackButton
