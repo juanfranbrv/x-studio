@@ -525,4 +525,14 @@ export default defineSchema({
     .index("by_job_status", ["job_id", "status"])
     .index("by_job_position", ["job_id", "position"])
     .index("by_user", ["user_id"]),
+
+  // Conexion a Postiz de cada usuario. Hoy solo existe la fila del administrador,
+  // pero la forma ya admite que cada usuario apunte a SU propia instancia.
+  postiz_accounts: defineTable({
+    user_id: v.string(),
+    base_url: v.string(),
+    api_key: v.string(),
+    created_at: v.string(),
+    updated_at: v.string(),
+  }).index("by_user", ["user_id"]),
 });
