@@ -173,8 +173,10 @@ export function ScheduleToPostizDialog({
             })
             if (result.ok) {
                 toast({ title: 'Publicación programada en Postiz.' })
+                // El diálogo NO se cierra solo: antes se iba a los 1,4 s y no
+                // daba tiempo a leer la confirmación. Ahora se queda hasta que
+                // el usuario pulse "Cerrar".
                 setSuccess(true)
-                setTimeout(() => onOpenChange(false), 1400)
             } else {
                 setSubmitError(result.error)
             }
@@ -210,9 +212,17 @@ export function ScheduleToPostizDialog({
                 </DialogHeader>
 
                 {success ? (
-                    <div className="flex flex-col items-center gap-2 py-6 text-center">
-                        <CheckCircle2 className="h-8 w-8 text-primary" />
-                        <p className="text-sm font-medium">Publicación programada correctamente.</p>
+                    <div className="flex flex-col items-center gap-3 py-6 text-center">
+                        <CheckCircle2 className="h-10 w-10 text-primary" />
+                        <div className="flex flex-col gap-1">
+                            <p className="text-sm font-medium">Publicación programada correctamente.</p>
+                            <p className="text-sm text-muted-foreground">
+                                Se publicará el {new Date(componerFecha(date, time)).toLocaleString('es-ES')}.
+                            </p>
+                        </div>
+                        <Button type="button" onClick={() => onOpenChange(false)} className="mt-1">
+                            Cerrar
+                        </Button>
                     </div>
                 ) : (
                     <div className="flex flex-col gap-4">

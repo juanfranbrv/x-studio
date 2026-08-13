@@ -14,6 +14,7 @@ import {
  RectangleVertical,
  Twitter
 } from'lucide-react'
+import type { LucideIcon } from'lucide-react'
 import { motion } from'framer-motion'
 
 interface SocialFormatSelectorProps {
@@ -24,7 +25,9 @@ interface SocialFormatSelectorProps {
  lockedPlatform?: SocialPlatform
 }
 
-const PLATFORM_CONFIG: Record<SocialPlatform, { icon: any; label: string; color: string }> = {
+export type PlatformConfig = { icon: LucideIcon; label: string; color: string }
+
+export const PLATFORM_CONFIG: Record<SocialPlatform, PlatformConfig> = {
  instagram: { icon: Instagram, label:'Instagram', color:'text-pink-500' },
  facebook: { icon: Facebook, label:'Facebook', color:'text-blue-600' },
  tiktok: { icon: Video, label:'TikTok', color:'text-zinc-900' },
@@ -46,7 +49,7 @@ export const SocialFormatSelector: React.FC<SocialFormatSelectorProps> = ({
  return (
  <div className="space-y-4">
  <div className="grid grid-cols-6 gap-2.5">
- {(Object.entries(PLATFORM_CONFIG) as [SocialPlatform, any][]).map(([id, config]) => {
+ {(Object.entries(PLATFORM_CONFIG) as [SocialPlatform, PlatformConfig][]).map(([id, config]) => {
  const Icon = config.icon
  const isSelected = effectivePlatform === id
  const isLocked = Boolean(lockedPlatform)
