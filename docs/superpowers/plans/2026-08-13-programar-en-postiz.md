@@ -1136,3 +1136,51 @@ afirmando que Postiz queda fuera de alcance.
 git add docs/API_AUTOMATIZACION.md
 git commit -m "docs: la integracion directa con Postiz existe para pieza suelta"
 ```
+
+---
+
+## Cambio de rumbo aprobado el 2026-08-13 (sustituye a la Tarea 4)
+
+**Motivo.** La revisión de la Tarea 2 señaló que `getCredentials`, al ser una consulta
+pública de Convex, deja la clave de Postiz al alcance del navegador con la sesión del
+administrador. El diseño lo había aceptado a propósito (§5.3) para que la server action
+de Next pudiera leerla. Juanfran decidió **cerrarlo**: se adopta el enfoque B que se
+había descartado, con la orquestación dentro de Convex, donde la clave no sale nunca.
+
+**Consecuencias, en orden:**
+
+1. `postizAccounts.getCredentials` pasa de `query` a **`internalQuery`**. Deja de ser
+   alcanzable desde fuera del deployment. `getStatus` sigue siendo `query` pública: no
+   devuelve la clave.
+2. El cliente HTTP se **mueve** de `src/lib/postiz/` a `convex/lib/postiz/` (código y
+   tests). Convex empaqueta su propio directorio, así que es donde tiene que vivir para
+   que una action pueda importarlo. Sigue siendo puro y sus tests no cambian de
+   contenido, solo de sitio.
+3. **No hay server action de Next.** El diálogo llama directamente a dos actions de
+   Convex con `useAction`. Esto elimina `src/app/actions/schedule-to-postiz.ts` y
+   `src/lib/postiz/guard.ts` del plan original, que ya no tienen razón de ser.
+4. `persistGeneratedImage` **no se reutiliza**: depende del cliente Convex de Next
+   (`authedFetchMutation`). Dentro de una action se usa `ctx.storage.store()` sobre el
+   blob y `ctx.storage.getUrl()` para obtener la URL pública.
+5. `contentLibrary.markScheduled` pasa a **`internalMutation`**: solo la llama la action.
+
+### Tarea 4 (revisada): actions de Convex
+
+**Files:**
+- Create: `convex/postiz.ts`
+- Modify: `convex/postizAccounts.ts` (`getCredentials` → `internalQuery`)
+- Modify: `convex/contentLibrary.ts` (`markScheduled` → `internalMutation`)
+- Move: `src/lib/postiz/**` → `convex/lib/postiz/**`
+- Test: `convex/__tests__/postiz-schedule.test.ts`
+
+**Interfaces producidas:**
+- `postiz.listChannels()` → `{ ok: true, channels } | { ok: false, error }`
+- `postiz.scheduleImage({ asset_key, image_url, content, date, targets })`
+  → `{ ok: true, groupId } | { ok: false, error }`
+
+**Reglas de comportamiento que los tests deben fijar:**
+- Un usuario que no es administrador recibe error y **no se llama a Postiz**.
+- Sin conexión configurada, error claro y **no se sube nada**.
+- El orden es: subir imagen → crear post → anotar. **La anotación es siempre lo último**:
+  si la creación falla, no se anota nada.
+- La clave no aparece jamás en el valor devuelto ni en un mensaje de error.
