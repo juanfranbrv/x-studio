@@ -3,6 +3,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 
 import {
+  CONTENT_ASSET_STATUSES,
   extractContentAssetsFromSessions,
   mergeContentAssetAnnotations,
   parseContentAssetKey,
@@ -209,5 +210,25 @@ describe('content library contract', () => {
       generationId: 'current',
     })
     expect(parseContentAssetKey('invalid')).toBeNull()
+  })
+})
+
+describe('estados de la Biblioteca: las dos listas deben ir a la par', () => {
+  // Hay dos definiciones del mismo vocabulario: la del servidor
+  // (CONTENT_ASSET_STATUSES, que actua de lista blanca al sanear) y la del cliente
+  // (ContentAssetStatus en src/components/library/contentLibraryTypes.ts).
+  // Si se desincronizan, el estado que falte en el servidor se descarta EN SILENCIO:
+  // la pieza aparece sin estado y no hay error que lo delate. Paso el 2026-08-13 al
+  // anadir 'scheduled' solo en el cliente.
+  it('el vocabulario del cliente y el del servidor coinciden', () => {
+    const clientSource = fs.readFileSync(
+      path.resolve(__dirname, '../../src/components/library/contentLibraryTypes.ts'),
+      'utf8',
+    )
+    const linea = clientSource.match(/export type ContentAssetStatus =([^\n]+)/)?.[1] ?? ''
+    const delCliente = [...linea.matchAll(/'([a-z_]+)'/g)].map((m) => m[1])
+
+    expect(delCliente.length).toBeGreaterThan(0)
+    expect([...CONTENT_ASSET_STATUSES]).toEqual(delCliente)
   })
 })

@@ -1,7 +1,13 @@
+// OJO: esta lista es la fuente de verdad del servidor. Se usa como lista blanca al
+// sanear el estado que llega o que se lee, asi que un estado ausente aqui se descarta
+// en silencio: la pieza aparece sin estado en la Biblioteca y nada avisa del fallo.
+// Debe mantenerse alineada con ContentAssetStatus de
+// src/components/library/contentLibraryTypes.ts, que hoy es una copia aparte.
 export const CONTENT_ASSET_STATUSES = [
   "draft",
   "selected",
   "ready",
+  "scheduled",
   "published_manual",
   "discarded",
 ] as const;
