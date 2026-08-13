@@ -9,7 +9,7 @@ import { useRouter } from 'next/navigation'
 import { useQuery, useMutation } from 'convex/react'
 import { api } from '@/../convex/_generated/api'
 import type { Id } from '@/../convex/_generated/dataModel'
-import { IconUsers, IconCoins, IconRefresh, IconPlus, IconMinus, IconCheckSimple, IconClose, IconSettings, IconActivity, IconArrowLeft, IconMail, IconExternalLink, IconDelete, IconMessage, IconShapes, IconBanknote, IconSave, IconChevronRight, IconChevronDown, IconDownload, IconPalette, IconWand, IconLayers } from '@/components/ui/icons'
+import { IconUsers, IconCoins, IconRefresh, IconPlus, IconMinus, IconCheckSimple, IconClose, IconSettings, IconActivity, IconArrowLeft, IconMail, IconExternalLink, IconDelete, IconMessage, IconShapes, IconBanknote, IconSave, IconChevronRight, IconChevronDown, IconDownload, IconPalette, IconWand, IconLayers, IconLink } from '@/components/ui/icons'
 import { CreditsBadge } from '@/components/layout/CreditsBadge'
 import { getCompositionsSummaryAction, type CompositionSummary } from '@/lib/admin-compositions-actions'
 import { Button } from '@/components/ui/button'
@@ -1094,6 +1094,12 @@ export default function AdminPage() {
                             <Button variant="outline" className="gap-2">
                                 <IconLayers className="h-4 w-4" />
                                 Plantillas Replace
+                            </Button>
+                        </Link>
+                        <Link href="/admin/postiz">
+                            <Button variant="outline" className="gap-2">
+                                <IconLink className="h-4 w-4" />
+                                Postiz
                             </Button>
                         </Link>
                         <CreditsBadge />

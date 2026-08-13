@@ -52,7 +52,10 @@ export const save = mutation({
   args: {
     clerk_user_id: v.string(),
     base_url: v.string(),
-    api_key: v.string(),
+    // Opcional: permite guardar solo la direccion (p. ej. desde el formulario
+    // de Admin) sin tener que reenviar la clave existente, que el cliente
+    // nunca llega a ver (getStatus no la expone, getCredentials es interna).
+    api_key: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     await requirePostizUser(ctx, args.clerk_user_id);
@@ -60,15 +63,22 @@ export const save = mutation({
     const fila = await buscar(ctx, args.clerk_user_id);
     // Se normaliza el origen aqui para que el cliente HTTP no tenga que adivinar.
     const base_url = args.base_url.trim().replace(/\/+$/, "");
+    const nuevaApiKey = args.api_key?.trim();
 
     if (fila) {
-      await ctx.db.patch(fila._id, { base_url, api_key: args.api_key, updated_at: ahora });
+      // Clave vacia = "no la cambies": se conserva la que ya habia guardada.
+      const api_key = nuevaApiKey || fila.api_key;
+      await ctx.db.patch(fila._id, { base_url, api_key, updated_at: ahora });
       return null;
+    }
+
+    if (!nuevaApiKey) {
+      throw new Error("La clave de API es obligatoria para crear la conexion.");
     }
     await ctx.db.insert("postiz_accounts", {
       user_id: args.clerk_user_id,
       base_url,
-      api_key: args.api_key,
+      api_key: nuevaApiKey,
       created_at: ahora,
       updated_at: ahora,
     });
