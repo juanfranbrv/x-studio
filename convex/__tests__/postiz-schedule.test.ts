@@ -279,6 +279,9 @@ describe("convex/postiz.ts: scheduleImage", () => {
     if (!resultado.ok) {
       expect(resultado.error).toContain("SI se programo en Postiz");
       expect(resultado.error).toContain("No la vuelvas a programar");
+      // La coletilla "Detalle: ..." nunca aportaba informacion (siempre era
+      // el mismo mensaje generico) y contradecia el resto del aviso.
+      expect(resultado.error).not.toContain("Detalle:");
     }
   });
 });
@@ -373,7 +376,38 @@ describe("convex/postiz.ts: scheduleImage con data URL", () => {
     },
   );
 
-  it("rechaza una data URL cuyo tipo no es una imagen y no llama a Postiz ni guarda nada", async () => {
+  it.each([
+    ["text/html (no es imagen)", "data:text/html;base64,PHNjcmlwdD5hbGVydCgxKTwvc2NyaXB0Pg=="],
+    [
+      // image/svg+xml empieza por "image/" pero es contenido activo (puede
+      // llevar <script>) y se sirve desde una URL publica: debe rechazarse
+      // aunque un filtro por prefijo lo dejara pasar.
+      "image/svg+xml (activo, no esta en la lista blanca)",
+      "data:image/svg+xml;base64,PHNjcmlwdD5hbGVydCgxKTwvc2NyaXB0Pg==",
+    ],
+  ])(
+    "rechaza una data URL cuyo tipo no es una imagen permitida (%s) y no llama a Postiz ni guarda nada",
+    async (_nombre, dataUrl) => {
+      const t = makeBackend();
+      await seedUser(t, ADMIN_CLERK_ID, ADMIN_EMAIL, "admin");
+      await seedCredentials(t, ADMIN_CLERK_ID);
+      const fetchMock = fetchRouter();
+      vi.stubGlobal("fetch", fetchMock);
+
+      const authed = t.withIdentity({ subject: ADMIN_CLERK_ID });
+      const resultado = await authed.action(api.postiz.scheduleImage, {
+        ...scheduleArgs,
+        image_url: dataUrl,
+      });
+
+      expect(resultado.ok).toBe(false);
+      expect(fetchMock).not.toHaveBeenCalled();
+      const filas = await t.run(async (ctx) => ctx.db.system.query("_storage").collect());
+      expect(filas.length).toBe(0);
+    },
+  );
+
+  it("exige que 'base64' sea el ultimo parametro de la cabecera, no uno cualquiera", async () => {
     const t = makeBackend();
     await seedUser(t, ADMIN_CLERK_ID, ADMIN_EMAIL, "admin");
     await seedCredentials(t, ADMIN_CLERK_ID);
@@ -383,7 +417,9 @@ describe("convex/postiz.ts: scheduleImage con data URL", () => {
     const authed = t.withIdentity({ subject: ADMIN_CLERK_ID });
     const resultado = await authed.action(api.postiz.scheduleImage, {
       ...scheduleArgs,
-      image_url: "data:text/html;base64,PHNjcmlwdD5hbGVydCgxKTwvc2NyaXB0Pg==",
+      // "base64" aparece, pero no es el ultimo parametro: no marca la
+      // codificacion, y lo que sigue ("charset=utf-8,...") no es base64 valida.
+      image_url: `data:image/png;base64;charset=utf-8,${PNG_1x1_BASE64}`,
     });
 
     expect(resultado.ok).toBe(false);

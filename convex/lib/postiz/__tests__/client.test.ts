@@ -98,6 +98,68 @@ describe('cliente de Postiz', () => {
         expect(cuerpo.posts[1].settings).toEqual({ __type: 'facebook', post_type: 'post' })
     })
 
+    it('listIntegrations no reenvia campos extra aunque contengan la clave', async () => {
+        vi.stubGlobal(
+            'fetch',
+            vi.fn().mockReturnValue(
+                respuesta([
+                    {
+                        id: 'i-ig',
+                        name: 'Instagram',
+                        identifier: 'instagram',
+                        picture: 'https://cdn/foto.png',
+                        disabled: false,
+                        // Campo que Postiz (o un proxy delante) no deberia mandar nunca,
+                        // pero si lo manda no debe sobrevivir al mapeo del cliente.
+                        debug_echo: { Authorization: credenciales.apiKey },
+                    },
+                ]),
+            ),
+        )
+
+        const integraciones = await listIntegrations(credenciales)
+
+        expect(integraciones).toEqual([
+            {
+                id: 'i-ig',
+                name: 'Instagram',
+                identifier: 'instagram',
+                picture: 'https://cdn/foto.png',
+                disabled: false,
+            },
+        ])
+        expect(JSON.stringify(integraciones)).not.toContain(credenciales.apiKey)
+        expect(JSON.stringify(integraciones)).not.toContain('debug_echo')
+    })
+
+    it('redacta la clave antes de truncar, aunque el corte caiga a mitad de la clave', async () => {
+        // 190 caracteres de relleno + la clave (13) hace que slice(0, 200) se
+        // detenga a los 10 caracteres de la clave si la redaccion se aplicara
+        // despues de truncar, dejando ese prefijo suelto en el mensaje.
+        const relleno = 'x'.repeat(190)
+        const cuerpo = relleno + credenciales.apiKey + ' resto que se recorta'
+        vi.stubGlobal(
+            'fetch',
+            vi.fn().mockReturnValue(
+                Promise.resolve({
+                    ok: false,
+                    status: 500,
+                    text: () => Promise.resolve(cuerpo),
+                } as Response),
+            ),
+        )
+
+        await expect(listIntegrations(credenciales)).rejects.toBeInstanceOf(PostizResponseError)
+        try {
+            await listIntegrations(credenciales)
+            throw new Error('deberia haber lanzado')
+        } catch (error) {
+            const mensaje = (error as Error).message
+            expect(mensaje).not.toContain(credenciales.apiKey)
+            expect(mensaje).not.toContain(credenciales.apiKey.slice(0, 10))
+        }
+    })
+
     it('quita la barra final del origen para no generar rutas dobles', async () => {
         const fetchMock = vi.fn().mockReturnValue(respuesta([]))
         vi.stubGlobal('fetch', fetchMock)

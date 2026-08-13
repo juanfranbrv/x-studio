@@ -97,6 +97,12 @@ describe("Comportamiento real de las credenciales de Postiz (convex-test)", () =
     await expect(
       authed.query(api.postizAccounts.getStatus, { clerk_user_id: OTHER_CLERK_ID }),
     ).rejects.toThrow("Forbidden");
+    // Esta referencia a `internal.postizAccounts.getCredentials` es la
+    // proteccion EFECTIVA contra que la funcion vuelva a ser publica: si
+    // alguien la reescribiera como `query` en vez de `internalQuery`, dejaria
+    // de existir bajo el namespace `internal.*` y `tsc --noEmit` fallaria
+    // justo aqui. No la borres creyendola redundante con el test de arriba
+    // que hace `expect(source).toMatch(...)`: ese test es texto, este es tipos.
     await expect(
       authed.query(internal.postizAccounts.getCredentials, { clerk_user_id: OTHER_CLERK_ID }),
     ).rejects.toThrow("Forbidden");

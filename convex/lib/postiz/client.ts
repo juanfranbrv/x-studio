@@ -53,7 +53,10 @@ async function pedir<T>(
         } catch {
             // Un cuerpo ilegible no debe tapar el codigo de estado, que ya informa.
         }
-        throw new PostizResponseError(respuesta.status, detalle.slice(0, 200))
+        // La clave se redacta ANTES de truncar: si se hiciera despues, un
+        // corte a mitad de la clave dejaria su trozo superviviente sin tapar.
+        const detalleRedactado = detalle.split(credenciales.apiKey).join('***')
+        throw new PostizResponseError(respuesta.status, detalleRedactado.slice(0, 200))
     }
 
     try {
@@ -67,8 +70,23 @@ async function pedir<T>(
 export async function listIntegrations(
     credenciales: PostizCredentials,
 ): Promise<PostizIntegration[]> {
+    // pedir() solo castea el JSON, no valida su forma: si Postiz (o un proxy
+    // delante) añade un campo extra a un elemento, reenviar el objeto tal
+    // cual lo dejaria llegar hasta el navegador. Por eso se mapea explicita-
+    // mente al contrato (id, name, identifier, picture, disabled) en vez de
+    // hacer spread: cualquier campo que no este en esta lista se descarta.
     const lista = await pedir<PostizIntegration[]>(credenciales, '/integrations')
-    return Array.isArray(lista) ? lista : []
+    if (!Array.isArray(lista)) return []
+    return lista.map((item) => {
+        const integracion: PostizIntegration = {
+            id: item.id,
+            name: item.name,
+            identifier: item.identifier,
+        }
+        if (item.picture !== undefined) integracion.picture = item.picture
+        if (item.disabled !== undefined) integracion.disabled = item.disabled
+        return integracion
+    })
 }
 
 export async function uploadFromUrl(

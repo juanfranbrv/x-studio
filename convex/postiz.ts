@@ -80,6 +80,12 @@ function toErrorMessage(err: unknown, apiKey?: string): string {
   if (esErrorDeClientePostiz(err)) {
     return redactarClave(err.message, apiKey);
   }
+  // Cualquier otro error (autorizacion, validacion propia, fallo inesperado
+  // de Convex) colapsa en el mensaje generico de cara al cliente, pero sin
+  // registrarlo se vuelve indepurable en produccion. Se redacta la clave por
+  // si el mensaje la menciona antes de mandarlo al log del servidor.
+  const mensaje = err instanceof Error ? err.message : String(err);
+  console.error("[postiz] Error inesperado:", redactarClave(mensaje, apiKey));
   return MENSAJE_GENERICO;
 }
 
@@ -96,7 +102,12 @@ type ImagenResuelta = {
 // Decodifica base64 con API web estandar (atob + Uint8Array), no `Buffer`:
 // `Buffer` es de Node y este fichero no declara "use node", por lo que corre
 // en el runtime por defecto de Convex, que no lo expone.
-function base64ABytes(base64: string): Uint8Array {
+//
+// El tipo de retorno se declara Uint8Array<ArrayBuffer> (no el generico
+// Uint8Array) porque el `new Uint8Array(length)` de abajo ya construye uno
+// respaldado por un ArrayBuffer real (nunca SharedArrayBuffer): un tipo
+// verificado en el propio helper evita el cast en el punto de uso.
+function base64ABytes(base64: string): Uint8Array<ArrayBuffer> {
   const binario = atob(base64);
   const bytes = new Uint8Array(binario.length);
   for (let i = 0; i < binario.length; i++) {
@@ -104,6 +115,11 @@ function base64ABytes(base64: string): Uint8Array {
   }
   return bytes;
 }
+
+// Lista blanca explicita de tipos de imagen aceptados. Un simple prefijo
+// "image/" dejaria pasar image/svg+xml, que es contenido activo (puede
+// llevar <script>) y se sirve desde una URL publica con su tipo original.
+const TIPOS_IMAGEN_PERMITIDOS = new Set(["image/png", "image/jpeg", "image/webp", "image/gif"]);
 
 /**
  * Sube una data URL a Convex Storage y devuelve su URL publica.
@@ -131,11 +147,15 @@ async function resolvePublicImageUrl(ctx: ActionCtx, imageUrl: string): Promise<
 
   const partesCabecera = cabecera.split(";").map((parte) => parte.trim());
   const mimeType = partesCabecera[0] || "";
-  const esBase64 = partesCabecera.slice(1).includes("base64");
+  // "base64" debe ser el ULTIMO parametro de la cabecera, no uno cualquiera:
+  // con un .includes() suelto, "data:image/png;base64;charset=utf-8,..."
+  // colaria (el token "base64" aparece, aunque no marque la codificacion).
+  const esBase64 =
+    partesCabecera.length > 1 && partesCabecera[partesCabecera.length - 1] === "base64";
   if (!mimeType || !esBase64) {
     throw new Error("La imagen no tiene un formato de data URL reconocible.");
   }
-  if (!mimeType.startsWith("image/")) {
+  if (!TIPOS_IMAGEN_PERMITIDOS.has(mimeType)) {
     throw new Error("El archivo debe ser una imagen (tipo image/*).");
   }
 
@@ -143,10 +163,7 @@ async function resolvePublicImageUrl(ctx: ActionCtx, imageUrl: string): Promise<
   // eliminan junto con cualquier otro espacio antes de decodificar.
   const base64 = datos.replace(/\s+/g, "");
   const bytes = base64ABytes(base64);
-  // El tipado de BlobPart exige un ArrayBufferView<ArrayBuffer>; el `Uint8Array`
-  // recien creado ya usa un ArrayBuffer real (nunca SharedArrayBuffer), asi
-  // que el cast solo ajusta el tipo, no el valor en tiempo de ejecucion.
-  const blob = new Blob([bytes as Uint8Array<ArrayBuffer>], { type: mimeType });
+  const blob = new Blob([bytes], { type: mimeType });
 
   const storageId = await ctx.storage.store(blob);
   const url = await ctx.storage.getUrl(storageId);
@@ -241,8 +258,15 @@ export const scheduleImage = action({
       } catch (err) {
         // La subida o la creacion fallaron: el blob que guardamos en Convex
         // Storage ya no sirve para nada, se queda huerfano si no se borra.
+        // Este borrado es limpieza best-effort: si el propio delete lanza,
+        // se ignora dentro de su propio try/catch para que el `throw err`
+        // de abajo (el error real, el que interesa al usuario) no se pierda.
         if (uploadedStorageId) {
-          await ctx.storage.delete(uploadedStorageId);
+          try {
+            await ctx.storage.delete(uploadedStorageId);
+          } catch {
+            // Fallo al limpiar el blob huerfano: no tapa el error original.
+          }
         }
         throw err;
       }
@@ -259,12 +283,19 @@ export const scheduleImage = action({
           postiz_base_url: credenciales.baseUrl,
         });
       } catch (err) {
-        const detalle = toErrorMessage(err, apiKey);
+        // El error real se registra en el servidor (nunca en la respuesta:
+        // el mensaje al cliente ya deja claro que NO hay que reintentar, una
+        // coletilla "Detalle:" generica no aportaba nada mas).
+        console.error("[postiz] Post creado en Postiz pero fallo el registro interno.", {
+          groupId,
+          assetKey: args.asset_key,
+          error: err,
+        });
         return {
           ok: false,
           error:
             "La publicacion SI se programo en Postiz, pero fallo el registro interno en la " +
-            `Biblioteca. No la vuelvas a programar (evitas duplicados). Detalle: ${detalle}`,
+            "Biblioteca. No la vuelvas a programar (evitas duplicados).",
         };
       }
 
