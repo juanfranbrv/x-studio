@@ -19,6 +19,15 @@ describe('Autorizacion de las credenciales de Postiz', () => {
         const getStatus = source.slice(source.indexOf('export const getStatus'), source.indexOf('export const getCredentials'))
         expect(getStatus).not.toContain('api_key:')
     })
+
+    it('getCredentials sigue siendo internalQuery, nunca query publica', () => {
+        // Guarda contra la regresion que este trabajo arreglo: si alguien
+        // vuelve a declarar getCredentials como `query` publica, la clave de
+        // Postiz quedaria alcanzable desde el navegador aunque el resto de
+        // los tests siguiera en verde.
+        expect(source).toMatch(/export const getCredentials = internalQuery\(/)
+        expect(source).not.toMatch(/export const getCredentials = query\(/)
+    })
 })
 
 const modules = (
