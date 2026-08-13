@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { createPost, listIntegrations, uploadFromUrl } from '../client'
+import { createPost, listIntegrations, uploadFile } from '../client'
 import {
     PostizAuthError,
     PostizRateLimitError,
@@ -9,6 +9,8 @@ import {
 } from '../errors'
 
 const credenciales = { baseUrl: 'https://postiz.ejemplo.com', apiKey: 'clave-secreta' }
+
+const imagen = () => ({ blob: new Blob([new Uint8Array([1, 2, 3])], { type: 'image/png' }), fileName: 'x-studio.png' })
 
 const respuesta = (body: unknown, status = 200) =>
     Promise.resolve({
@@ -58,16 +60,35 @@ describe('cliente de Postiz', () => {
         await expect(listIntegrations(credenciales)).rejects.toBeInstanceOf(PostizUnreachableError)
     })
 
-    it('sube la imagen pasando la URL', async () => {
+    it('sube la imagen como multipart, con el nombre de fichero que le damos', async () => {
         const fetchMock = vi.fn().mockReturnValue(respuesta({ id: 'm1', path: 'https://cdn/x.png' }))
         vi.stubGlobal('fetch', fetchMock)
 
-        const media = await uploadFromUrl(credenciales, 'https://convex/imagen.png')
+        const media = await uploadFile(credenciales, imagen())
 
         const [url, init] = fetchMock.mock.calls[0]
-        expect(url).toBe('https://postiz.ejemplo.com/api/public/v1/upload-from-url')
-        expect(JSON.parse(init.body as string)).toEqual({ url: 'https://convex/imagen.png' })
+        expect(url).toBe('https://postiz.ejemplo.com/api/public/v1/upload')
+        expect(init.method).toBe('POST')
+        expect(init.body).toBeInstanceOf(FormData)
+
+        // El campo tiene que llamarse 'file' (FileInterceptor('file') en Postiz)
+        // y el nombre de fichero DEBE llevar extension: /posts valida que el
+        // path del medio acabe en .png/.jpg/.jpeg/.gif/.webp/.mp4.
+        const enviado = (init.body as FormData).get('file') as File
+        expect(enviado).toBeInstanceOf(Blob)
+        expect(enviado.name).toBe('x-studio.png')
         expect(media).toEqual({ id: 'm1', path: 'https://cdn/x.png' })
+    })
+
+    it('no fija Content-Type a mano en el multipart (fetch tiene que poner el boundary)', async () => {
+        const fetchMock = vi.fn().mockReturnValue(respuesta({ id: 'm1', path: 'https://cdn/x.png' }))
+        vi.stubGlobal('fetch', fetchMock)
+
+        await uploadFile(credenciales, imagen())
+
+        const cabeceras = fetchMock.mock.calls[0][1].headers as Record<string, string>
+        expect(cabeceras['Content-Type']).toBeUndefined()
+        expect(cabeceras.Authorization).toBe('clave-secreta')
     })
 
     it('construye el cuerpo de creacion con la forma que exige Postiz', async () => {
@@ -179,18 +200,14 @@ describe('cliente de Postiz', () => {
         await expect(listIntegrations(credenciales)).rejects.toBeInstanceOf(PostizResponseError)
     })
 
-    it('uploadFromUrl lanza PostizShapeError si el medio no trae id', async () => {
+    it('uploadFile lanza PostizShapeError si el medio no trae id', async () => {
         vi.stubGlobal('fetch', vi.fn().mockReturnValue(respuesta({ path: 'https://cdn/x.png' })))
-        await expect(uploadFromUrl(credenciales, 'https://convex/imagen.png')).rejects.toBeInstanceOf(
-            PostizShapeError,
-        )
+        await expect(uploadFile(credenciales, imagen())).rejects.toBeInstanceOf(PostizShapeError)
     })
 
-    it('uploadFromUrl lanza PostizShapeError si el medio no trae path', async () => {
+    it('uploadFile lanza PostizShapeError si el medio no trae path', async () => {
         vi.stubGlobal('fetch', vi.fn().mockReturnValue(respuesta({ id: 'm1' })))
-        await expect(uploadFromUrl(credenciales, 'https://convex/imagen.png')).rejects.toBeInstanceOf(
-            PostizShapeError,
-        )
+        await expect(uploadFile(credenciales, imagen())).rejects.toBeInstanceOf(PostizShapeError)
     })
 
     it('createPost lanza PostizShapeError si la respuesta no trae group', async () => {

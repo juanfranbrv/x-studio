@@ -1,10 +1,8 @@
 import { v } from "convex/values";
 import { action, internalQuery } from "./_generated/server";
-import type { ActionCtx } from "./_generated/server";
-import type { Id } from "./_generated/dataModel";
 import { internal } from "./_generated/api";
 import { requireAdmin, requireSameUser } from "./lib/authz";
-import { createPost, listIntegrations, uploadFromUrl } from "./lib/postiz/client";
+import { createPost, listIntegrations, uploadFile } from "./lib/postiz/client";
 import type { PostizCredentials, PostizIntegration, ScheduleTarget } from "./lib/postiz/types";
 
 /**
@@ -92,11 +90,9 @@ function toErrorMessage(err: unknown, apiKey?: string): string {
 const SIN_CONEXION = "No hay ningun Postiz configurado todavia.";
 
 type ImagenResuelta = {
-  url: string;
-  // Id del blob que ESTA funcion guardo en Convex Storage al decodificar una
-  // data URL. null cuando `imageUrl` ya era una URL remota: esa imagen no la
-  // subimos nosotros y nunca debe borrarse desde aqui.
-  storageId: Id<"_storage"> | null;
+  blob: Blob;
+  /** Nombre con extension: /posts de Postiz exige que el medio la tenga. */
+  fileName: string;
 };
 
 // Decodifica base64 con API web estandar (atob + Uint8Array), no `Buffer`:
@@ -116,27 +112,43 @@ function base64ABytes(base64: string): Uint8Array<ArrayBuffer> {
   return bytes;
 }
 
-// Lista blanca explicita de tipos de imagen aceptados. Un simple prefijo
-// "image/" dejaria pasar image/svg+xml, que es contenido activo (puede
-// llevar <script>) y se sirve desde una URL publica con su tipo original.
-const TIPOS_IMAGEN_PERMITIDOS = new Set(["image/png", "image/jpeg", "image/webp", "image/gif"]);
+// Lista blanca explicita de tipos de imagen aceptados, con la extension que
+// le corresponde a cada uno. Un simple prefijo "image/" dejaria pasar
+// image/svg+xml, que es contenido activo (puede llevar <script>).
+//
+// La extension no es cosmetica: /posts de Postiz valida que el `path` del
+// medio termine en .png/.jpg/.jpeg/.gif/.webp/.mp4, y ese path sale del
+// nombre de fichero que mandamos en el multipart.
+const EXTENSION_POR_TIPO: Record<string, string> = {
+  "image/png": "png",
+  "image/jpeg": "jpg",
+  "image/webp": "webp",
+  "image/gif": "gif",
+};
+
+// Tope defensivo al traerse una imagen remota a memoria dentro de la action.
+// Postiz rechaza las imagenes de mas de 10 MB, asi que por encima de eso el
+// viaje no sirve para nada.
+const MAX_BYTES_IMAGEN = 10 * 1024 * 1024;
 
 /**
- * Sube una data URL a Convex Storage y devuelve su URL publica.
+ * Deja la imagen lista para el multipart de Postiz: bytes + nombre con
+ * extension.
  *
- * Postiz descarga la imagen por HTTP (`uploadFromUrl`), asi que necesita una
- * URL alcanzable desde fuera; una data URL no sirve. No se reutiliza
- * `persistGeneratedImage` de `src/lib/campaigns/`: depende del cliente
- * Convex de Next (`authedFetchMutation`/`authedFetchQuery`), que no aplica
- * dentro de una action de Convex, que ya tiene `ctx.storage` directamente.
+ * Acepta las dos formas en que puede llegar `image_url`: una data URL (lo
+ * habitual, la imagen recien generada en el lienzo) o una URL remota (una
+ * pieza ya persistida). Ya NO se guarda nada en Convex Storage: eso solo
+ * existia para darle a Postiz una URL publica que descargar, y la subida
+ * multipart le entrega los bytes directamente.
  *
- * El parseo no usa una unica regexp con `;base64,` pegado al tipo: eso
- * revienta con parametros extra en el tipo (`;charset=utf-8`) y no admite
- * saltos de linea dentro de la base64. Se parte a mano en la primera coma.
+ * El parseo de la data URL no usa una unica regexp con `;base64,` pegado al
+ * tipo: eso revienta con parametros extra en el tipo (`;charset=utf-8`) y no
+ * admite saltos de linea dentro de la base64. Se parte a mano en la primera
+ * coma.
  */
-async function resolvePublicImageUrl(ctx: ActionCtx, imageUrl: string): Promise<ImagenResuelta> {
+async function resolveImageBlob(imageUrl: string): Promise<ImagenResuelta> {
   const value = imageUrl.trim();
-  if (!value.startsWith("data:")) return { url: value, storageId: null };
+  if (!value.startsWith("data:")) return fetchRemoteImage(value);
 
   const comaIdx = value.indexOf(",");
   if (comaIdx === -1) {
@@ -155,23 +167,66 @@ async function resolvePublicImageUrl(ctx: ActionCtx, imageUrl: string): Promise<
   if (!mimeType || !esBase64) {
     throw new Error("La imagen no tiene un formato de data URL reconocible.");
   }
-  if (!TIPOS_IMAGEN_PERMITIDOS.has(mimeType)) {
-    throw new Error("El archivo debe ser una imagen (tipo image/*).");
+  const extension = EXTENSION_POR_TIPO[mimeType];
+  if (!extension) {
+    throw new Error("El archivo debe ser una imagen (PNG, JPEG, WebP o GIF).");
   }
 
   // Los saltos de linea son validos dentro de una data URL base64; se
   // eliminan junto con cualquier otro espacio antes de decodificar.
   const base64 = datos.replace(/\s+/g, "");
   const bytes = base64ABytes(base64);
-  const blob = new Blob([bytes], { type: mimeType });
-
-  const storageId = await ctx.storage.store(blob);
-  const url = await ctx.storage.getUrl(storageId);
-  if (!url) {
-    await ctx.storage.delete(storageId);
-    throw new Error("No se pudo generar una URL publica para la imagen.");
+  if (bytes.byteLength > MAX_BYTES_IMAGEN) {
+    throw new Error("La imagen es demasiado grande para publicarla (maximo 10 MB).");
   }
-  return { url, storageId };
+
+  return {
+    blob: new Blob([bytes], { type: mimeType }),
+    fileName: `x-studio.${extension}`,
+  };
+}
+
+/**
+ * Descarga una imagen ya publicada para reenviarla a Postiz.
+ *
+ * Solo http/https: `image_url` llega desde el cliente y sin esta comprobacion
+ * un `file:` o similar convertiria esta action en un lector de recursos
+ * ajenos. El tipo se toma de la cabecera y se valida contra la misma lista
+ * blanca que la data URL, para no acabar mandando a Postiz un HTML de error
+ * disfrazado de imagen.
+ */
+async function fetchRemoteImage(url: string): Promise<ImagenResuelta> {
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    throw new Error("La imagen no tiene una URL valida.");
+  }
+  if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+    throw new Error("La imagen no tiene una URL valida.");
+  }
+
+  const respuesta = await fetch(parsed.toString());
+  if (!respuesta.ok) {
+    throw new Error("No se pudo descargar la imagen para publicarla.");
+  }
+
+  // El Content-Type puede traer parametros ("image/png; charset=binary").
+  const mimeType = (respuesta.headers.get("content-type") || "").split(";")[0].trim().toLowerCase();
+  const extension = EXTENSION_POR_TIPO[mimeType];
+  if (!extension) {
+    throw new Error("El archivo debe ser una imagen (PNG, JPEG, WebP o GIF).");
+  }
+
+  const bytes = new Uint8Array(await respuesta.arrayBuffer());
+  if (bytes.byteLength > MAX_BYTES_IMAGEN) {
+    throw new Error("La imagen es demasiado grande para publicarla (maximo 10 MB).");
+  }
+
+  return {
+    blob: new Blob([bytes], { type: mimeType }),
+    fileName: `x-studio.${extension}`,
+  };
 }
 
 export const listChannels = action({
@@ -213,11 +268,6 @@ export const scheduleImage = action({
     args,
   ): Promise<{ ok: true; groupId: string } | { ok: false; error: string }> => {
     let apiKey: string | undefined;
-    // Blob que esta ejecucion guardo en Convex Storage al decodificar una
-    // data URL (null si `image_url` ya era una URL remota). Se borra si la
-    // subida a Postiz o la creacion del post fallan; nunca si lo que llego
-    // era una URL ajena.
-    let uploadedStorageId: Id<"_storage"> | null = null;
     try {
       // 1. Autoriza. Si no es administrador, error y no se llama a Postiz.
       const clerkUserId = await ctx.runQuery(internal.postiz.requireAdminIdentity, {});
@@ -239,37 +289,20 @@ export const scheduleImage = action({
       const credenciales = toCredentials(fila);
       const targets: ScheduleTarget[] = args.targets;
 
-      // 4. Resuelve una URL publica para la imagen (sube si es una data URL).
-      const resuelto = await resolvePublicImageUrl(ctx, args.image_url);
-      uploadedStorageId = resuelto.storageId;
+      // 4. Deja la imagen en bytes, con un nombre de fichero con extension.
+      const imagen = await resolveImageBlob(args.image_url);
 
-      let groupId: string;
-      try {
-        // 5. Sube la imagen a Postiz.
-        const media = await uploadFromUrl(credenciales, resuelto.url);
+      // 5. Sube la imagen a Postiz (multipart, no upload-from-url: ver el
+      //    comentario de `uploadFile` en convex/lib/postiz/client.ts).
+      const media = await uploadFile(credenciales, imagen);
 
-        // 6. Crea el post programado.
-        ({ groupId } = await createPost(credenciales, {
-          date: args.date,
-          content: args.content,
-          media,
-          targets,
-        }));
-      } catch (err) {
-        // La subida o la creacion fallaron: el blob que guardamos en Convex
-        // Storage ya no sirve para nada, se queda huerfano si no se borra.
-        // Este borrado es limpieza best-effort: si el propio delete lanza,
-        // se ignora dentro de su propio try/catch para que el `throw err`
-        // de abajo (el error real, el que interesa al usuario) no se pierda.
-        if (uploadedStorageId) {
-          try {
-            await ctx.storage.delete(uploadedStorageId);
-          } catch {
-            // Fallo al limpiar el blob huerfano: no tapa el error original.
-          }
-        }
-        throw err;
-      }
+      // 6. Crea el post programado.
+      const { groupId } = await createPost(credenciales, {
+        date: args.date,
+        content: args.content,
+        media,
+        targets,
+      });
 
       // 7. La publicacion YA esta programada en Postiz en este punto. Si lo
       // que falla ahora es el registro interno, el usuario debe enterarse de

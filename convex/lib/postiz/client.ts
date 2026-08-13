@@ -22,11 +22,26 @@ import type {
 const ruta = (baseUrl: string, camino: string) =>
     `${baseUrl.replace(/\/+$/, '')}/api/public/v1${camino}`
 
+/**
+ * Cuerpo de la peticion: o JSON, o multipart, o nada.
+ *
+ * Son excluyentes a proposito. El multipart no puede viajar como `body`
+ * normal porque su Content-Type lleva un `boundary` que solo sabe generar
+ * el propio `fetch` al recibir un FormData.
+ */
+type CuerpoPeticion = { json: unknown } | { form: FormData } | undefined
+
 async function pedir<T>(
     credenciales: PostizCredentials,
     camino: string,
-    init?: { method?: string; body?: unknown },
+    init?: { method?: string; cuerpo?: CuerpoPeticion },
 ): Promise<T> {
+    const cuerpo = init?.cuerpo
+    const esJson = cuerpo !== undefined && 'json' in cuerpo
+    // Se serializa FUERA del try para que este solo cubra lo que promete el
+    // comentario de abajo: los fallos de red de fetch, no los de JSON.stringify.
+    const bodyHttp = cuerpo === undefined ? undefined : esJson ? JSON.stringify(cuerpo.json) : cuerpo.form
+
     let respuesta: Response
     try {
         respuesta = await fetch(ruta(credenciales.baseUrl, camino), {
@@ -34,9 +49,12 @@ async function pedir<T>(
             headers: {
                 // En crudo: Postiz NO espera el prefijo 'Bearer'.
                 Authorization: credenciales.apiKey,
-                'Content-Type': 'application/json',
+                // Solo cuando hay cuerpo JSON. En un GET sin cuerpo sobra, y
+                // en multipart fijarlo a mano ROMPE la peticion: se perderia
+                // el 'boundary' que fetch calcula a partir del FormData.
+                ...(esJson ? { 'Content-Type': 'application/json' } : {}),
             },
-            ...(init?.body === undefined ? {} : { body: JSON.stringify(init.body) }),
+            ...(bodyHttp === undefined ? {} : { body: bodyHttp }),
         })
     } catch (error) {
         // fetch solo rechaza por fallo de red: DNS, conexion rechazada, timeout.
@@ -89,13 +107,27 @@ export async function listIntegrations(
     })
 }
 
-export async function uploadFromUrl(
+/**
+ * Sube la imagen a Postiz como multipart, con el nombre de fichero que le
+ * demos nosotros.
+ *
+ * NO se usa /upload-from-url, que seria mas corto: el `path` que devuelve esa
+ * ruta no termina en extension, y despues /posts rechaza el medio con
+ * "File must have a valid extension: .png, .jpg, .jpeg, .gif, .webp, or .mp4".
+ * Por /upload el nombre lo ponemos nosotros y la extension sobrevive hasta el
+ * `path`, que es lo que /posts mira. De paso deja de hacer falta que la imagen
+ * este publicada en una URL alcanzable desde el servidor de Postiz.
+ */
+export async function uploadFile(
     credenciales: PostizCredentials,
-    url: string,
+    archivo: { blob: Blob; fileName: string },
 ): Promise<PostizMedia> {
-    const medio = await pedir<PostizMedia>(credenciales, '/upload-from-url', {
+    const form = new FormData()
+    form.append('file', archivo.blob, archivo.fileName)
+
+    const medio = await pedir<PostizMedia>(credenciales, '/upload', {
         method: 'POST',
-        body: { url },
+        cuerpo: { form },
     })
     if (!medio?.id || !medio?.path) {
         throw new PostizShapeError('Postiz respondio 200 pero la subida no devolvio un medio utilizable.')
@@ -128,7 +160,7 @@ export async function createPost(
 
     const creado = await pedir<Array<{ group?: string }>>(credenciales, '/posts', {
         method: 'POST',
-        body: cuerpo,
+        cuerpo: { json: cuerpo },
     })
 
     const groupId = Array.isArray(creado) ? creado[0]?.group : undefined

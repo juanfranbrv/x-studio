@@ -52,9 +52,11 @@ async function seedCredentials(t: Backend, userId: string) {
   });
 }
 
+const REMOTE_IMAGE_URL = "https://cdn.example.com/imagen.png";
+
 const scheduleArgs = {
   asset_key: "session:abc:gen:1",
-  image_url: "https://cdn.example.com/imagen.png",
+  image_url: REMOTE_IMAGE_URL,
   content: "Hola mundo",
   date: "2026-08-21T09:30:00+02:00",
   targets: [{ integrationId: "i-ig", identifier: "instagram" }],
@@ -71,15 +73,36 @@ function respuesta(body: unknown, status = 200) {
   return Promise.resolve({
     ok: status >= 200 && status < 300,
     status,
+    headers: new Headers({ "content-type": "application/json" }),
     json: () => Promise.resolve(body),
     text: () => Promise.resolve(JSON.stringify(body)),
   } as Response);
 }
 
-/** Enruta la respuesta simulada segun el camino de la API de Postiz. */
-function fetchRouter(options?: { failCreate?: boolean }) {
+/** Respuesta de la descarga de una imagen ya publicada (no de la API de Postiz). */
+function respuestaImagen(contentType = "image/png") {
+  const bytes = Uint8Array.from(atob(PNG_1x1_BASE64), (c) => c.charCodeAt(0));
+  return Promise.resolve({
+    ok: true,
+    status: 200,
+    headers: new Headers({ "content-type": contentType }),
+    arrayBuffer: () => Promise.resolve(bytes.buffer),
+  } as unknown as Response);
+}
+
+/**
+ * Enruta la respuesta simulada segun el destino.
+ *
+ * Ademas de la API de Postiz cubre la descarga de la imagen remota: desde que
+ * la subida es multipart, es esta action (y ya no Postiz) quien se trae los
+ * bytes cuando `image_url` es una URL en vez de una data URL.
+ */
+function fetchRouter(options?: { failCreate?: boolean; contentTypeImagen?: string }) {
   return vi.fn((url: string, _init?: RequestInit) => {
-    if (url.includes("/upload-from-url")) {
+    if (url.startsWith(REMOTE_IMAGE_URL)) {
+      return respuestaImagen(options?.contentTypeImagen);
+    }
+    if (url.includes("/upload")) {
       return respuesta({ id: "m1", path: "https://cdn.postiz.com/x.png" });
     }
     if (url.includes("/posts")) {
@@ -94,6 +117,15 @@ function fetchRouter(options?: { failCreate?: boolean }) {
     }
     return respuesta({}, 404);
   });
+}
+
+/** El fichero que viaja en el multipart de /upload, o undefined si no se llamo. */
+function ficheroSubido(fetchMock: ReturnType<typeof fetchRouter>): File | undefined {
+  const llamada = fetchMock.mock.calls.find((call) => (call[0] as string).includes("/upload"));
+  if (!llamada) return undefined;
+  const body = (llamada[1] as RequestInit).body;
+  expect(body).toBeInstanceOf(FormData);
+  return (body as FormData).get("file") as File;
 }
 
 describe("convex/postiz.ts: scheduleImage", () => {
@@ -151,10 +183,17 @@ describe("convex/postiz.ts: scheduleImage", () => {
     expect(resultado).toEqual({ ok: true, groupId: "g-123" });
 
     const llamadas = fetchMock.mock.calls.map((call) => call[0] as string);
-    const posUpload = llamadas.findIndex((url) => url.includes("/upload-from-url"));
+    const posDescarga = llamadas.indexOf(REMOTE_IMAGE_URL);
+    const posUpload = llamadas.findIndex((url) => url.includes("/upload"));
     const posCreate = llamadas.findIndex((url) => url.includes("/posts"));
-    expect(posUpload).toBeGreaterThanOrEqual(0);
+    expect(posDescarga).toBeGreaterThanOrEqual(0);
+    expect(posUpload).toBeGreaterThan(posDescarga);
     expect(posCreate).toBeGreaterThan(posUpload);
+
+    // El nombre del fichero DEBE llevar extension: sin ella /posts responde
+    // 400 "File must have a valid extension" (el fallo que motivo el cambio
+    // de upload-from-url a multipart).
+    expect(ficheroSubido(fetchMock)?.name).toBe("x-studio.png");
 
     const anotacion = await t.run(async (ctx) =>
       ctx.db
@@ -205,12 +244,21 @@ describe("convex/postiz.ts: scheduleImage", () => {
     expect(JSON.stringify(exito)).not.toContain(API_KEY);
 
     // Camino con error de Postiz (401 -> PostizAuthError, mensaje sin la clave).
+    // La descarga de la imagen se deja pasar a proposito: si tambien devolviera
+    // 401 el fallo seria el de la descarga y este caso nunca llegaria a Postiz.
     vi.stubGlobal(
       "fetch",
-      vi.fn(() => respuesta({ msg: "No API Key found" }, 401)),
+      vi.fn((url: string) => {
+        if (url.startsWith(REMOTE_IMAGE_URL)) return respuestaImagen();
+        return respuesta({ msg: "No API Key found" }, 401);
+      }),
     );
     const fallo = await authed.action(api.postiz.scheduleImage, scheduleArgs);
     expect(fallo.ok).toBe(false);
+    if (!fallo.ok) {
+      // Mensaje de PostizAuthError, no el de la descarga ni el generico.
+      expect(fallo.error.toLowerCase()).toContain("clave");
+    }
     expect(JSON.stringify(fallo)).not.toContain(API_KEY);
   });
 
@@ -225,7 +273,8 @@ describe("convex/postiz.ts: scheduleImage", () => {
     vi.stubGlobal(
       "fetch",
       vi.fn((url: string) => {
-        if (url.includes("/upload-from-url")) {
+        if (url.startsWith(REMOTE_IMAGE_URL)) return respuestaImagen();
+        if (url.includes("/upload")) {
           return respuesta({ id: "m1", path: "https://cdn.postiz.com/x.png" });
         }
         if (url.includes("/posts")) {
@@ -344,7 +393,7 @@ describe("convex/postiz.ts: scheduleImage con data URL", () => {
       `data:image/png;base64,${PNG_1x1_BASE64.match(/.{1,20}/g)!.join("\n")}`,
     ],
   ])(
-    "%s: la imagen decodificada llega a Convex Storage y su URL es la que recibe Postiz",
+    "%s: los bytes decodificados viajan en el multipart, con nombre .png",
     async (_nombre, dataUrl) => {
       const t = makeBackend();
       await seedUser(t, ADMIN_CLERK_ID, ADMIN_EMAIL, "admin");
@@ -360,19 +409,16 @@ describe("convex/postiz.ts: scheduleImage con data URL", () => {
 
       expect(resultado.ok).toBe(true);
 
-      // La imagen decodificada acaba en Convex Storage...
-      const filas = await t.run(async (ctx) => ctx.db.system.query("_storage").collect());
-      expect(filas.length).toBe(1);
-      expect(filas[0].size).toBe(atob(PNG_1x1_BASE64).length);
+      const fichero = ficheroSubido(fetchMock);
+      expect(fichero?.name).toBe("x-studio.png");
+      expect(fichero?.type).toBe("image/png");
+      // Los bytes son los de la imagen de verdad, no los de la cadena base64.
+      expect(fichero?.size).toBe(atob(PNG_1x1_BASE64).length);
 
-      // ...y su URL publica es exactamente la que se le paso a Postiz.
-      const storedUrl = await t.run(async (ctx) => ctx.storage.getUrl(filas[0]._id));
-      const uploadCall = fetchMock.mock.calls.find((call) =>
-        (call[0] as string).includes("/upload-from-url"),
-      );
-      expect(uploadCall).toBeDefined();
-      const cuerpo = JSON.parse((uploadCall![1] as RequestInit).body as string);
-      expect(cuerpo.url).toBe(storedUrl);
+      // Con una data URL no hay nada que descargar: la unica red que se toca
+      // es la de Postiz.
+      const llamadas = fetchMock.mock.calls.map((call) => call[0] as string);
+      expect(llamadas.some((url) => url.startsWith("data:"))).toBe(false);
     },
   );
 
@@ -380,13 +426,13 @@ describe("convex/postiz.ts: scheduleImage con data URL", () => {
     ["text/html (no es imagen)", "data:text/html;base64,PHNjcmlwdD5hbGVydCgxKTwvc2NyaXB0Pg=="],
     [
       // image/svg+xml empieza por "image/" pero es contenido activo (puede
-      // llevar <script>) y se sirve desde una URL publica: debe rechazarse
+      // llevar <script>) y Postiz lo publicaria tal cual: debe rechazarse
       // aunque un filtro por prefijo lo dejara pasar.
       "image/svg+xml (activo, no esta en la lista blanca)",
       "data:image/svg+xml;base64,PHNjcmlwdD5hbGVydCgxKTwvc2NyaXB0Pg==",
     ],
   ])(
-    "rechaza una data URL cuyo tipo no es una imagen permitida (%s) y no llama a Postiz ni guarda nada",
+    "rechaza una data URL cuyo tipo no es una imagen permitida (%s) y no llama a Postiz",
     async (_nombre, dataUrl) => {
       const t = makeBackend();
       await seedUser(t, ADMIN_CLERK_ID, ADMIN_EMAIL, "admin");
@@ -402,8 +448,6 @@ describe("convex/postiz.ts: scheduleImage con data URL", () => {
 
       expect(resultado.ok).toBe(false);
       expect(fetchMock).not.toHaveBeenCalled();
-      const filas = await t.run(async (ctx) => ctx.db.system.query("_storage").collect());
-      expect(filas.length).toBe(0);
     },
   );
 
@@ -424,16 +468,13 @@ describe("convex/postiz.ts: scheduleImage con data URL", () => {
 
     expect(resultado.ok).toBe(false);
     expect(fetchMock).not.toHaveBeenCalled();
-    const filas = await t.run(async (ctx) => ctx.db.system.query("_storage").collect());
-    expect(filas.length).toBe(0);
   });
 
-  it("si crear el post falla, el blob que esta ejecucion subio a Convex Storage se borra", async () => {
+  it("no deja nada en Convex Storage: la subida multipart ya no necesita una URL publica", async () => {
     const t = makeBackend();
     await seedUser(t, ADMIN_CLERK_ID, ADMIN_EMAIL, "admin");
     await seedCredentials(t, ADMIN_CLERK_ID);
-    const fetchMock = fetchRouter({ failCreate: true });
-    vi.stubGlobal("fetch", fetchMock);
+    vi.stubGlobal("fetch", fetchRouter());
 
     const authed = t.withIdentity({ subject: ADMIN_CLERK_ID });
     const resultado = await authed.action(api.postiz.scheduleImage, {
@@ -441,8 +482,65 @@ describe("convex/postiz.ts: scheduleImage con data URL", () => {
       image_url: `data:image/png;base64,${PNG_1x1_BASE64}`,
     });
 
-    expect(resultado.ok).toBe(false);
+    expect(resultado.ok).toBe(true);
+    // Antes se guardaba un blob solo para darle a Postiz una URL descargable,
+    // con el consiguiente riesgo de huerfanos si algo fallaba despues.
     const filas = await t.run(async (ctx) => ctx.db.system.query("_storage").collect());
     expect(filas.length).toBe(0);
+  });
+});
+
+describe("convex/postiz.ts: scheduleImage con imagen remota", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+    vi.unstubAllGlobals();
+  });
+
+  it("rechaza una URL que no sirve una imagen permitida y no sube nada a Postiz", async () => {
+    const t = makeBackend();
+    await seedUser(t, ADMIN_CLERK_ID, ADMIN_EMAIL, "admin");
+    await seedCredentials(t, ADMIN_CLERK_ID);
+    // Una pagina de error HTML devuelta con 200 por un CDN: sin comprobar el
+    // tipo acabaria subida a Postiz como si fuera la imagen.
+    const fetchMock = fetchRouter({ contentTypeImagen: "text/html" });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const authed = t.withIdentity({ subject: ADMIN_CLERK_ID });
+    const resultado = await authed.action(api.postiz.scheduleImage, scheduleArgs);
+
+    expect(resultado.ok).toBe(false);
+    const llamadas = fetchMock.mock.calls.map((call) => call[0] as string);
+    expect(llamadas).toEqual([REMOTE_IMAGE_URL]);
+  });
+
+  it("rechaza un esquema que no es http(s) sin tocar la red", async () => {
+    const t = makeBackend();
+    await seedUser(t, ADMIN_CLERK_ID, ADMIN_EMAIL, "admin");
+    await seedCredentials(t, ADMIN_CLERK_ID);
+    const fetchMock = fetchRouter();
+    vi.stubGlobal("fetch", fetchMock);
+
+    const authed = t.withIdentity({ subject: ADMIN_CLERK_ID });
+    const resultado = await authed.action(api.postiz.scheduleImage, {
+      ...scheduleArgs,
+      image_url: "file:///etc/passwd",
+    });
+
+    expect(resultado.ok).toBe(false);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("el tipo se lee del Content-Type aunque traiga parametros", async () => {
+    const t = makeBackend();
+    await seedUser(t, ADMIN_CLERK_ID, ADMIN_EMAIL, "admin");
+    await seedCredentials(t, ADMIN_CLERK_ID);
+    const fetchMock = fetchRouter({ contentTypeImagen: "IMAGE/JPEG; charset=binary" });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const authed = t.withIdentity({ subject: ADMIN_CLERK_ID });
+    const resultado = await authed.action(api.postiz.scheduleImage, scheduleArgs);
+
+    expect(resultado.ok).toBe(true);
+    expect(ficheroSubido(fetchMock)?.name).toBe("x-studio.jpg");
   });
 });
