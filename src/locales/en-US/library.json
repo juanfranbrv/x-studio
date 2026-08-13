@@ -30,6 +30,7 @@
     "draft": "Draft",
     "selected": "Selected",
     "ready": "Ready",
+    "scheduled": "Scheduled",
     "published_manual": "Published manually",
     "discarded": "Discarded"
   },

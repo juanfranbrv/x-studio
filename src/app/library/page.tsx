@@ -22,7 +22,7 @@ import type { ContentAssetStatus, ContentCampaign, ContentLibraryAsset, ContentL
 import { Button } from '@/components/ui/button'
 import { IconCalendar, IconFolderKanban, IconGrid, IconPlus } from '@/components/ui/icons'
 
-const STATUS_KEYS: ContentAssetStatus[] = ['draft', 'selected', 'ready', 'published_manual', 'discarded']
+const STATUS_KEYS: ContentAssetStatus[] = ['draft', 'selected', 'ready', 'scheduled', 'published_manual', 'discarded']
 
 function normalizeAssets(value: unknown): ContentLibraryAsset[] {
     return Array.isArray(value) ? value as ContentLibraryAsset[] : []

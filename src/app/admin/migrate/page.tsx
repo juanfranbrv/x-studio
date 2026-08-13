@@ -14,6 +14,7 @@ const STATUS_LABELS: Record<ContentAssetStatus, string> = {
     draft: 'Borrador',
     selected: 'Seleccionado',
     ready: 'Listo',
+    scheduled: 'Programada',
     published_manual: 'Publicado manual',
     discarded: 'Descartado',
 }

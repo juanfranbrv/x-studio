@@ -210,6 +210,9 @@ export default defineSchema({
     format: v.optional(v.string()),
     campaign: v.optional(v.string()),
     notes: v.optional(v.string()),
+    // Rastro de la programacion en Postiz. Opcionales: las piezas antiguas no lo tienen.
+    postiz_group_id: v.optional(v.string()),
+    postiz_base_url: v.optional(v.string()),
     created_at: v.string(),
     updated_at: v.string(),
   }).index("by_user_asset", ["user_id", "asset_key"])

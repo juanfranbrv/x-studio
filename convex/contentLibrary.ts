@@ -384,6 +384,73 @@ export const setPlannedAt = mutation({
   },
 });
 
+/**
+ * Deja constancia de que la pieza se programo en Postiz.
+ *
+ * Se llama SIEMPRE en ultimo lugar, cuando Postiz ya ha confirmado la creacion:
+ * asi la Biblioteca nunca dice "programada" sobre algo que no se programo.
+ */
+export const markScheduled = mutation({
+  args: {
+    user_id: v.string(),
+    asset_key: v.string(),
+    planned_at: v.string(),
+    postiz_group_id: v.string(),
+    postiz_base_url: v.string(),
+  },
+  handler: async (ctx, args) => {
+    await requireSameUser(ctx, args.user_id);
+    const ahora = new Date().toISOString();
+    const existente = await ctx.db
+      .query("content_asset_annotations")
+      .withIndex("by_user_asset", (q) =>
+        q.eq("user_id", args.user_id).eq("asset_key", args.asset_key),
+      )
+      .unique();
+
+    const campos = {
+      status: "scheduled",
+      planned_at: args.planned_at,
+      postiz_group_id: args.postiz_group_id,
+      postiz_base_url: args.postiz_base_url,
+      updated_at: ahora,
+    };
+
+    if (existente) {
+      await ctx.db.patch(existente._id, campos);
+      return null;
+    }
+    await ctx.db.insert("content_asset_annotations", {
+      user_id: args.user_id,
+      asset_key: args.asset_key,
+      created_at: ahora,
+      ...campos,
+    });
+    return null;
+  },
+});
+
+/** Lee la anotacion de UNA pieza. La usa el dialogo para detectar duplicados. */
+export const getAnnotation = query({
+  args: { user_id: v.string(), asset_key: v.string() },
+  handler: async (ctx, args) => {
+    await requireSameUser(ctx, args.user_id);
+    const fila = await ctx.db
+      .query("content_asset_annotations")
+      .withIndex("by_user_asset", (q) =>
+        q.eq("user_id", args.user_id).eq("asset_key", args.asset_key),
+      )
+      .unique();
+    if (!fila) return null;
+    return {
+      status: fila.status,
+      planned_at: fila.planned_at,
+      postiz_group_id: fila.postiz_group_id,
+      postiz_base_url: fila.postiz_base_url,
+    };
+  },
+});
+
 // --- Campaigns CRUD (campaigns are first-class so they can exist without assets) ---
 
 async function annotationsByCampaign(ctx: MutationCtx, userId: string, campaign: string) {

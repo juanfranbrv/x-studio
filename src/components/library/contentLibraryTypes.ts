@@ -1,4 +1,4 @@
-export type ContentAssetStatus = 'draft' | 'selected' | 'ready' | 'published_manual' | 'discarded'
+export type ContentAssetStatus = 'draft' | 'selected' | 'ready' | 'scheduled' | 'published_manual' | 'discarded'
 export type ContentAssetModule = 'image' | 'carousel'
 
 export interface ContentLibrarySlide {
