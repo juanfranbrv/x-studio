@@ -2,6 +2,10 @@
 import { readFileSync } from 'fs'
 import { IntentMeta, LayoutOption } from '@/lib/creation-flow-types'
 import { BrandDNA } from '@/lib/brand-types'
+import {
+  buildContextDocumentPromptBlock,
+  type AnalyticalContextDocument,
+} from '@/lib/prompts/context-document'
 import { buildBrandContextBlock } from './brand-context-template'
 const PROMPT_TEMPLATE_PATH = path.join(
   process.cwd(),
@@ -31,7 +35,8 @@ export function buildIntentParserPrompt(
   intent?: IntentMeta,
   layout?: LayoutOption,
   previewTextContext?: string,
-  detectedLanguage?: string
+  detectedLanguage?: string,
+  contextDocument?: AnalyticalContextDocument | null
 ): string {
   const brandContext = buildBrandContextBlock(brandDNA) || 'BRAND CONTEXT: (none)'
   const websiteContext = brandWebsite ? `BRAND WEBSITE:\n${brandWebsite}` : 'BRAND WEBSITE: (none)'
@@ -65,8 +70,13 @@ export function buildIntentParserPrompt(
     ? `PREVIEW TEXTS (from current canvas):\n${previewTextContext.trim()}`
     : 'PREVIEW TEXTS: (none)'
 
+  const contextDocumentBlock = buildContextDocumentPromptBlock(contextDocument)
+  const analyticalBrandContext = contextDocumentBlock
+    ? `${brandContext}\n\n${contextDocumentBlock}`
+    : brandContext
+
   return getPromptTemplate()
-    .replaceAll('{{BRAND_CONTEXT}}', brandContext)
+    .replaceAll('{{BRAND_CONTEXT}}', analyticalBrandContext)
     .replaceAll('{{WEBSITE_CONTEXT}}', websiteContext)
     .replaceAll('{{INTENT_CONTEXT}}', intentContext)
     .replaceAll('{{PREVIEW_CONTEXT}}', previewContext)

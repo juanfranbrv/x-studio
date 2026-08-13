@@ -51,6 +51,7 @@ async function runTests() {
             try {
                 const result = await parseLazyIntentAction({
                     userText: test.text,
+                    brandId: process.env.TEST_BRAND_ID || 'test-brand-id',
                     brandDNA: { brand_name: "Acme Corp" } as any,
                     intentId: intent.id,
                 })

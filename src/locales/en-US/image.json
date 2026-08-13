@@ -169,6 +169,22 @@
     "applyColor": "Apply color",
     "designAdvancedAria": "Enable advanced design mode"
   },
+  "contextDocuments": {
+    "noBrandKit": "Select a Brand Kit to use context documents",
+    "activeLabel": "Active context document: {{title}}",
+    "inactiveLabel": "No context document will be used",
+    "activeStatus": "Active",
+    "inactiveStatus": "No active document",
+    "selectorTitle": "Context document for analysis",
+    "selectorDescription": "Select the only document that will be used when analyzing this post.",
+    "loading": "Loading documents",
+    "emptySelector": "This Brand Kit has no context documents.",
+    "viewDocument": "View {{title}}",
+    "useDocument": "Use",
+    "stopUsing": "Stop using",
+    "reanalysisRequiredTitle": "Context changed",
+    "reanalysisRequiredDescription": "Analyze the post again before generating."
+  },
   "preview": {
     "currentImage": "Current image",
     "imageToEdit": "Image to edit",

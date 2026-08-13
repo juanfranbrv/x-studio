@@ -339,6 +339,9 @@ function compactImageSnapshot(value: unknown) {
     sessionGenerations: compactGenerations.sessionGenerations,
     creationFlowState: compactImageCreationFlowState(snapshot.creationFlowState),
     rootPrompt: limitText(snapshot.rootPrompt, 1800),
+    usedBrandId: limitText(snapshot.usedBrandId, 120),
+    usedContextDocumentId: limitText(snapshot.usedContextDocumentId, 120),
+    contextChangedSinceAnalysis: snapshot.contextChangedSinceAnalysis === true,
   };
 }
 
@@ -392,6 +395,9 @@ function compactCarouselSnapshot(value: unknown) {
         }
       : undefined,
     analysisIntent: limitText(snapshot.analysisIntent, 80),
+    usedBrandId: limitText(snapshot.usedBrandId, 120),
+    usedContextDocumentId: limitText(snapshot.usedContextDocumentId, 120),
+    contextChangedSinceAnalysis: snapshot.contextChangedSinceAnalysis === true,
     originalAnalysis: snapshot.originalAnalysis && typeof snapshot.originalAnalysis === "object"
       ? {
           slides: Array.isArray((snapshot.originalAnalysis as Record<string, unknown>).slides)

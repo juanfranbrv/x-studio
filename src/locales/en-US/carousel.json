@@ -18,6 +18,10 @@
     "regenerateCaption": "Could not regenerate the caption.",
     "adjustToSlides": "Adjust to {{count}} slides"
   },
+  "contextDocuments": {
+    "reanalysisRequiredTitle": "Context changed",
+    "reanalysisRequiredDescription": "Analyze the carousel again before generating."
+  },
   "ui": {
     "locale": "en-US",
     "generationStoppedTitle": "Generation stopped",

@@ -47,6 +47,7 @@ import {
 } from '@/lib/layout-ratings'
 import type { CompositionSummary } from '@/lib/admin-compositions-actions'
 import { getDetectedIntentLabel } from '@/lib/intent-label'
+import { ContextDocumentAnalysisControl } from '@/components/context-documents/ContextDocumentAnalysisControl'
 
 import { RoleColorSwatch, AddAccentSwatch } from './ControlsColorSwatches'
 import {
@@ -119,6 +120,7 @@ interface ControlsPanelProps {
     isCancelingAnalyze?: boolean
     onSendToCarousel?: () => void
     className?: string
+    onContextDocumentChanged?: (documentId: string | null) => void
 }
 
 export function ControlsPanel({
@@ -155,6 +157,7 @@ export function ControlsPanel({
     isCancelingAnalyze = false,
     onSendToCarousel,
     className,
+    onContextDocumentChanged,
 }: ControlsPanelProps) {
     const { t, i18n } = useTranslation('image')
     const { toast } = useToast()
@@ -810,6 +813,12 @@ export function ControlsPanel({
                     <SectionHeader
                         icon={IconIdea}
                         title={t('ui.whatToCreate')}
+                        extra={(
+                            <ContextDocumentAnalysisControl
+                                brandId={activeBrandKit?.id}
+                                onContextChanged={onContextDocumentChanged}
+                            />
+                        )}
                         iconContainerClassName={PANEL_SECTION_HEADER_ICON_CLASS}
                         titleClassName={PANEL_SECTION_HEADER_TITLE_CLASS}
                     />

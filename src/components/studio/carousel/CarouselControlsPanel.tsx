@@ -41,6 +41,8 @@ import { AdvancedCompositionDialog } from './AdvancedCompositionDialog'
 import { FormatSection, SlideCountSection, CompositionSection, SessionsSection } from './CarouselControlSections'
 import { useTranslation } from 'react-i18next'
 import { buildAutomaticSessionTitle, getSessionDisplayTitle, normalizeCustomSessionTitle } from '@/lib/session-titles'
+import { ContextDocumentAnalysisControl } from '@/components/context-documents/ContextDocumentAnalysisControl'
+import type { ContextAnalysisSignature } from '@/lib/context-documents'
 
 import { RoleColorSwatch, AddAccentSwatch } from './CarouselColorSwatches'
 import {
@@ -99,6 +101,11 @@ interface CarouselControlsPanelProps {
     totalSlides: number
     // Brand Kit Data
     brandKit: BrandDNA | null
+    onContextDocumentChanged?: (documentId: string | null) => void
+    usedContextSignature?: ContextAnalysisSignature | null
+    currentContextSignature?: ContextAnalysisSignature
+    contextChangedSinceAnalysis?: boolean
+    onRestoreContextAnalysisState?: (signature: ContextAnalysisSignature | null, changed: boolean) => void
     analysisHook?: string
     analysisStructure?: { id?: string; name?: string }
     analysisIntent?: string
@@ -195,6 +202,11 @@ export function CarouselControlsPanel({
     generatedCount,
     totalSlides,
     brandKit,
+    onContextDocumentChanged,
+    usedContextSignature,
+    currentContextSignature,
+    contextChangedSinceAnalysis = false,
+    onRestoreContextAnalysisState,
     analysisHook,
     analysisStructure,
     analysisIntent,
@@ -538,6 +550,9 @@ export function CarouselControlsPanel({
             analysisHook: undefined,
             analysisStructure: undefined,
             analysisIntent: undefined,
+            usedBrandId: null,
+            usedContextDocumentId: null,
+            contextChangedSinceAnalysis: false,
             originalAnalysis: undefined,
             previewState: {
                 slides: [],
@@ -655,6 +670,9 @@ export function CarouselControlsPanel({
             analysisHook,
             analysisStructure,
             analysisIntent,
+            usedBrandId: usedContextSignature?.brandId ?? null,
+            usedContextDocumentId: usedContextSignature?.contextDocumentId ?? null,
+            contextChangedSinceAnalysis,
             originalAnalysis: originalAnalysis
                 ? {
                     slides: Array.isArray(originalAnalysis.slides) ? originalAnalysis.slides.slice(-12).map((slide) => ({
@@ -753,7 +771,9 @@ export function CarouselControlsPanel({
         analysisHook,
         analysisStructure,
         analysisIntent,
-        originalAnalysis
+        originalAnalysis,
+        usedContextSignature,
+        contextChangedSinceAnalysis,
     ])
 
     const buildPreviewVariantKey = useCallback((
@@ -1017,10 +1037,20 @@ export function CarouselControlsPanel({
             setCurrentStep(Array.isArray(snapshot.suggestions) && snapshot.suggestions.length > 0 ? 7 : 6)
             setNeedsReanalysis(false)
             setLastAnalyzedSignature(hasRestoredAnalysis ? restoredStructuralSignature : '')
+            onRestoreContextAnalysisState?.(
+                snapshot.usedBrandId
+                    ? {
+                        brandId: snapshot.usedBrandId,
+                        contextDocumentId: snapshot.usedContextDocumentId ?? null,
+                    }
+                    : null,
+                snapshot.contextChangedSinceAnalysis === true ||
+                    (!snapshot.usedBrandId && hasRestoredAnalysis && currentContextSignature?.contextDocumentId !== null),
+            )
         } finally {
             window.setTimeout(() => setIsHydratingSession(false), 0)
         }
-    }, [onRestorePreviewState])
+    }, [currentContextSignature?.contextDocumentId, onRestoreContextAnalysisState, onRestorePreviewState])
 
     const scheduleBaselineReset = useCallback((signature: string) => {
         if (baselineResetTimeoutRef.current !== null) {
@@ -2536,6 +2566,15 @@ export function CarouselControlsPanel({
                     <SectionHeader
                         icon={IconIdea}
                         title={t('ui.whatToCreate')}
+                        extra={(
+                            <ContextDocumentAnalysisControl
+                                brandId={brandKit?.id}
+                                onContextChanged={(documentId) => {
+                                    markStructuralReanalysisNeeded()
+                                    onContextDocumentChanged?.(documentId)
+                                }}
+                            />
+                        )}
                         iconContainerClassName={PANEL_SECTION_HEADER_ICON_CLASS}
                         titleClassName={PANEL_SECTION_HEADER_TITLE_CLASS}
                     />

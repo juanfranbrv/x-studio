@@ -5,6 +5,8 @@ import { ensureUniqueSlug, slugify } from "./lib/slug";
 import type { Id } from "./_generated/dataModel";
 import type { MutationCtx } from "./_generated/server";
 
+const MAX_CONTEXT_DOCUMENTS_PER_BRAND = 20;
+
 /**
  * Devuelve un slug unico DENTRO DEL USUARIO. A diferencia de los estilos, los
  * kits de marca son por cuenta: dos usuarios distintos pueden tener "Mi Oliva
@@ -457,7 +459,68 @@ export const deleteBrandDNA = mutation({
         const existing = await ctx.db.get(args.id);
         if (!existing) throw new Error("Brand kit not found");
         if (existing.clerk_user_id !== args.clerk_user_id) throw new Error("Unauthorized");
+
+        const contextDocuments = await ctx.db
+            .query("brand_context_documents")
+            .withIndex("by_brand", (q) => q.eq("brand_id", args.id))
+            .collect();
+        for (const document of contextDocuments) {
+            await ctx.db.delete(document._id);
+        }
         await ctx.db.delete(args.id);
+    },
+});
+
+export const duplicateBrandDNAWithContext = mutation({
+    args: {
+        source_id: v.id("brand_dna"),
+        clerk_user_id: v.string(),
+        brand_name: v.string(),
+    },
+    returns: v.id("brand_dna"),
+    handler: async (ctx, args) => {
+        await requireSameUser(ctx, args.clerk_user_id);
+        const source = await ctx.db.get(args.source_id);
+        if (!source) throw new Error("Source brand kit not found");
+        if (source.clerk_user_id !== args.clerk_user_id) throw new Error("Unauthorized");
+
+        const slug = await resolveUniqueBrandSlug(ctx, {
+            name: args.brand_name,
+            ownerId: args.clerk_user_id,
+        });
+        const { _id, _creationTime, ...sourceData } = source;
+        const targetBrandId = await ctx.db.insert("brand_dna", {
+            ...sourceData,
+            brand_name: args.brand_name,
+            slug,
+            clerk_user_id: args.clerk_user_id,
+            updated_at: new Date().toISOString(),
+        });
+
+        const sourceDocuments = await ctx.db
+            .query("brand_context_documents")
+            .withIndex("by_brand", (q) => q.eq("brand_id", args.source_id))
+            .take(MAX_CONTEXT_DOCUMENTS_PER_BRAND);
+        let activeDocumentCloned = false;
+
+        for (const document of sourceDocuments) {
+            const isActive = document.is_active && !activeDocumentCloned;
+            if (isActive) activeDocumentCloned = true;
+
+            await ctx.db.insert("brand_context_documents", {
+                brand_id: targetBrandId,
+                title: document.title,
+                content: document.content,
+                ...(document.source_filename === undefined
+                    ? {}
+                    : { source_filename: document.source_filename }),
+                character_count: document.character_count,
+                is_active: isActive,
+                created_at: document.created_at,
+            });
+        }
+
+        return targetBrandId;
     },
 });
 
@@ -604,11 +667,36 @@ export const cloneBrandDNAToUser = mutation({
             ownerId: args.target_clerk_user_id,
         });
 
-        return await ctx.db.insert("brand_dna", {
+        const targetBrandId = await ctx.db.insert("brand_dna", {
             ...data,
             slug,
             clerk_user_id: args.target_clerk_user_id,
             updated_at: now,
         });
+
+        const sourceDocuments = await ctx.db
+            .query("brand_context_documents")
+            .withIndex("by_brand", (q) => q.eq("brand_id", args.source_id))
+            .take(MAX_CONTEXT_DOCUMENTS_PER_BRAND);
+        let activeDocumentCloned = false;
+
+        for (const document of sourceDocuments) {
+            const isActive = document.is_active && !activeDocumentCloned;
+            if (isActive) activeDocumentCloned = true;
+
+            await ctx.db.insert("brand_context_documents", {
+                brand_id: targetBrandId,
+                title: document.title,
+                content: document.content,
+                ...(document.source_filename === undefined
+                    ? {}
+                    : { source_filename: document.source_filename }),
+                character_count: document.character_count,
+                is_active: isActive,
+                created_at: document.created_at,
+            });
+        }
+
+        return targetBrandId;
     },
 });

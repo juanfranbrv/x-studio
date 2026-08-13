@@ -9,7 +9,7 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import { analyzeBrandDNA } from '@/app/actions/analyze-brand-dna';
 import { previewBrandUrl } from '@/app/actions/preview-brand-url';
 import { getAllUserBrandKits } from '@/app/actions/get-user-brand-kit';
-import { updateUserBrandKit } from '@/app/actions/update-user-brand-kit';
+import { duplicateBrandKitWithContext } from '@/app/actions/context-documents';
 import { useBrandKit } from '@/contexts/BrandKitContext';
 import type { BrandDNA } from '@/lib/brand-types';
 import { cn } from '@/lib/utils';
@@ -689,32 +689,14 @@ function BrandKitPageContent() {
                 ? duplicateNameBase
                 : `${duplicateNameBase} (copia)`;
 
-            const createResponse = await fetch('/api/brand-kit/create-empty', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    clerk_user_id: user.id,
-                    brand_name: duplicateName,
-                    source_url: activeBrandKit.url || undefined,
-                }),
-            });
-
-            const createResult = await createResponse.json();
-            const createdId = createResult?.data?.id as string | undefined;
-            if (!createResult?.success || !isValidBrandId(createdId)) {
-                throw new Error(createResult?.error || t('toasts.duplicateCreateError', { defaultValue: 'The kit copy could not be created.' }));
+            const duplicateResult = await duplicateBrandKitWithContext(
+                activeBrandKit.id as Id<'brand_dna'>,
+                duplicateName,
+            );
+            if (!duplicateResult.success) {
+                throw new Error(t('toasts.duplicateErrorDescription', { defaultValue: 'The kit copy could not be created.' }));
             }
-
-            const duplicatedPayload: BrandDNA = {
-                ...activeBrandKit,
-                id: createdId,
-                brand_name: duplicateName,
-            };
-
-            const saveResult = await updateUserBrandKit(createdId, duplicatedPayload);
-            if (!saveResult.success) {
-                throw new Error(saveResult.error || t('toasts.duplicateSaveError', { defaultValue: 'The kit copy could not be saved.' }));
-            }
+            const createdId = duplicateResult.id;
 
             await reloadBrandKits(false);
             await setActiveBrandKit(createdId, true, false);
@@ -723,11 +705,10 @@ function BrandKitPageContent() {
                 title: t('toasts.duplicatedTitle'),
                     description: t('toasts.duplicateCreatedDescription', { name: duplicateName, defaultValue: '"{{name}}" was created.' }),
             });
-        } catch (error) {
-            console.error('Error duplicating brand kit:', error);
+        } catch {
             toast({
                 title: t('toasts.duplicateErrorTitle'),
-                description: error instanceof Error ? error.message : t('toasts.duplicateErrorDescription'),
+                description: t('toasts.duplicateErrorDescription', { defaultValue: 'The kit copy could not be created.' }),
                 variant: "destructive",
             });
         } finally {
