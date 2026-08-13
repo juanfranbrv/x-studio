@@ -1,5 +1,6 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
+import type { QueryCtx, MutationCtx } from "./_generated/server";
 import { requireAdmin, requireSameUser } from "./lib/authz";
 
 /**
@@ -9,18 +10,18 @@ import { requireAdmin, requireSameUser } from "./lib/authz";
  * por usuario para que abrirla no obligue a migrar nada.
  */
 
-type Ctx = Parameters<Parameters<typeof query>[0]["handler"]>[0];
+type PostizCtx = QueryCtx | MutationCtx;
 
-async function requirePostizUser(ctx: Ctx, clerkUserId: string) {
+async function requirePostizUser(ctx: PostizCtx, clerkUserId: string) {
   await requireAdmin(ctx);
   await requireSameUser(ctx, clerkUserId);
 }
 
-const buscar = async (ctx: Ctx, userId: string) =>
+const buscar = async (ctx: PostizCtx, userId: string) =>
   await ctx.db
     .query("postiz_accounts")
     .withIndex("by_user", (q) => q.eq("user_id", userId))
-    .unique();
+    .first();
 
 /** Apta para el cliente: dice si hay conexion, nunca la clave. */
 export const getStatus = query({

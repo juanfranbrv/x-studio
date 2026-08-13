@@ -28,6 +28,7 @@ import type * as lib_authz from "../lib/authz.js";
 import type * as lib_slug from "../lib/slug.js";
 import type * as migration from "../migration.js";
 import type * as pipeline from "../pipeline.js";
+import type * as postizAccounts from "../postizAccounts.js";
 import type * as presets from "../presets.js";
 import type * as referrals from "../referrals.js";
 import type * as replaceTemplates from "../replaceTemplates.js";
@@ -65,6 +66,7 @@ declare const fullApi: ApiFromModules<{
   "lib/slug": typeof lib_slug;
   migration: typeof migration;
   pipeline: typeof pipeline;
+  postizAccounts: typeof postizAccounts;
   presets: typeof presets;
   referrals: typeof referrals;
   replaceTemplates: typeof replaceTemplates;
