@@ -192,7 +192,10 @@ export function BrandKitProvider({ children }: { children: ReactNode }) {
 
                 console.log(`%c${tag}`, style, `attempt ${i + 1}/${retryDelaysMs.length} userId=${user.id}`)
                 result = await getAllUserBrandKits(user.id)
-                console.log(`%c${tag}`, style, `attempt ${i + 1} result:`, { success: result.success, count: Array.isArray(result.data) ? result.data.length : 'n/a', error: result.error })
+                // TRAZA TEMPORAL (2026-08-14, quitar tras cazar el fallo del
+                // aterrizaje en frio): se serializa para que el objeto no salga
+                // colapsado como "Object" en la consola.
+                console.log(`%c${tag}`, style, `attempt ${i + 1} result:`, JSON.stringify({ success: result.success, count: Array.isArray(result.data) ? result.data.length : 'n/a', error: result.error, transient: result.transient, diag: result.__diag }))
 
                 if (result.success && Array.isArray(result.data) && result.data.length > 0) {
                     break

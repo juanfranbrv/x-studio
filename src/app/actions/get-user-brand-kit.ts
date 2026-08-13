@@ -110,15 +110,25 @@ export async function getAllUserBrandKits(clerkUserId: string): Promise<{
     error?: string;
     /** True cuando el fallo es transitorio (token/identidad no lista). El llamador DEBE reintentar, nunca tratarlo como "0 kits" ni como error terminal. */
     transient?: boolean;
+    /** TRAZA TEMPORAL (2026-08-14): diagnostico del aterrizaje en frio. Quitar tras cazarlo. */
+    __diag?: Record<string, unknown>;
 }> {
+    // TRAZA TEMPORAL (2026-08-14): que se ve DENTRO del servidor en el momento
+    // del fallo. Sale en el retorno porque los console.log del servidor no
+    // llegan al navegador y `vercel logs` no los estaba capturando.
+    const diag: Record<string, unknown> = { arg: clerkUserId };
     try {
         const { userId } = await auth();
+        diag.authUserId = userId ?? null;
+        diag.match = userId === clerkUserId;
         if (!userId || userId !== clerkUserId) {
             // auth() aún no resuelta o desajuste momentáneo tras navegar: transitorio.
-            return { success: false, error: 'No autorizado', transient: !userId };
+            return { success: false, error: 'No autorizado', transient: !userId, __diag: diag };
         }
 
         const brands = await authedFetchQuery(api.brands.listSummariesByClerkId, { clerk_user_id: userId });
+        diag.brandsIsArray = Array.isArray(brands);
+        diag.brandsLen = Array.isArray(brands) ? brands.length : null;
 
         // Client-side sort by updated_at desc since we can't easily index sort in Convex yet
         const sortedBrands = (brands || []).sort((a: any, b: any) => {
@@ -139,14 +149,15 @@ export async function getAllUserBrandKits(clerkUserId: string): Promise<{
             updated_at: b.updated_at
         }));
 
-        return { success: true, data: summaryData };
+        return { success: true, data: summaryData, __diag: diag };
     } catch (err) {
+        diag.threw = err instanceof Error ? `${err.name}: ${err.message}` : String(err);
         if (isTransientAuthError(err)) {
             console.warn('[getAllUserBrandKits] transient auth (token not ready) — caller should retry');
-            return { success: false, error: 'Token no disponible todavía', transient: true };
+            return { success: false, error: 'Token no disponible todavía', transient: true, __diag: diag };
         }
         console.error('Unexpected error in getAllUserBrandKits:', err);
-        return { success: false, error: 'Error inesperado' };
+        return { success: false, error: 'Error inesperado', __diag: diag };
     }
 }
 
