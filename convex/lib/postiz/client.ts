@@ -158,12 +158,23 @@ export async function createPost(
         })),
     }
 
-    const creado = await pedir<Array<{ group?: string }>>(credenciales, '/posts', {
+    const creado = await pedir<Array<{ group?: string; postId?: string }>>(credenciales, '/posts', {
         method: 'POST',
         cuerpo: { json: cuerpo },
     })
 
-    const groupId = Array.isArray(creado) ? creado[0]?.group : undefined
-    if (!groupId) throw new PostizShapeError('Postiz respondio 200 pero no devolvio identificador de grupo.')
-    return { groupId }
+    // La forma de la respuesta cambia entre versiones de Postiz: la 2.23.0
+    // (la que corre en postiz.postlaboratory.com) devuelve
+    // [{ postId, integration }], SIN 'group'; otras si traen 'group'.
+    // Exigir 'group' hacia fallar la programacion DESPUES de haber creado el
+    // post, que es el peor momento posible. Como este identificador solo se
+    // guarda para marcar la pieza como programada y poder localizarla luego,
+    // sirve cualquiera de los dos; se prefiere 'group' cuando esta porque
+    // agrupa todos los canales de un mismo envio.
+    const primero = Array.isArray(creado) ? creado[0] : undefined
+    const referencia = primero?.group || primero?.postId
+    if (!referencia) {
+        throw new PostizShapeError('Postiz respondio 200 pero no devolvio identificador de la publicacion.')
+    }
+    return { groupId: referencia }
 }

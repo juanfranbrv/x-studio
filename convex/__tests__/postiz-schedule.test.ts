@@ -107,7 +107,9 @@ function fetchRouter(options?: { failCreate?: boolean; contentTypeImagen?: strin
     }
     if (url.includes("/posts")) {
       if (options?.failCreate) return respuesta({ msg: "boom" }, 500);
-      return respuesta([{ group: "g-123" }]);
+      // Forma REAL de Postiz 2.23.0, la version que corre en la instancia:
+      // [{ postId, integration }], sin 'group'.
+      return respuesta([{ postId: "p-123", integration: "i-ig" }]);
     }
     if (url.includes("/integrations")) {
       return respuesta([
@@ -180,7 +182,7 @@ describe("convex/postiz.ts: scheduleImage", () => {
     const authed = t.withIdentity({ subject: ADMIN_CLERK_ID });
     const resultado = await authed.action(api.postiz.scheduleImage, scheduleArgs);
 
-    expect(resultado).toEqual({ ok: true, groupId: "g-123" });
+    expect(resultado).toEqual({ ok: true, groupId: "p-123" });
 
     const llamadas = fetchMock.mock.calls.map((call) => call[0] as string);
     const posDescarga = llamadas.indexOf(REMOTE_IMAGE_URL);
@@ -205,7 +207,7 @@ describe("convex/postiz.ts: scheduleImage", () => {
     );
     expect(anotacion?.status).toBe("scheduled");
     expect(anotacion?.planned_at).toBe(scheduleArgs.date);
-    expect(anotacion?.postiz_group_id).toBe("g-123");
+    expect(anotacion?.postiz_group_id).toBe("p-123");
     expect(anotacion?.postiz_base_url).toBe(BASE_URL);
   });
 

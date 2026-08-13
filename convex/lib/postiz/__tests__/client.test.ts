@@ -210,7 +210,41 @@ describe('cliente de Postiz', () => {
         await expect(uploadFile(credenciales, imagen())).rejects.toBeInstanceOf(PostizShapeError)
     })
 
-    it('createPost lanza PostizShapeError si la respuesta no trae group', async () => {
+    // Postiz 2.23.0 responde [{ postId, integration }], sin 'group'. Exigir
+    // 'group' hacia fallar la programacion despues de crear el post.
+    it('createPost acepta postId cuando la respuesta no trae group', async () => {
+        vi.stubGlobal(
+            'fetch',
+            vi.fn().mockReturnValue(respuesta([{ postId: 'p-1', integration: 'i-ig' }])),
+        )
+
+        const resultado = await createPost(credenciales, {
+            date: '2026-08-21T09:30:00+02:00',
+            content: 'Hola',
+            media: { id: 'm1', path: 'https://cdn/x.png' },
+            targets: [{ integrationId: 'i-ig', identifier: 'instagram' }],
+        })
+
+        expect(resultado).toEqual({ groupId: 'p-1' })
+    })
+
+    it('createPost prefiere group cuando vienen los dos', async () => {
+        vi.stubGlobal(
+            'fetch',
+            vi.fn().mockReturnValue(respuesta([{ group: 'g-123', postId: 'p-1' }])),
+        )
+
+        const resultado = await createPost(credenciales, {
+            date: '2026-08-21T09:30:00+02:00',
+            content: 'Hola',
+            media: { id: 'm1', path: 'https://cdn/x.png' },
+            targets: [{ integrationId: 'i-ig', identifier: 'instagram' }],
+        })
+
+        expect(resultado).toEqual({ groupId: 'g-123' })
+    })
+
+    it('createPost lanza PostizShapeError si la respuesta no trae ningun identificador', async () => {
         vi.stubGlobal('fetch', vi.fn().mockReturnValue(respuesta([{}])))
 
         await expect(
