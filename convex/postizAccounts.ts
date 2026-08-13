@@ -1,5 +1,5 @@
 import { v } from "convex/values";
-import { mutation, query } from "./_generated/server";
+import { internalQuery, mutation, query } from "./_generated/server";
 import type { QueryCtx, MutationCtx } from "./_generated/server";
 import { requireAdmin, requireSameUser } from "./lib/authz";
 
@@ -33,8 +33,12 @@ export const getStatus = query({
   },
 });
 
-/** SOLO desde servidor. No invocar jamas desde un componente de cliente. */
-export const getCredentials = query({
+/**
+ * SOLO desde servidor. `internalQuery`: ni siquiera es alcanzable desde el
+ * navegador, solo desde otras funciones de Convex (p. ej. las actions de
+ * `convex/postiz.ts` via `ctx.runQuery(internal.postizAccounts.getCredentials, ...)`).
+ */
+export const getCredentials = internalQuery({
   args: { clerk_user_id: v.string() },
   handler: async (ctx, args) => {
     await requirePostizUser(ctx, args.clerk_user_id);

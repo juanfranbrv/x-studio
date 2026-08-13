@@ -1,5 +1,5 @@
 import { v } from "convex/values";
-import { mutation, query } from "./_generated/server";
+import { internalMutation, mutation, query } from "./_generated/server";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
 import type { Id } from "./_generated/dataModel";
 import { requireSameUser } from "./lib/authz";
@@ -390,7 +390,7 @@ export const setPlannedAt = mutation({
  * Se llama SIEMPRE en ultimo lugar, cuando Postiz ya ha confirmado la creacion:
  * asi la Biblioteca nunca dice "programada" sobre algo que no se programo.
  */
-export const markScheduled = mutation({
+export const markScheduled = internalMutation({
   args: {
     user_id: v.string(),
     asset_key: v.string(),

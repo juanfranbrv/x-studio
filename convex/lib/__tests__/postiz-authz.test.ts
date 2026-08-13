@@ -2,7 +2,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { convexTest } from "convex-test";
-import { api } from "../../_generated/api";
+import { api, internal } from "../../_generated/api";
 import schema from "../../schema";
 
 const source = fs.readFileSync(path.resolve(__dirname, '../../postizAccounts.ts'), 'utf8')
@@ -89,7 +89,7 @@ describe("Comportamiento real de las credenciales de Postiz (convex-test)", () =
       authed.query(api.postizAccounts.getStatus, { clerk_user_id: OTHER_CLERK_ID }),
     ).rejects.toThrow("Forbidden");
     await expect(
-      authed.query(api.postizAccounts.getCredentials, { clerk_user_id: OTHER_CLERK_ID }),
+      authed.query(internal.postizAccounts.getCredentials, { clerk_user_id: OTHER_CLERK_ID }),
     ).rejects.toThrow("Forbidden");
     await expect(
       authed.mutation(api.postizAccounts.save, {
