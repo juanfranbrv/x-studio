@@ -1,12 +1,16 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
+import { useUser } from '@clerk/nextjs'
 import { DashboardLayout } from '@/components/layout/DashboardLayout'
 import { useBrandKit } from '@/contexts/BrandKitContext'
 import { CampaignGuideCard } from '@/components/campaigns/CampaignGuideCard'
 import { CampaignManifestForm } from '@/components/campaigns/CampaignManifestForm'
 import { CampaignJobList, useCampaignJobs } from '@/components/campaigns/CampaignJobList'
 import { Loader2 } from '@/components/ui/spinner'
+import { IconClose } from '@/components/ui/icons'
+import { isAdminEmail } from '@/lib/auth-config'
+import { Button } from '@/components/ui/button'
 
 /**
  * Generacion por lotes: de un plan de campana a todas las imagenes.
@@ -17,8 +21,32 @@ import { Loader2 } from '@/components/ui/spinner'
  */
 export default function CampaignsPage() {
     const router = useRouter()
+    const { user, isLoaded } = useUser()
     const { activeBrandKit, brandKits, setActiveBrandKit, deleteBrandKitById } = useBrandKit()
-    const { jobs, cargando, refrescar } = useCampaignJobs()
+    const userEmail = user?.primaryEmailAddress?.emailAddress || ''
+    const isAdmin = isLoaded && isAdminEmail(userEmail)
+    const { jobs, cargando, refrescar } = useCampaignJobs(isAdmin)
+
+    if (!isLoaded) {
+        return (
+            <div className="flex min-h-screen items-center justify-center bg-background p-6">
+                <Loader2 className="size-8 animate-spin text-primary" />
+            </div>
+        )
+    }
+
+    if (!isAdmin) {
+        return (
+            <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-background p-6 text-center">
+                <IconClose className="size-16 text-destructive" />
+                <h1 className="text-2xl font-bold">Acceso denegado</h1>
+                <p className="text-muted-foreground">No tienes permisos para esta sección.</p>
+                <Button type="button" variant="outline" onClick={() => router.replace('/image')}>
+                    Volver al estudio
+                </Button>
+            </div>
+        )
+    }
 
     return (
         <DashboardLayout

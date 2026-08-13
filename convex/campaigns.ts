@@ -1,6 +1,7 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
-import { requireSameUser } from "./lib/authz";
+import type { QueryCtx, MutationCtx } from "./_generated/server";
+import { requireSameUser, requireAdmin } from "./lib/authz";
 import type { Doc } from "./_generated/dataModel";
 
 /**
@@ -11,6 +12,13 @@ import type { Doc } from "./_generated/dataModel";
  */
 
 const MAX_ITEMS_PER_JOB = 200;
+
+type CampaignCtx = QueryCtx | MutationCtx;
+
+async function requireCampaignUser(ctx: CampaignCtx, clerkUserId: string) {
+  await requireAdmin(ctx);
+  await requireSameUser(ctx, clerkUserId);
+}
 
 function summarizeJob(job: Doc<"campaign_jobs">) {
   return {
@@ -48,7 +56,7 @@ export const enqueue = mutation({
     ),
   },
   handler: async (ctx, args) => {
-    await requireSameUser(ctx, args.clerk_user_id);
+    await requireCampaignUser(ctx, args.clerk_user_id);
 
     if (args.items.length === 0) {
       throw new Error("El lote no tiene publicaciones.");
@@ -117,7 +125,7 @@ export const getJob = query({
     job_id: v.id("campaign_jobs"),
   },
   handler: async (ctx, args) => {
-    await requireSameUser(ctx, args.clerk_user_id);
+    await requireCampaignUser(ctx, args.clerk_user_id);
 
     const job = await ctx.db.get(args.job_id);
     if (!job || job.user_id !== args.clerk_user_id) return null;
@@ -149,7 +157,7 @@ export const listJobs = query({
     limit: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    await requireSameUser(ctx, args.clerk_user_id);
+    await requireCampaignUser(ctx, args.clerk_user_id);
 
     const jobs = await ctx.db
       .query("campaign_jobs")
@@ -172,7 +180,7 @@ export const getJobForExport = query({
     job_id: v.id("campaign_jobs"),
   },
   handler: async (ctx, args) => {
-    await requireSameUser(ctx, args.clerk_user_id);
+    await requireCampaignUser(ctx, args.clerk_user_id);
 
     const job = await ctx.db.get(args.job_id);
     if (!job || job.user_id !== args.clerk_user_id) return null;
@@ -207,7 +215,7 @@ export const claimPendingItems = query({
     limit: v.number(),
   },
   handler: async (ctx, args) => {
-    await requireSameUser(ctx, args.clerk_user_id);
+    await requireCampaignUser(ctx, args.clerk_user_id);
 
     const job = await ctx.db.get(args.job_id);
     if (!job || job.user_id !== args.clerk_user_id) return null;
@@ -272,7 +280,7 @@ export const requeueItem = mutation({
     error: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    await requireSameUser(ctx, args.clerk_user_id);
+    await requireCampaignUser(ctx, args.clerk_user_id);
     const item = await ctx.db.get(args.item_id);
     if (!item || item.user_id !== args.clerk_user_id) throw new Error("Publicacion no encontrada.");
 
@@ -297,7 +305,7 @@ export const retryFailedItems = mutation({
     job_id: v.id("campaign_jobs"),
   },
   handler: async (ctx, args) => {
-    await requireSameUser(ctx, args.clerk_user_id);
+    await requireCampaignUser(ctx, args.clerk_user_id);
 
     const job = await ctx.db.get(args.job_id);
     if (!job || job.user_id !== args.clerk_user_id) throw new Error("Lote no encontrado.");
@@ -329,7 +337,7 @@ export const startItem = mutation({
     item_id: v.id("campaign_job_items"),
   },
   handler: async (ctx, args) => {
-    await requireSameUser(ctx, args.clerk_user_id);
+    await requireCampaignUser(ctx, args.clerk_user_id);
     const item = await ctx.db.get(args.item_id);
     if (!item || item.user_id !== args.clerk_user_id) throw new Error("Publicacion no encontrada.");
 
@@ -358,7 +366,7 @@ export const finishItem = mutation({
     error: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    await requireSameUser(ctx, args.clerk_user_id);
+    await requireCampaignUser(ctx, args.clerk_user_id);
     const item = await ctx.db.get(args.item_id);
     if (!item || item.user_id !== args.clerk_user_id) throw new Error("Publicacion no encontrada.");
 
@@ -399,7 +407,7 @@ export const cancelJob = mutation({
     job_id: v.id("campaign_jobs"),
   },
   handler: async (ctx, args) => {
-    await requireSameUser(ctx, args.clerk_user_id);
+    await requireCampaignUser(ctx, args.clerk_user_id);
 
     const job = await ctx.db.get(args.job_id);
     if (!job || job.user_id !== args.clerk_user_id) throw new Error("Lote no encontrado.");

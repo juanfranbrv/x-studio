@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { auth } from '@clerk/nextjs/server'
 import type { Id } from '@/../convex/_generated/dataModel'
 import { api } from '@/../convex/_generated/api'
 import { authedFetchQuery } from '@/lib/convex-server'
+import { requireCampaignAdmin } from '@/lib/campaign-admin-guard'
 import { INTENT_CATALOG, SOCIAL_FORMATS } from '@/lib/creation-flow-types'
 import { listBaseLayouts, listLayoutsByIntent } from '@/lib/campaigns/catalogs'
 import { CAMPAIGN_PLATFORMS } from '@/lib/campaigns/manifest'
@@ -25,7 +25,9 @@ import { log } from '@/lib/logger'
  */
 export async function GET(request: NextRequest) {
     try {
-        const { userId } = await auth()
+        const access = await requireCampaignAdmin()
+        if (!access.ok) return access.response
+        const { userId } = access
         if (!userId) {
             return NextResponse.json(
                 { ok: false, error: { code: 'unauthorized', message: 'Sesion no valida.' } },
@@ -152,7 +154,9 @@ function buildBrandContext(brand: Record<string, unknown>, requestedSlug: string
  */
 export async function POST(request: NextRequest) {
     try {
-        const { userId } = await auth()
+        const access = await requireCampaignAdmin()
+        if (!access.ok) return access.response
+        const { userId } = access
         if (!userId) {
             return NextResponse.json(
                 { ok: false, error: { code: 'unauthorized', message: 'Sesión no válida.' } },

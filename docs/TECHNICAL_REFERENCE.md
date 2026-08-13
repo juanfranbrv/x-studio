@@ -1023,6 +1023,19 @@ Flujo cerrado:
 5. Postlaboratory recibe ese JSON en el formulario actual y sigue usando la
    tubería existente de validación, cola y generación.
 
+### Acceso restringido del módulo de campañas
+
+El módulo de campañas es de uso exclusivo de Juanfran, identificado por el
+email administrador `juanfranbrv@gmail.com`, igual que el panel de control.
+La restricción no depende de ocultar el icono:
+
+- `/campaigns` muestra acceso denegado a cualquier usuario que no sea admin.
+- Las rutas `/api/v1/campaigns/*`, `/api/v1/campaign-guide` y
+  `/api/v1/catalog` responden `403` si la sesión no pertenece al admin.
+- Todas las funciones Convex de `campaigns.ts` exigen `requireAdmin` y además
+  mantienen la comprobación de coincidencia del `clerk_user_id`.
+- No existe todavía acceso por API key para terceros.
+
 El Brand Kit es la fuente única de verdad visual. El mega prompt no duplica
 colores, tipografías ni archivos de logo: transmite el slug del kit y las
 opciones de uso. Postlaboratory resuelve los activos reales al ejecutar cada

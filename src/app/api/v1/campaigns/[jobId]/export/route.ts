@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { auth } from '@clerk/nextjs/server'
 import JSZip from 'jszip'
 import { api } from '@/../convex/_generated/api'
 import type { Id } from '@/../convex/_generated/dataModel'
@@ -13,6 +12,7 @@ import {
     type ExportItem,
 } from '@/lib/campaigns/export'
 import { log } from '@/lib/logger'
+import { requireCampaignAdmin } from '@/lib/campaign-admin-guard'
 
 /**
  * GET /api/v1/campaigns/{jobId}/export — descarga el lote como ZIP.
@@ -33,7 +33,9 @@ export async function GET(_request: NextRequest, context: { params: Promise<{ jo
     const startedAt = Date.now()
 
     try {
-        const { userId } = await auth()
+        const access = await requireCampaignAdmin()
+        if (!access.ok) return access.response
+        const { userId } = access
         if (!userId) {
             return NextResponse.json(
                 { ok: false, error: { code: 'unauthorized', message: 'Sesion no valida.' } },

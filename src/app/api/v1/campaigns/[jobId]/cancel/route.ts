@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { auth } from '@clerk/nextjs/server'
 import { api } from '@/../convex/_generated/api'
 import type { Id } from '@/../convex/_generated/dataModel'
 import { authedFetchMutation } from '@/lib/convex-server'
 import { log } from '@/lib/logger'
+import { requireCampaignAdmin } from '@/lib/campaign-admin-guard'
 
 /**
  * POST /api/v1/campaigns/{jobId}/cancel — cancela las publicaciones pendientes.
@@ -13,7 +13,9 @@ import { log } from '@/lib/logger'
  */
 export async function POST(_request: NextRequest, context: { params: Promise<{ jobId: string }> }) {
     try {
-        const { userId } = await auth()
+        const access = await requireCampaignAdmin()
+        if (!access.ok) return access.response
+        const { userId } = access
         if (!userId) {
             return NextResponse.json(
                 { ok: false, error: { code: 'unauthorized', message: 'Sesion no valida.' } },

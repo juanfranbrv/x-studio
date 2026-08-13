@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { auth } from '@clerk/nextjs/server'
 import { api } from '@/../convex/_generated/api'
 import { authedFetchQuery, authedFetchMutation } from '@/lib/convex-server'
+import { requireCampaignAdmin } from '@/lib/campaign-admin-guard'
 import { validateManifest, collectReferencedSlugs, resolvePost, type ManifestIssue } from '@/lib/campaigns/manifest'
 import { findSocialFormat, isKnownLayout, listSocialFormatIds } from '@/lib/campaigns/catalogs'
 import { log } from '@/lib/logger'
@@ -31,10 +31,9 @@ export async function POST(request: NextRequest) {
     try {
         // Fase 1: la identidad sale de la sesion de Clerk. Cuando existan API
         // keys, solo cambia esta resolucion, no el resto del endpoint.
-        const { userId } = await auth()
-        if (!userId) {
-            return fail(401, { code: 'unauthorized', message: 'Sesion no valida.' })
-        }
+        const access = await requireCampaignAdmin()
+        if (!access.ok) return access.response
+        const { userId } = access
 
         let body: unknown
         try {
@@ -163,10 +162,9 @@ export async function POST(request: NextRequest) {
 /** GET /api/v1/campaigns — lotes del usuario, del mas reciente al mas antiguo. */
 export async function GET() {
     try {
-        const { userId } = await auth()
-        if (!userId) {
-            return fail(401, { code: 'unauthorized', message: 'Sesion no valida.' })
-        }
+        const access = await requireCampaignAdmin()
+        if (!access.ok) return access.response
+        const { userId } = access
 
         const jobs = await authedFetchQuery(api.campaigns.listJobs, { clerk_user_id: userId })
         return NextResponse.json({ ok: true, jobs })

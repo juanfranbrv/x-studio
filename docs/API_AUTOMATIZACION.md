@@ -21,13 +21,14 @@ se abren puertas:
 
 | Puerta | Quién la usa | Cuándo |
 |---|---|---|
-| **UI de lote** en la plataforma | Juanfran y cualquier usuario | Fase 1 |
+| **UI de lote** en la plataforma | Juanfran, solo admin | Fase 1 |
 | **API con key** | Clientes externos, scripts, n8n, Postiz | Fase 2 |
 | **MCP / CLI** | Agentes (Claude), automatizaciones propias | Fase 3, casi gratis sobre la API |
 
 La regla que evita duplicar esfuerzo: **la UI de lote consume la misma tubería que
-consumiría un tercero.** Si la propia interfaz es el primer cliente, el contrato queda
-validado antes de que exista un solo cliente externo.
+consumiría un tercero.** En la implementación actual, esa tubería está cerrada al
+administrador; la apertura a clientes externos requiere una decisión posterior y una
+API key independiente.
 
 **Los atajos en la tubería se pagan al doble. Los atajos en la fachada son gratis.**
 Por eso la Fase 1 construye la tubería entera y **nada** de fachada (ni portal de keys,

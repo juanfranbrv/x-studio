@@ -215,7 +215,7 @@ export function CampaignJobList({ jobs, onRefresh }: { jobs: CampaignJob[]; onRe
 }
 
 /** Recarga la lista de lotes mientras haya alguno en marcha. */
-export function useCampaignJobs() {
+export function useCampaignJobs(enabled = true) {
     const [jobs, setJobs] = useState<CampaignJob[]>([])
     const [cargando, setCargando] = useState(true)
 
@@ -229,8 +229,12 @@ export function useCampaignJobs() {
     }, [])
 
     useEffect(() => {
+        if (!enabled) {
+            setCargando(false)
+            return
+        }
         refrescar()
-    }, [refrescar])
+    }, [enabled, refrescar])
 
     return { jobs, cargando, refrescar }
 }

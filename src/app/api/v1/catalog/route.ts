@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
-import { auth } from '@clerk/nextjs/server'
 import { api } from '@/../convex/_generated/api'
 import { authedFetchQuery } from '@/lib/convex-server'
+import { requireCampaignAdmin } from '@/lib/campaign-admin-guard'
 import { SOCIAL_FORMATS } from '@/lib/creation-flow-types'
 import { listBaseLayouts, listLayoutsByIntent, listIntents } from '@/lib/campaigns/catalogs'
 import { CAMPAIGN_PLATFORMS } from '@/lib/campaigns/manifest'
@@ -16,7 +16,9 @@ import { log } from '@/lib/logger'
  */
 export async function GET() {
     try {
-        const { userId } = await auth()
+        const access = await requireCampaignAdmin()
+        if (!access.ok) return access.response
+        const { userId } = access
         if (!userId) {
             return NextResponse.json(
                 { ok: false, error: { code: 'unauthorized', message: 'Sesion no valida.' } },

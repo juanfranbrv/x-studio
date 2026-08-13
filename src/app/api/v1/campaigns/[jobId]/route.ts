@@ -1,14 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { auth } from '@clerk/nextjs/server'
 import { api } from '@/../convex/_generated/api'
 import type { Id } from '@/../convex/_generated/dataModel'
 import { authedFetchQuery } from '@/lib/convex-server'
+import { requireCampaignAdmin } from '@/lib/campaign-admin-guard'
 import { log } from '@/lib/logger'
 
 /** GET /api/v1/campaigns/{jobId} — estado del lote y de cada publicacion. */
 export async function GET(_request: NextRequest, context: { params: Promise<{ jobId: string }> }) {
     try {
-        const { userId } = await auth()
+        const access = await requireCampaignAdmin()
+        if (!access.ok) return access.response
+        const { userId } = access
         if (!userId) {
             return NextResponse.json(
                 { ok: false, error: { code: 'unauthorized', message: 'Sesion no valida.' } },

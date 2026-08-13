@@ -22,6 +22,7 @@ import {
 } from '@/components/ui/icons'
 import { AppLogo } from '@/components/ui/AppLogo'
 import { cn } from '@/lib/utils'
+import { isAdminEmail } from '@/lib/auth-config'
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -48,13 +49,14 @@ export function Sidebar({ className, showLogo = true, offsetTopClassName }: Side
     const { signOut } = useClerk()
     const [isLoggingOut, setIsLoggingOut] = useState(false)
     const replaceModuleFlags = useQuery(api.settings.getReplaceModuleFlags, {})
+    const isAdmin = user?.emailAddresses?.some((email) => isAdminEmail(email.emailAddress)) ?? false
 
     const navItems = [
         { icon: IconBrandKit, label: t('nav.brandKit'), href: '/brand-kit' },
         { icon: IconImage, label: t('nav.image'), href: '/image' },
         { icon: IconCarousel, label: t('nav.carousel'), href: '/carousel' },
         { icon: IconFolderKanban, label: t('nav.library'), href: '/library' },
-        { icon: IconSparkles, label: t('nav.campaigns'), href: '/campaigns' },
+        ...(isAdmin ? [{ icon: IconSparkles, label: t('nav.campaigns'), href: '/campaigns' }] : []),
         ...(replaceModuleFlags?.showReplaceModule ? [{ icon: IconLayers, label: t('nav.replace'), href: '/replace' }] : []),
         { icon: IconFileText, label: t('nav.academy'), href: '/academy' },
     ]
