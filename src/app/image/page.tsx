@@ -52,6 +52,9 @@ import { useTranslation } from 'react-i18next'
 import { buildAutomaticSessionTitle, getSessionDisplayTitle, normalizeCustomSessionTitle } from '@/lib/session-titles'
 import { getLastVisitedModuleAction } from '@/app/actions/get-last-visited-module'
 import { normalizeStudioDebugOverlaysEnabled } from '@/lib/studio-debug-visibility'
+import { useBrandContextDocuments } from '@/hooks/useBrandContextDocuments'
+import { signaturesMatch } from '@/lib/context-analysis-signature'
+import type { ContextAnalysisSignature } from '@/lib/context-documents'
 import { shouldApplyLastVisitedImageBrand } from './lastVisitedScope'
 import {
     INCOMING_PROMPT_FLAG_STORAGE_KEY,
@@ -95,6 +98,9 @@ interface ImageWorkspaceSnapshot {
     sessionGenerations: Generation[]
     creationFlowState: Record<string, unknown>
     rootPrompt?: string
+    usedBrandId?: string | null
+    usedContextDocumentId?: string | null
+    contextChangedSinceAnalysis?: boolean
 }
 
 type SessionDecisionButton = {
@@ -142,6 +148,11 @@ export default function ImagePage() {
     const router = useRouter()
     const { user } = useUser()
     const { activeBrandKit, brandKits, loading, setActiveBrandKit, updateActiveBrandKit, deleteBrandKitById } = useBrandKit()
+    const contextDocuments = useBrandContextDocuments(activeBrandKit?.id)
+    const [usedContextSignature, setUsedContextSignature] = useState<ContextAnalysisSignature | null>(null)
+    const [contextChangedSinceAnalysis, setContextChangedSinceAnalysis] = useState(false)
+    const currentContextSignatureRef = useRef<ContextAnalysisSignature>({ brandId: '', contextDocumentId: null })
+    const usedContextSignatureRef = useRef<ContextAnalysisSignature | null>(null)
     const userRecord = useQuery(api.users.getUser, user?.id ? { clerk_id: user.id } : 'skip')
     const { panelPosition } = useUI()
     const [isGenerating, setIsGenerating] = useState(false)
@@ -149,6 +160,23 @@ export default function ImagePage() {
     const [selectedContext, setSelectedContext] = useState<ContextElement[]>([])
     const [logoInclusion, setLogoInclusion] = useState(true)
     const [compositionMode, setCompositionMode] = useState<'basic' | 'advanced'>('basic')
+
+    useEffect(() => {
+        const current = {
+            brandId: activeBrandKit?.id || '',
+            contextDocumentId: contextDocuments.activeDocument?.id ?? null,
+        }
+        currentContextSignatureRef.current = current
+        if (usedContextSignatureRef.current && !signaturesMatch(usedContextSignatureRef.current, current)) {
+            setContextChangedSinceAnalysis(true)
+        }
+    }, [activeBrandKit?.id, contextDocuments.activeDocument?.id])
+
+    const handleContextDocumentChanged = useCallback((documentId: string | null) => {
+        const current = { brandId: activeBrandKit?.id || '', contextDocumentId: documentId }
+        currentContextSignatureRef.current = current
+        if (usedContextSignatureRef.current) setContextChangedSinceAnalysis(true)
+    }, [activeBrandKit?.id])
 
     const incomingPromptRef = useRef<string>('')
     const initialIncomingTransferRef = useRef<ReturnType<typeof initializeIncomingPromptTransfer> | null>(null)
@@ -524,6 +552,9 @@ export default function ImagePage() {
             sessionGenerations: compactGenerations,
             creationFlowState: creationFlow.getStateSnapshot(),
             rootPrompt: (rootPromptOverride ?? sessionRootPrompt ?? undefined)?.slice(0, 1800),
+            usedBrandId: usedContextSignature?.brandId ?? null,
+            usedContextDocumentId: usedContextSignature?.contextDocumentId ?? null,
+            contextChangedSinceAnalysis,
         }
     }, [
         promptValue,
@@ -533,7 +564,9 @@ export default function ImagePage() {
         selectedContext,
         sessionGenerations,
         creationFlow,
-        sessionRootPrompt
+        sessionRootPrompt,
+        usedContextSignature,
+        contextChangedSinceAnalysis,
     ])
 
     const buildWorkspaceChangeSignature = useCallback((snapshot: ImageWorkspaceSnapshot) => {
@@ -668,6 +701,25 @@ export default function ImagePage() {
                     : []
             )
             setSessionRootPrompt(normalizePromptForSession(snapshot.rootPrompt || snapshot.promptValue))
+            const restoredSignature = snapshot.usedBrandId
+                ? {
+                    brandId: snapshot.usedBrandId,
+                    contextDocumentId: snapshot.usedContextDocumentId ?? null,
+                }
+                : null
+            const hasLegacyAnalysis = Boolean(
+                Array.isArray(snapshot.sessionGenerations) && snapshot.sessionGenerations.length > 0,
+            ) || Boolean(
+                snapshot.creationFlowState &&
+                typeof snapshot.creationFlowState === 'object' &&
+                (snapshot.creationFlowState as { selectedIntent?: unknown }).selectedIntent,
+            )
+            usedContextSignatureRef.current = restoredSignature
+            setUsedContextSignature(restoredSignature)
+            setContextChangedSinceAnalysis(
+                snapshot.contextChangedSinceAnalysis === true ||
+                (!restoredSignature && hasLegacyAnalysis && currentContextSignatureRef.current.contextDocumentId !== null),
+            )
         } finally {
             window.setTimeout(() => setIsHydratingSession(false), 0)
         }
@@ -1587,6 +1639,12 @@ export default function ImagePage() {
         setHighlightedFields(new Set())
 
         try {
+            if (!activeBrandKit?.id) {
+                throw new Error('Brand Kit required')
+            }
+            if (contextDocuments.isLoading) {
+                throw new Error('Context documents are still loading')
+            }
             const normalizedPrompt = normalizePromptForSession(promptValue)
             if (normalizedPrompt && sessionRootPrompt && normalizedPrompt !== sessionRootPrompt) {
                 const decision = await openSessionDecisionModal({
@@ -1646,8 +1704,10 @@ export default function ImagePage() {
                     .filter(Boolean)
             ].filter(Boolean).join('\n')
 
+            const requestedSignature = { ...currentContextSignatureRef.current }
             const result = await parseLazyIntentAction({
                 userText: promptValue,
+                brandId: String(activeBrandKit.id),
                 brandDNA: activeBrandKit,
                 brandWebsite: activeBrandKit?.url,
                 intelligenceModel: modelToUse,
@@ -1659,6 +1719,24 @@ export default function ImagePage() {
             })
 
             if (cancelAnalyzeRef.current) {
+                return null
+            }
+
+            const returnedSignature = result.usedBrandId
+                ? {
+                    brandId: result.usedBrandId,
+                    contextDocumentId: result.usedContextDocumentId ?? null,
+                }
+                : null
+            if (
+                !signaturesMatch(requestedSignature, returnedSignature) ||
+                !signaturesMatch(returnedSignature, currentContextSignatureRef.current)
+            ) {
+                setContextChangedSinceAnalysis(true)
+                toast({
+                    title: t('contextDocuments.reanalysisRequiredTitle'),
+                    description: t('contextDocuments.reanalysisRequiredDescription'),
+                })
                 return null
             }
 
@@ -1779,6 +1857,9 @@ export default function ImagePage() {
 
             // Expand all cards after a successful analysis
             creationFlow.setStep(6)
+            usedContextSignatureRef.current = returnedSignature
+            setUsedContextSignature(returnedSignature)
+            setContextChangedSinceAnalysis(false)
             return result
 
         } catch (error) {
@@ -2116,7 +2197,8 @@ export default function ImagePage() {
         Boolean(state.selectedFormat)
     const canGenerate = Boolean(
         (creationFlow.canGenerate || hasReachedBrandingStep || hasAnalyzedPromptDefaults) &&
-        !state.isAnalyzing
+        !state.isAnalyzing &&
+        !contextChangedSinceAnalysis
     )
     const resolveImageModelForDebug = (explicitModel?: string) =>
         explicitModel || state.selectedImageModel || aiConfig?.imageModel || undefined
@@ -2542,6 +2624,7 @@ export default function ImagePage() {
             canGenerate={Boolean(canGenerate)}
             onUnifiedAction={handleUnifiedAction}
             onAnalyze={() => handleSmartAnalyze()}
+            onContextDocumentChanged={handleContextDocumentChanged}
             onSendToCarousel={promptValue.trim() ? () => {
                 sessionStorage.setItem('x-studio:incoming-prompt', promptValue.trim())
                 router.push('/carousel')

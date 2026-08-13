@@ -1147,3 +1147,40 @@ contradicción no vuelva a colarse.
 compilas el prompt tú (pila de prioridades + `promptAlreadyBuilt: true`, como el
 panel y las campañas) o si te apoyas en la plantilla base (como el carrusel). Lo
 que no puede pasar es mezclar reglas de jerarquía de las dos fuentes.
+
+## Documentos de contexto por Brand Kit (2026-08-13)
+
+Cada Brand Kit puede almacenar hasta 20 filas en `brand_context_documents`. Cada
+documento admite un título de 100 puntos de código Unicode, un nombre de archivo
+de 255 y un contenido de 12.000. La importación acepta únicamente `.md` y `.txt`
+UTF-8 de hasta 64 KiB. Los documentos nuevos se crean inactivos y, mediante los
+índices `by_brand` y `by_brand_active`, se garantiza que exista como máximo un
+documento activo por kit.
+
+Todas las consultas y mutaciones reciben la identidad Clerk, verifican la sesión
+en Convex y comprueban la propiedad del Brand Kit. El borrado del kit elimina sus
+documentos dentro de la misma mutación. La duplicación de un Brand Kit y sus
+documentos también es atómica; no deja copias parciales si falla.
+
+El documento activo coexiste con `business_overview`, pero se serializa en un
+bloque separado de datos no confiables. Se inyecta solo en los prompts de análisis
+de Imagen y Carrusel, antes de la solicitud y de las reglas de salida. Nunca entra
+como texto bruto en los prompts visuales finales. El bloque escapa delimitadores
+HTML y declara reglas explícitas de antiinyección, uso factual y precedencia de la
+solicitud del usuario.
+
+Cada resultado analítico devuelve la firma indivisible
+`{ brandId, contextDocumentId }`. Imagen y Carrusel comparan la firma solicitada,
+la resuelta por servidor y la activa al terminar. Si difieren, descartan la
+respuesta y mantienen un bloqueo de reanálisis; volver de A a B y otra vez a A no
+limpia ese bloqueo. Las sesiones guardan `usedBrandId`,
+`usedContextDocumentId` y `contextChangedSinceAnalysis`.
+
+La interfaz de gestión vive bajo «Visión y contexto de marca». Los paneles de
+Imagen y Carrusel comparten un control sutil en la cabecera «¿Qué quieres crear?»
+para ver y cambiar el documento activo. «Analizar documento» se muestra
+desactivado como capacidad futura.
+
+El esquema no debe publicarse sin autorización expresa: el único deployment
+Convex operativo es `prestigious-pigeon-784` y sirve directamente a
+`postlaboratory.com`.

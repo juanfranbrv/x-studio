@@ -121,6 +121,9 @@ export type CarouselWorkspaceSnapshot = {
     analysisHook?: string
     analysisStructure?: { id?: string; name?: string }
     analysisIntent?: string
+    usedBrandId?: string | null
+    usedContextDocumentId?: string | null
+    contextChangedSinceAnalysis?: boolean
     originalAnalysis?: {
         slides: CarouselSlide[]
         scriptSlides: SlideContent[]

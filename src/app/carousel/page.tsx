@@ -63,6 +63,9 @@ import {
     localizeCarouselCompositionName,
 } from '@/lib/carousel-localization'
 import { normalizeStudioDebugOverlaysEnabled } from '@/lib/studio-debug-visibility'
+import { useBrandContextDocuments } from '@/hooks/useBrandContextDocuments'
+import { signaturesMatch } from '@/lib/context-analysis-signature'
+import type { ContextAnalysisSignature } from '@/lib/context-documents'
 
 const createAuditFlowId = (prefix: string) =>
     `flow_${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
@@ -124,6 +127,10 @@ export default function CarouselPage() {
         email => email.emailAddress === 'juanfranbrv@gmail.com'
     ) ?? false
     const { activeBrandKit, brandKits, loading: brandKitsLoading, setActiveBrandKit, deleteBrandKitById } = useBrandKit()
+    const contextDocuments = useBrandContextDocuments(activeBrandKit?.id)
+    const [usedContextSignature, setUsedContextSignature] = useState<ContextAnalysisSignature | null>(null)
+    const currentContextSignatureRef = useRef<ContextAnalysisSignature>({ brandId: '', contextDocumentId: null })
+    const usedContextSignatureRef = useRef<ContextAnalysisSignature | null>(null)
     const { toast } = useToast()
     const { panelPosition } = useUI()
     const aiConfig = useQuery(api.settings.getAIConfig)
@@ -283,6 +290,26 @@ export default function CarouselPage() {
     const [isCancelingAnalyze, setIsCancelingAnalyze] = useState(false)
     const [isCancelingGenerate, setIsCancelingGenerate] = useState(false)
     const [requiresReanalysis, setRequiresReanalysis] = useState(false)
+    const [contextChangedSinceAnalysis, setContextChangedSinceAnalysis] = useState(false)
+
+    useEffect(() => {
+        const current = {
+            brandId: activeBrandKit?.id || '',
+            contextDocumentId: contextDocuments.activeDocument?.id ?? null,
+        }
+        currentContextSignatureRef.current = current
+        if (usedContextSignatureRef.current && !signaturesMatch(usedContextSignatureRef.current, current)) {
+            setContextChangedSinceAnalysis(true)
+        }
+    }, [activeBrandKit?.id, contextDocuments.activeDocument?.id])
+
+    const handleContextDocumentChanged = useCallback((documentId: string | null) => {
+        currentContextSignatureRef.current = {
+            brandId: activeBrandKit?.id || '',
+            contextDocumentId: documentId,
+        }
+        if (usedContextSignatureRef.current) setContextChangedSinceAnalysis(true)
+    }, [activeBrandKit?.id])
     const [errorModal, setErrorModal] = useState<{
         open: boolean
         title: string
@@ -546,10 +573,15 @@ export default function CarouselPage() {
         setOriginalAnalysis(null)
 
         try {
+            if (contextDocuments.isLoading) {
+                throw new Error('Context documents are still loading')
+            }
             const effectiveAuditFlowId = auditFlowId || currentCreationFlowIdRef.current || createAuditFlowId('carousel_create')
             currentCreationFlowIdRef.current = effectiveAuditFlowId
+            const requestedSignature = { ...currentContextSignatureRef.current }
             const result = await analyzeCarouselAction({
                 prompt: settings.prompt,
+                brandId: String(activeBrandKit.id),
                 slideCount: settings.slideCount,
                 brandDNA: activeBrandKit,
                 intelligenceModel: aiConfig.intelligenceModel,
@@ -565,6 +597,20 @@ export default function CarouselPage() {
 
             if (!result.success) {
                 throw new Error(result.error || t('errors.unknown'))
+            }
+
+            const returnedSignature = result.usedBrandId
+                ? {
+                    brandId: result.usedBrandId,
+                    contextDocumentId: result.usedContextDocumentId ?? null,
+                }
+                : null
+            if (
+                !signaturesMatch(requestedSignature, returnedSignature) ||
+                !signaturesMatch(returnedSignature, currentContextSignatureRef.current)
+            ) {
+                setContextChangedSinceAnalysis(true)
+                throw new Error(t('contextDocuments.reanalysisRequiredDescription'))
             }
 
             const requestedCount = Math.max(1, Math.min(15, settings.slideCount || 5))
@@ -609,6 +655,9 @@ export default function CarouselPage() {
             try {
                 const parsedIntent = await parseLazyIntentAction({
                     userText: settings.prompt,
+                    brandId: String(activeBrandKit.id),
+                    expectedBrandId: result.usedBrandId,
+                    expectedContextDocumentId: result.usedContextDocumentId,
                     brandDNA: activeBrandKit,
                     brandWebsite: activeBrandKit?.url,
                     intelligenceModel: aiConfig.intelligenceModel,
@@ -621,7 +670,13 @@ export default function CarouselPage() {
                     finalImagePrompts = parsedIntent.imagePromptSuggestions.slice(0, 4)
                 }
             } catch (error) {
-            log.warn('CAROUSEL', 'Lazy intent fallback to local suggestions', error)
+                if (!signaturesMatch(returnedSignature, currentContextSignatureRef.current)) {
+                    setContextChangedSinceAnalysis(true)
+                    throw new Error(t('contextDocuments.reanalysisRequiredDescription'))
+                }
+                log.warn('CAROUSEL', 'Lazy intent fallback to local suggestions', {
+                    reason: error instanceof Error ? error.name : 'unknown',
+                })
             }
             setImagePromptSuggestions(finalImagePrompts)
             setSuggestions(nextSuggestions)
@@ -644,6 +699,10 @@ export default function CarouselPage() {
                 })
             }
 
+            usedContextSignatureRef.current = returnedSignature
+            setUsedContextSignature(returnedSignature)
+            setContextChangedSinceAnalysis(false)
+
             return result.slides
         } catch (error) {
             if (cancelAnalyzeRef.current) {
@@ -663,7 +722,7 @@ export default function CarouselPage() {
                 setIsCancelingAnalyze(false)
             }
         }
-    }, [activeBrandKit, aiConfig?.intelligenceModel, buildAiImageSuggestions, buildPreviewTextContext, isCaptionLocked, toast])
+    }, [activeBrandKit, aiConfig?.intelligenceModel, buildAiImageSuggestions, buildPreviewTextContext, contextDocuments.isLoading, isCaptionLocked, t, toast])
 
     const handleCancelAnalyze = useCallback(() => {
         cancelAnalyzeRef.current = true
@@ -1000,6 +1059,7 @@ export default function CarouselPage() {
             const captionAuditFlowId = createAuditFlowId('carousel_caption')
             const result = await regenerateCarouselCaptionAction({
                 prompt: carouselSettings.prompt,
+                brandId: String(activeBrandKit.id),
                 slideCount: carouselSettings.slideCount,
                 brandDNA: activeBrandKit,
                 intelligenceModel: aiConfig.intelligenceModel,
@@ -1801,6 +1861,18 @@ export default function CarouselPage() {
             generatedCount={generatedCount}
             totalSlides={slides.length || 5}
             brandKit={activeBrandKit}
+            onContextDocumentChanged={handleContextDocumentChanged}
+            usedContextSignature={usedContextSignature}
+            currentContextSignature={{
+                brandId: activeBrandKit?.id || '',
+                contextDocumentId: contextDocuments.activeDocument?.id ?? null,
+            }}
+            contextChangedSinceAnalysis={contextChangedSinceAnalysis}
+            onRestoreContextAnalysisState={(signature, changed) => {
+                usedContextSignatureRef.current = signature
+                setUsedContextSignature(signature)
+                setContextChangedSinceAnalysis(changed)
+            }}
             suggestions={suggestions}
             onApplySuggestion={applySuggestion}
             onApplySlideVariant={applySlideVariant}
@@ -1848,7 +1920,7 @@ export default function CarouselPage() {
             onCancelGenerate={handleCancelGenerate}
             isGenerating={isGenerating}
             isCancelingGenerate={isCancelingGenerate}
-            canGenerate={Boolean(carouselSettings) && !isAnalyzing && !requiresReanalysis}
+            canGenerate={Boolean(carouselSettings) && !isAnalyzing && !requiresReanalysis && !contextChangedSinceAnalysis}
             hasGeneratedImage={slides.some(slide => Boolean(slide.imageUrl))}
             generatingLabel={t('carousel:ui.generating', { defaultValue: 'Generating...' })}
             generateLabel={t('carousel:ui.generateCarousel', { defaultValue: 'Generate carousel' })}
@@ -1890,7 +1962,7 @@ export default function CarouselPage() {
                     <div
                         onClick={() => {
                             const latestSettings = latestCarouselSettingsResolverRef.current?.() ?? carouselSettings
-                            if (!latestSettings || isGenerating || isAnalyzing || requiresReanalysis) return
+                            if (!latestSettings || isGenerating || isAnalyzing || requiresReanalysis || contextChangedSinceAnalysis) return
                             setMobileControlsOpen(false)
                             void handleGenerate(latestSettings)
                         }}

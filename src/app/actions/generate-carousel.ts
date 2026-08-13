@@ -16,7 +16,12 @@ import { authedFetchQuery, authedFetchMutation } from '@/lib/convex-server'
 import { auth, currentUser } from '@clerk/nextjs/server'
 import { log } from '@/lib/logger'
 import { api } from '../../../convex/_generated/api'
+import type { Id } from '../../../convex/_generated/dataModel'
 import type { ReferenceImageRole } from '@/lib/creation-flow-types'
+import {
+    buildContextDocumentPromptBlock,
+    type AnalyticalContextDocument,
+} from '@/lib/prompts/context-document'
 import { dedupeMeaningfulLines, normalizeEditorialLine, extractPromptDetailBlocks, extractBalancedJsonObject, createEconomicFlowId, shortFlowId } from '@/lib/carousel/text-utils'
 import {
     shouldApplyPrimaryLogoToSlide,
@@ -357,6 +362,7 @@ export interface AnalyzeCarouselInput {
     aiImageDescription?: string
     language?: string
     auditFlowId?: string
+    brandId: string
 }
 
 export interface AnalyzeCarouselResult {
@@ -369,6 +375,8 @@ export interface AnalyzeCarouselResult {
     caption?: string
     suggestions?: CarouselSuggestion[]
     error?: string
+    usedBrandId?: string
+    usedContextDocumentId?: string | null
 }
 
 export interface GenerateCarouselResult {
@@ -497,6 +505,7 @@ async function decomposeIntoSlides(
         visualDescription?: string
         language?: string
         audit?: EconomicAuditContext
+        contextDocument?: AnalyticalContextDocument | null
     }
 ): Promise<{
     slides: SlideContent[]
@@ -615,8 +624,14 @@ async function decomposeIntoSlides(
             language: detectedLanguage,
             factsToPreserve: promptDetails,
             writingMode,
-            brandVoice: brandVoiceGuidance
+            brandVoice: brandVoiceGuidance,
+            contextDocument: options?.contextDocument,
         })
+    } else {
+        const contextDocumentBlock = buildContextDocumentPromptBlock(options?.contextDocument)
+        if (contextDocumentBlock) {
+            decompositionPrompt = `${contextDocumentBlock}\n\n${decompositionPrompt}`
+        }
     }
 
     const brandWrapper = { name: brand.brand_name, brand_dna: brand }
@@ -1411,7 +1426,7 @@ const normalizeParsed = (parsed: any) => {
     } catch (error) {
         log.error('CAROUSEL', 'Análisis del carrusel fallido', {
             flow: shortFlowId(auditFlowTag),
-            motivo: error instanceof Error ? error.message : String(error),
+            reason: error instanceof Error ? error.name : 'unknown',
         })
         throw error
     }
@@ -2018,6 +2033,14 @@ export async function analyzeCarouselAction(
     } = input
 
     try {
+        const { userId } = await auth()
+        if (!userId) throw new Error('Unauthorized')
+        const activeContextDocument = await authedFetchQuery(api.contextDocuments.getActiveForBrand, {
+            clerk_user_id: userId,
+            brand_id: input.brandId as Id<'brand_dna'>,
+        })
+        const usedContextDocumentId = activeContextDocument ? String(activeContextDocument._id) : null
+
         const catalog = await loadCarouselCatalog()
         const auditActor = await resolveEconomicAuditActor()
         const auditContext: EconomicAuditContext = {
@@ -2046,8 +2069,22 @@ export async function analyzeCarouselAction(
                 visualDescription: input.aiImageDescription,
                 language: input.language,
                 audit: auditContext,
+                contextDocument: activeContextDocument
+                    ? {
+                        id: String(activeContextDocument._id),
+                        title: activeContextDocument.title,
+                        content: activeContextDocument.content,
+                    }
+                    : null,
             }
         )
+        const finalActiveContextDocument = await authedFetchQuery(api.contextDocuments.getActiveForBrand, {
+            clerk_user_id: userId,
+            brand_id: input.brandId as Id<'brand_dna'>,
+        })
+        if ((finalActiveContextDocument ? String(finalActiveContextDocument._id) : null) !== usedContextDocumentId) {
+            throw new Error('context_analysis_signature_mismatch')
+        }
         return {
             success: true,
             slides: decomposition.slides,
@@ -2056,16 +2093,18 @@ export async function analyzeCarouselAction(
             optimalSlideCount: decomposition.optimalSlideCount,
             detectedIntent: decomposition.detectedIntent,
             caption: decomposition.caption,
-            suggestions: decomposition.suggestions || []
+            suggestions: decomposition.suggestions || [],
+            usedBrandId: input.brandId,
+            usedContextDocumentId,
         }
     } catch (error) {
         log.error('CAROUSEL', 'No se pudo completar el análisis del carrusel', {
-            motivo: error instanceof Error ? error.message : String(error),
+            reason: error instanceof Error ? error.name : 'unknown',
         })
         return {
             success: false,
             slides: [],
-            error: error instanceof Error ? error.message : 'Error'
+            error: 'No se pudo analizar el carrusel.'
         }
     }
 }
@@ -2086,6 +2125,12 @@ export async function regenerateCarouselCaptionAction(
     } = input
 
     try {
+        const { userId } = await auth()
+        if (!userId) throw new Error('Unauthorized')
+        const activeContextDocument = await authedFetchQuery(api.contextDocuments.getActiveForBrand, {
+            clerk_user_id: userId,
+            brand_id: input.brandId as Id<'brand_dna'>,
+        })
         const catalog = await loadCarouselCatalog()
         const auditActor = await resolveEconomicAuditActor()
         const auditContext: EconomicAuditContext = {
@@ -2106,6 +2151,13 @@ export async function regenerateCarouselCaptionAction(
                 visualDescription: input.aiImageDescription,
                 language: input.language,
                 audit: auditContext,
+                contextDocument: activeContextDocument
+                    ? {
+                        id: String(activeContextDocument._id),
+                        title: activeContextDocument.title,
+                        content: activeContextDocument.content,
+                    }
+                    : null,
             }
         )
         return { success: true, caption: decomposition.caption }

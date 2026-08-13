@@ -290,6 +290,17 @@ export default defineSchema({
     .index("by_clerk_id", ["clerk_user_id"])
     .index("by_clerk_slug", ["clerk_user_id", "slug"]),
 
+  brand_context_documents: defineTable({
+    brand_id: v.id("brand_dna"),
+    title: v.string(),
+    content: v.string(),
+    source_filename: v.optional(v.string()),
+    character_count: v.number(),
+    is_active: v.boolean(),
+    created_at: v.string(),
+  }).index("by_brand", ["brand_id"])
+    .index("by_brand_active", ["brand_id", "is_active"]),
+
   generations: defineTable({
     brand_id: v.id("brand_dna"),
     prompt_snapshot: v.any(), // JSON

@@ -18,6 +18,10 @@
     "regenerateCaption": "No se pudo regenerar el caption.",
     "adjustToSlides": "Ajustar a {{count}} diapositivas"
   },
+  "contextDocuments": {
+    "reanalysisRequiredTitle": "El contexto ha cambiado",
+    "reanalysisRequiredDescription": "Vuelve a analizar el carrusel antes de generar."
+  },
   "ui": {
     "locale": "es-ES",
     "generationStoppedTitle": "Generación detenida",

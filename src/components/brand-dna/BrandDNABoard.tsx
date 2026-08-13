@@ -12,6 +12,7 @@ import { LogoCard, ScreenshotCard, ImageGallery } from './VisualAssetComponents'
 import { TaglineCard, LanguageCard, BrandValuesCard, VisualAestheticCard, ToneOfVoiceCard } from './BrandAssets';
 import { TypographySection } from './TypographySection';
 import { BrandContextCard } from './BrandContextCard';
+import { ContextDocumentsManager } from '@/components/context-documents/ContextDocumentsManager';
 import { TechnicalAudit } from './TechnicalAudit';
 import { ContactSocialCard } from './ContactSocialCard';
 import { TargetAudienceCard } from './TargetAudienceCard';
@@ -1026,6 +1027,8 @@ export function BrandDNABoard({
                                         text_assets: prev.text_assets ? { ...prev.text_assets, brand_context: val } : { marketing_hooks: [], visual_keywords: [], ctas: [], brand_context: val }
                                     }))}
                                 />
+
+                                {data.id ? <ContextDocumentsManager brandId={data.id} /> : null}
 
                                 {/* 2 columnas: identidad + sistema visual + narrativa */}
                                 <div className="grid grid-cols-1 md:grid-cols-2 items-start gap-8">

@@ -1,6 +1,10 @@
 import path from 'path'
 import { readFileSync } from 'fs'
 import { buildCarouselImagePrompt } from './carousel-image'
+import {
+    buildContextDocumentPromptBlock,
+    type AnalyticalContextDocument,
+} from './context-document'
 
 interface CarouselDecompositionParams {
     brandContext: string
@@ -12,6 +16,7 @@ interface CarouselDecompositionParams {
     factsToPreserve?: string[]
     writingMode?: 'structure' | 'expand'
     brandVoice?: string
+    contextDocument?: AnalyticalContextDocument | null
 }
 
 const DECOMPOSITION_PROMPT_PATH = path.join(
@@ -41,7 +46,8 @@ export function buildCarouselDecompositionPrompt({
     language,
     factsToPreserve = [],
     writingMode = 'expand',
-    brandVoice = ''
+    brandVoice = '',
+    contextDocument,
 }: CarouselDecompositionParams): string {
     const websiteContext = brandWebsite ? `BRAND WEBSITE:\n${brandWebsite}` : 'BRAND WEBSITE: (none)'
     const requestedCount = typeof requestedSlideCount === 'number' ? String(requestedSlideCount) : 'N/A'
@@ -60,8 +66,13 @@ export function buildCarouselDecompositionPrompt({
         : `\nMODO DE ESCRITURA: EXPAND\nEl usuario ha aportado una base breve o abierta. Puedes enriquecer el mensaje, ampliar beneficios, aportar contexto y construir una narrativa social-first mas desarrollada.`
     const brandVoiceSection = brandVoice ? `\nVOZ Y ENFOQUE DE MARCA:\n${brandVoice}` : ''
 
+    const contextDocumentBlock = buildContextDocumentPromptBlock(contextDocument)
+    const analyticalBrandContext = contextDocumentBlock
+        ? `${brandContext}\n\n${contextDocumentBlock}`
+        : brandContext
+
     return getDecompositionTemplate()
-        .replaceAll('{{BRAND_CONTEXT}}', brandContext)
+        .replaceAll('{{BRAND_CONTEXT}}', analyticalBrandContext)
         .replaceAll('{{WEBSITE_CONTEXT}}', websiteContext)
         .replaceAll('{{USER_REQUEST}}', topic)
         .replaceAll('{{REQUESTED_SLIDE_COUNT}}', requestedCount)

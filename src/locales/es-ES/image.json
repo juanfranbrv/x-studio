@@ -169,6 +169,22 @@
     "applyColor": "Aplicar color",
     "designAdvancedAria": "Activar modo avanzado de diseño"
   },
+  "contextDocuments": {
+    "noBrandKit": "Selecciona un Brand Kit para usar documentos de contexto",
+    "activeLabel": "Documento de contexto activo: {{title}}",
+    "inactiveLabel": "No se usará ningún documento de contexto",
+    "activeStatus": "Activo",
+    "inactiveStatus": "Sin documento activo",
+    "selectorTitle": "Documento de contexto para el análisis",
+    "selectorDescription": "Selecciona el único documento que se utilizará al analizar esta publicación.",
+    "loading": "Cargando documentos",
+    "emptySelector": "Este Brand Kit no tiene documentos de contexto.",
+    "viewDocument": "Ver {{title}}",
+    "useDocument": "Usar",
+    "stopUsing": "Dejar de usar",
+    "reanalysisRequiredTitle": "El contexto ha cambiado",
+    "reanalysisRequiredDescription": "Vuelve a analizar la publicación antes de generar."
+  },
   "preview": {
     "currentImage": "Imagen actual",
     "imageToEdit": "Imagen a editar",

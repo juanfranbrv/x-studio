@@ -11,6 +11,8 @@ import { auth } from '@clerk/nextjs/server'
 import { ConvexHttpClient } from 'convex/browser'
 import { api } from '@/../convex/_generated/api'
 import { extractJson, normalizeSmartQuotes, repairJsonString } from '@/lib/json-repair'
+import { authedFetchQuery } from '@/lib/convex-server'
+import type { Id } from '@/../convex/_generated/dataModel'
 
 export interface ParsedIntentResult {
     detectedIntent?: string // Auto-detected intent ID
@@ -29,6 +31,8 @@ export interface ParsedIntentResult {
         modifications: Record<string, unknown> // Partial<ParsedIntentResult> effectively
     }>
     error?: string
+    usedBrandId?: string
+    usedContextDocumentId?: string | null
 }
 
 type BrandContextInput = Partial<BrandDNA> & {
@@ -937,7 +941,10 @@ export async function parseLazyIntentAction({
     intelligenceModel,
     variationSeed,
     previewTextContext,
-    auditFlowId
+    auditFlowId,
+    brandId,
+    expectedBrandId,
+    expectedContextDocumentId,
 }: {
     userText: string
     brandDNA: BrandContextInput | null | undefined
@@ -948,8 +955,26 @@ export async function parseLazyIntentAction({
     variationSeed?: number
     previewTextContext?: string
     auditFlowId?: string
+    brandId: string
+    expectedBrandId?: string
+    expectedContextDocumentId?: string | null
 }): Promise<ParsedIntentResult> {
     try {
+        const { userId } = await auth()
+        if (!userId) throw new Error('Unauthorized')
+
+        const activeContextDocument = await authedFetchQuery(api.contextDocuments.getActiveForBrand, {
+            clerk_user_id: userId,
+            brand_id: brandId as Id<'brand_dna'>,
+        })
+        const usedContextDocumentId = activeContextDocument ? String(activeContextDocument._id) : null
+        if (
+            (expectedBrandId !== undefined && expectedBrandId !== brandId) ||
+            (expectedContextDocumentId !== undefined && expectedContextDocumentId !== usedContextDocumentId)
+        ) {
+            throw new Error('context_analysis_signature_mismatch')
+        }
+
         // 1. Prepare Metadata
         const intent = intentId ? INTENT_CATALOG.find(i => i.id === intentId) : undefined
         const allLayouts = Object.values(MERGED_LAYOUTS_BY_INTENT).flat()
@@ -970,7 +995,14 @@ export async function parseLazyIntentAction({
             intent,
             layout,
             previewTextContext,
-            detectedUserLanguage
+            detectedUserLanguage,
+            activeContextDocument
+                ? {
+                    id: String(activeContextDocument._id),
+                    title: activeContextDocument.title,
+                    content: activeContextDocument.content,
+                }
+                : null,
         )
         const creativeLenses = [
             'beneficio directo y claridad accionable',
@@ -1009,7 +1041,6 @@ CREATIVE VARIATION MODE:
         )
 
         try {
-            const { userId } = await auth()
             const convexUrl = process.env.NEXT_PUBLIC_CONVEX_URL
             if (convexUrl) {
                 const convex = new ConvexHttpClient(convexUrl)
@@ -1030,7 +1061,7 @@ CREATIVE VARIATION MODE:
             log.warn('LazyPrompt', 'No se pudo registrar coste económico de análisis', auditError)
         }
 
-        log.debug('LazyPrompt', 'Received JSON', jsonResponse.substring(0, 500))
+        log.debug('LazyPrompt', 'Respuesta recibida', { responseLength: jsonResponse.length })
 
         // 5. Parse Response (Robustly)
         const cleanJson = extractJson(jsonResponse)
@@ -1127,10 +1158,21 @@ CREATIVE VARIATION MODE:
         organized.detectedLanguage = resolvedLanguage
         organized.suggestions = normalizeSuggestions(parsed.suggestions, organized, userText, resolvedLanguage)
         organized.imagePromptSuggestions = await buildImagePromptSuggestions(parsed, organized, userText, resolvedLanguage)
+        const finalActiveContextDocument = await authedFetchQuery(api.contextDocuments.getActiveForBrand, {
+            clerk_user_id: userId,
+            brand_id: brandId as Id<'brand_dna'>,
+        })
+        if ((finalActiveContextDocument ? String(finalActiveContextDocument._id) : null) !== usedContextDocumentId) {
+            throw new Error('context_analysis_signature_mismatch')
+        }
+        organized.usedBrandId = brandId
+        organized.usedContextDocumentId = usedContextDocumentId
         return organized
     } catch (error) {
-        log.error('LazyPrompt', 'Error', error)
-        throw error
+        log.error('LazyPrompt', 'No se pudo completar el análisis', {
+            reason: error instanceof Error ? error.name : 'unknown',
+        })
+        throw new Error('No se pudo analizar la publicación.')
     }
 }
 
