@@ -234,6 +234,13 @@ export function ScheduleToPostizDialog({
                                         Fecha actual: {new Date(annotation.planned_at).toLocaleString('es-ES')}
                                     </p>
                                 )}
+                                {/* Se dice explícitamente porque el sistema NO sustituye
+                                    la publicación anterior: si no se avisa, se acaba
+                                    publicando dos veces sin saber por qué. */}
+                                <p className="mt-1 text-muted-foreground">
+                                    Si continúas se creará una publicación <strong>nueva</strong>; la
+                                    anterior seguirá en Postiz y tendrás que borrarla tú.
+                                </p>
                                 <Label className="mt-2 cursor-pointer font-normal">
                                     <Checkbox
                                         checked={confirmReschedule}

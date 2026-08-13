@@ -14,6 +14,8 @@ import {
 } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
 import { IconCopy, IconDownload, IconExternalLink } from '@/components/ui/icons'
+import { CalendarClock } from 'lucide-react'
+import { canScheduleAsset } from './canScheduleAsset'
 import type { ContentAssetStatus, ContentLibraryAsset } from './contentLibraryTypes'
 
 interface DraftState {
@@ -30,7 +32,10 @@ interface ContentAssetDetailPanelProps {
     saving: boolean
     saveState?: 'saved' | 'error'
     onSave: (asset: ContentLibraryAsset, draft: DraftState) => Promise<void>
+    /** Sin ella no se ofrece programar (p. ej. si no eres administrador). */
+    onSchedule?: (asset: ContentLibraryAsset) => void
     labels: {
+        schedule: string
         title: string
         copy: string
         metadata: string
@@ -73,7 +78,7 @@ function formatDateTime(value?: string) {
     return date.toLocaleString()
 }
 
-export function ContentAssetDetailPanel({ asset, saving, saveState, onSave, labels }: ContentAssetDetailPanelProps) {
+export function ContentAssetDetailPanel({ asset, saving, saveState, onSave, onSchedule, labels }: ContentAssetDetailPanelProps) {
     const [draft, setDraft] = useState<DraftState>({
         status: asset?.status || 'draft',
         planned_at: toDateInputValue(asset?.planned_at),
@@ -215,6 +220,12 @@ export function ContentAssetDetailPanel({ asset, saving, saveState, onSave, labe
             </div>
 
             <div className="grid gap-2 border-t border-border/60 p-4">
+                {onSchedule && canScheduleAsset(asset) && (
+                    <Button type="button" variant="secondary" onClick={() => onSchedule(asset)}>
+                        <CalendarClock className="mr-1 h-4 w-4" />
+                        {labels.schedule}
+                    </Button>
+                )}
                 <Button type="button" onClick={() => void onSave(asset, draft)} disabled={saving}>
                     {saving ? labels.saving : labels.save}
                 </Button>

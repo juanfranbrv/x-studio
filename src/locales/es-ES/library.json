@@ -37,7 +37,8 @@
   "card": {
     "noCopy": "Sin copy guardado",
     "slides": "{{count}} slides",
-    "plannedFor": "Previsto: {{date}}"
+    "plannedFor": "Previsto: {{date}}",
+    "schedule": "Programar en Postiz"
   },
   "bulk": {
     "selectedOne": "1 seleccionado",

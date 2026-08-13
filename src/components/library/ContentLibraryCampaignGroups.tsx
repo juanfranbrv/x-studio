@@ -12,6 +12,7 @@ interface GridLabels {
     emptyDescription: string
     slides: (count: number) => string
     plannedFor: (date: string) => string
+    schedule: string
     statuses: Record<ContentAssetStatus, string>
 }
 
@@ -22,6 +23,7 @@ interface ContentLibraryCampaignGroupsProps {
     selectedAssetKeys: Set<string>
     onSelectAsset: (asset: ContentLibraryAsset) => void
     onToggleAssetSelection: (asset: ContentLibraryAsset) => void
+    onScheduleAsset?: (asset: ContentLibraryAsset) => void
     gridLabels: GridLabels
     labels: {
         noCampaign: string
@@ -37,6 +39,7 @@ export function ContentLibraryCampaignGroups({
     selectedAssetKeys,
     onSelectAsset,
     onToggleAssetSelection,
+    onScheduleAsset,
     gridLabels,
     labels,
 }: ContentLibraryCampaignGroupsProps) {
@@ -89,6 +92,7 @@ export function ContentLibraryCampaignGroups({
                         compact
                         onSelectAsset={onSelectAsset}
                         onToggleAssetSelection={onToggleAssetSelection}
+                        onScheduleAsset={onScheduleAsset}
                         labels={gridLabels}
                     />
                 </section>

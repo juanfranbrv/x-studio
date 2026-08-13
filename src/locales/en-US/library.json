@@ -37,7 +37,8 @@
   "card": {
     "noCopy": "No saved copy",
     "slides": "{{count}} slides",
-    "plannedFor": "Planned: {{date}}"
+    "plannedFor": "Planned: {{date}}",
+    "schedule": "Schedule on Postiz"
   },
   "bulk": {
     "selectedOne": "1 selected",

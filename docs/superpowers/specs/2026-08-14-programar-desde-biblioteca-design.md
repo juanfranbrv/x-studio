@@ -1,6 +1,7 @@
 # Programar en Postiz desde la Biblioteca — diseño
 
-> **Estado: DISEÑO APROBADO.** Nada implementado todavía.
+> **Estado: FASE 1 IMPLEMENTADA** el 2026-08-14 y verificada en el navegador.
+> La fase 2 (lote con cadencia, §9) sigue pendiente.
 > Creado el 2026-08-14. Continúa `2026-08-13-programar-en-postiz-design.md`.
 
 ## 1. Qué se construye

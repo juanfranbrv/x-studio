@@ -1,8 +1,11 @@
 'use client'
 
+import { CalendarClock } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { cn } from '@/lib/utils'
+import { canScheduleAsset } from './canScheduleAsset'
 import type { ContentAssetStatus, ContentLibraryAsset } from './contentLibraryTypes'
 
 interface ContentAssetCardProps {
@@ -12,12 +15,15 @@ interface ContentAssetCardProps {
     compact?: boolean
     onSelect: (asset: ContentLibraryAsset) => void
     onToggleSelection: (asset: ContentLibraryAsset) => void
+    /** Solo se pasa a quien puede programar (administrador). Sin ella no hay boton. */
+    onSchedule?: (asset: ContentLibraryAsset) => void
     labels: {
         image: string
         carousel: string
         noCopy: string
         slides: (count: number) => string
         plannedFor: (date: string) => string
+        schedule: string
         statuses: Record<ContentAssetStatus, string>
     }
 }
@@ -29,8 +35,9 @@ function formatShortDate(value?: string) {
     return date.toLocaleDateString()
 }
 
-export function ContentAssetCard({ asset, selected, checked, compact = false, onSelect, onToggleSelection, labels }: ContentAssetCardProps) {
+export function ContentAssetCard({ asset, selected, checked, compact = false, onSelect, onToggleSelection, onSchedule, labels }: ContentAssetCardProps) {
     const typeLabel = asset.type === 'carousel' ? labels.carousel : labels.image
+    const showSchedule = Boolean(onSchedule) && canScheduleAsset(asset)
     const copy = asset.copy?.trim() || labels.noCopy
     const created = formatShortDate(asset.created_at)
     const planned = formatShortDate(asset.planned_at)
@@ -78,6 +85,36 @@ export function ContentAssetCard({ asset, selected, checked, compact = false, on
                         className="h-5 w-5 rounded-md border-white/85 bg-white/80 shadow-sm"
                     />
                 </div>
+                {showSchedule && (
+                    <div className="absolute bottom-3 right-3">
+                        <Button
+                            type="button"
+                            size="sm"
+                            variant="secondary"
+                            aria-label={labels.schedule}
+                            title={labels.schedule}
+                            onClick={(event) => {
+                                // Sin esto, el clic tambien selecciona la tarjeta.
+                                event.stopPropagation()
+                                onSchedule?.(asset)
+                            }}
+                            className={cn(
+                                'h-8 gap-1.5 rounded-lg bg-background/90 px-2.5 shadow-sm backdrop-blur transition-opacity',
+                                // Visible SIEMPRE por defecto: en tactil no existe el
+                                // "pasar el raton" y el boton seria inalcanzable. Solo
+                                // se esconde donde hay puntero fino, y reaparece con el
+                                // foco de teclado para no perderlo al tabular.
+                                '[@media(hover:hover)]:opacity-0',
+                                '[@media(hover:hover)]:group-hover:opacity-100',
+                                '[@media(hover:hover)]:focus-visible:opacity-100',
+                                compact && 'px-2'
+                            )}
+                        >
+                            <CalendarClock className="h-4 w-4" />
+                            {!compact && labels.schedule}
+                        </Button>
+                    </div>
+                )}
             </div>
             {compact ? (
                 <div className="flex flex-col gap-0.5 p-2">

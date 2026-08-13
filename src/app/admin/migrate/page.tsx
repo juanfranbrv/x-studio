@@ -27,6 +27,9 @@ const GRID_LABELS = {
     emptyDescription: 'Genera imágenes o carruseles en dev y aparecerán aquí.',
     slides: (count: number) => `${count} slides`,
     plannedFor: (date: string) => `Previsto: ${date}`,
+    // El migrador no ofrece programar (no pasa onScheduleAsset), pero la
+    // etiqueta es obligatoria en el contrato de la rejilla.
+    schedule: 'Programar en Postiz',
     statuses: STATUS_LABELS,
 }
 

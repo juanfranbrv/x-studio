@@ -18,6 +18,9 @@ import { ContentLibraryCampaignGroups } from '@/components/library/ContentLibrar
 import { ContentLibraryCalendar } from '@/components/library/ContentLibraryCalendar'
 import { CampaignManager } from '@/components/library/CampaignManager'
 import { filterContentLibraryAssets } from '@/components/library/contentLibraryFilters'
+import { scheduleAssetImageUrl } from '@/components/library/canScheduleAsset'
+import { ScheduleToPostizDialog } from '@/components/studio/ScheduleToPostizDialog'
+import { isAdminEmail } from '@/lib/auth-config'
 import type { ContentAssetStatus, ContentCampaign, ContentLibraryAsset, ContentLibraryFilters, LibraryView } from '@/components/library/contentLibraryTypes'
 import { Button } from '@/components/ui/button'
 import { IconCalendar, IconFolderKanban, IconGrid, IconPlus } from '@/components/ui/icons'
@@ -51,6 +54,13 @@ export default function LibraryPage() {
     const setPlannedAt = useMutation(api.contentLibrary.setPlannedAt)
     const [selectedAssetKey, setSelectedAssetKey] = useState<string | undefined>()
     const [selectedAssetKeys, setSelectedAssetKeys] = useState<Set<string>>(() => new Set())
+    // Pieza que se esta programando en Postiz. El dialogo se monta UNA vez al
+    // final de la pagina: montarlo por tarjeta dispararia una consulta de
+    // anotacion por cada activo de la rejilla (aqui hay decenas).
+    const [schedulingAsset, setSchedulingAsset] = useState<ContentLibraryAsset | null>(null)
+    // Ocultar el boton es comodidad; la action de Convex vuelve a exigir rol de
+    // administrador en el servidor.
+    const canSchedule = isAdminEmail(user?.primaryEmailAddress?.emailAddress)
     const [savingAssetKey, setSavingAssetKey] = useState<string | null>(null)
     const [bulkStatus, setBulkStatus] = useState<ContentAssetStatus>('ready')
     const [bulkCampaign, setBulkCampaign] = useState('')
@@ -309,6 +319,7 @@ export default function LibraryPage() {
         emptyDescription: t('empty.description'),
         slides: (count: number) => t('card.slides', { count }),
         plannedFor: (date: string) => t('card.plannedFor', { date }),
+        schedule: t('card.schedule'),
         statuses: statusLabels,
     }
 
@@ -320,7 +331,9 @@ export default function LibraryPage() {
                 saving={savingAssetKey === selectedAsset?.asset_key}
                 saveState={selectedAsset ? saveStateByAssetKey[selectedAsset.asset_key] : undefined}
                 onSave={handleSave}
+                onSchedule={canSchedule ? setSchedulingAsset : undefined}
                 labels={{
+                    schedule: t('card.schedule'),
                     title: t('detail.title'),
                     copy: t('detail.copy'),
                     metadata: t('detail.metadata'),
@@ -475,6 +488,7 @@ export default function LibraryPage() {
                                 selectedAssetKeys={selectedAssetKeys}
                                 onSelectAsset={(asset) => setSelectedAssetKey(asset.asset_key)}
                                 onToggleAssetSelection={handleToggleAssetSelection}
+                                onScheduleAsset={canSchedule ? setSchedulingAsset : undefined}
                                 gridLabels={gridLabels}
                                 labels={{
                                     noCampaign: t('filters.noCampaign'),
@@ -511,6 +525,7 @@ export default function LibraryPage() {
                                     selectedAssetKeys={selectedAssetKeys}
                                     onSelectAsset={(asset) => setSelectedAssetKey(asset.asset_key)}
                                     onToggleAssetSelection={handleToggleAssetSelection}
+                                    onScheduleAsset={canSchedule ? setSchedulingAsset : undefined}
                                     labels={gridLabels}
                                 />
                             </div>
@@ -536,6 +551,22 @@ export default function LibraryPage() {
                             empty: t('campaigns.managerEmpty'),
                         }}
                     />
+
+                    {/* `key` fuerza a remontar el dialogo al cambiar de pieza: sin
+                        el, el formulario conservaria el texto y la fecha de la
+                        anterior, porque solo se reinicia cuando `open` pasa a true. */}
+                    {schedulingAsset && (
+                        <ScheduleToPostizDialog
+                            key={schedulingAsset.asset_key}
+                            open
+                            onOpenChange={(next) => {
+                                if (!next) setSchedulingAsset(null)
+                            }}
+                            assetKey={schedulingAsset.asset_key}
+                            imageUrl={scheduleAssetImageUrl(schedulingAsset)}
+                            initialContent={schedulingAsset.copy ?? ''}
+                        />
+                    )}
                 </div>
             </main>
         </DashboardLayout>

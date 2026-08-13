@@ -10,6 +10,8 @@ interface ContentLibraryGridProps {
     compact?: boolean
     onSelectAsset: (asset: ContentLibraryAsset) => void
     onToggleAssetSelection: (asset: ContentLibraryAsset) => void
+    /** Sin ella las tarjetas no ofrecen programar (p. ej. si no eres administrador). */
+    onScheduleAsset?: (asset: ContentLibraryAsset) => void
     labels: {
         image: string
         carousel: string
@@ -18,6 +20,7 @@ interface ContentLibraryGridProps {
         emptyDescription: string
         slides: (count: number) => string
         plannedFor: (date: string) => string
+        schedule: string
         statuses: Record<ContentAssetStatus, string>
     }
 }
@@ -29,6 +32,7 @@ export function ContentLibraryGrid({
     compact = false,
     onSelectAsset,
     onToggleAssetSelection,
+    onScheduleAsset,
     labels,
 }: ContentLibraryGridProps) {
     if (assets.length === 0) {
@@ -55,6 +59,7 @@ export function ContentLibraryGrid({
                     compact={compact}
                     onSelect={onSelectAsset}
                     onToggleSelection={onToggleAssetSelection}
+                    onSchedule={onScheduleAsset}
                     labels={labels}
                 />
             ))}
