@@ -1,6 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { createPost, listIntegrations, uploadFromUrl } from '../client'
-import { PostizAuthError, PostizRateLimitError, PostizUnreachableError } from '../errors'
+import {
+    PostizAuthError,
+    PostizRateLimitError,
+    PostizResponseError,
+    PostizShapeError,
+    PostizUnreachableError,
+} from '../errors'
 
 const credenciales = { baseUrl: 'https://postiz.ejemplo.com', apiKey: 'clave-secreta' }
 
@@ -10,6 +16,15 @@ const respuesta = (body: unknown, status = 200) =>
         status,
         json: () => Promise.resolve(body),
         text: () => Promise.resolve(JSON.stringify(body)),
+    } as Response)
+
+// Simula un 200 cuyo cuerpo no es JSON valido (texto plano, cuerpo vacio, etc.)
+const respuestaJsonInvalido = () =>
+    Promise.resolve({
+        ok: true,
+        status: 200,
+        json: () => Promise.reject(new SyntaxError('Unexpected end of JSON input')),
+        text: () => Promise.resolve(''),
     } as Response)
 
 describe('cliente de Postiz', () => {
@@ -90,5 +105,42 @@ describe('cliente de Postiz', () => {
         await listIntegrations({ baseUrl: 'https://postiz.ejemplo.com/', apiKey: 'k' })
 
         expect(fetchMock.mock.calls[0][0]).toBe('https://postiz.ejemplo.com/api/public/v1/integrations')
+    })
+
+    it('traduce un 200 con cuerpo no-JSON a PostizShapeError', async () => {
+        vi.stubGlobal('fetch', vi.fn().mockReturnValue(respuestaJsonInvalido()))
+        await expect(listIntegrations(credenciales)).rejects.toBeInstanceOf(PostizShapeError)
+    })
+
+    it('traduce un estado generico no mapeado (500) a PostizResponseError', async () => {
+        vi.stubGlobal('fetch', vi.fn().mockReturnValue(respuesta({ msg: 'boom' }, 500)))
+        await expect(listIntegrations(credenciales)).rejects.toBeInstanceOf(PostizResponseError)
+    })
+
+    it('uploadFromUrl lanza PostizShapeError si el medio no trae id', async () => {
+        vi.stubGlobal('fetch', vi.fn().mockReturnValue(respuesta({ path: 'https://cdn/x.png' })))
+        await expect(uploadFromUrl(credenciales, 'https://convex/imagen.png')).rejects.toBeInstanceOf(
+            PostizShapeError,
+        )
+    })
+
+    it('uploadFromUrl lanza PostizShapeError si el medio no trae path', async () => {
+        vi.stubGlobal('fetch', vi.fn().mockReturnValue(respuesta({ id: 'm1' })))
+        await expect(uploadFromUrl(credenciales, 'https://convex/imagen.png')).rejects.toBeInstanceOf(
+            PostizShapeError,
+        )
+    })
+
+    it('createPost lanza PostizShapeError si la respuesta no trae group', async () => {
+        vi.stubGlobal('fetch', vi.fn().mockReturnValue(respuesta([{}])))
+
+        await expect(
+            createPost(credenciales, {
+                date: '2026-08-21T09:30:00+02:00',
+                content: 'Hola',
+                media: { id: 'm1', path: 'https://cdn/x.png' },
+                targets: [{ integrationId: 'i-ig', identifier: 'instagram' }],
+            }),
+        ).rejects.toBeInstanceOf(PostizShapeError)
     })
 })

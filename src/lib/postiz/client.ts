@@ -2,6 +2,7 @@ import {
     PostizAuthError,
     PostizRateLimitError,
     PostizResponseError,
+    PostizShapeError,
     PostizUnreachableError,
 } from './errors'
 import type {
@@ -55,7 +56,12 @@ async function pedir<T>(
         throw new PostizResponseError(respuesta.status, detalle.slice(0, 200))
     }
 
-    return (await respuesta.json()) as T
+    try {
+        return (await respuesta.json()) as T
+    } catch {
+        // 200 con cuerpo vacio o no-JSON (proxy delante, 204, etc.): no es un fallo HTTP.
+        throw new PostizShapeError('Postiz respondio 200 pero el cuerpo no es JSON valido.')
+    }
 }
 
 export async function listIntegrations(
@@ -74,7 +80,7 @@ export async function uploadFromUrl(
         body: { url },
     })
     if (!medio?.id || !medio?.path) {
-        throw new PostizResponseError(200, 'la subida no devolvio un medio utilizable')
+        throw new PostizShapeError('Postiz respondio 200 pero la subida no devolvio un medio utilizable.')
     }
     return { id: medio.id, path: medio.path }
 }
@@ -108,6 +114,6 @@ export async function createPost(
     })
 
     const groupId = Array.isArray(creado) ? creado[0]?.group : undefined
-    if (!groupId) throw new PostizResponseError(200, 'Postiz no devolvio identificador de grupo')
+    if (!groupId) throw new PostizShapeError('Postiz respondio 200 pero no devolvio identificador de grupo.')
     return { groupId }
 }

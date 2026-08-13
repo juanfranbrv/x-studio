@@ -30,3 +30,15 @@ export class PostizResponseError extends Error {
         this.status = status
     }
 }
+
+/**
+ * La respuesta HTTP fue correcta pero el cuerpo no tiene la forma esperada:
+ * JSON invalido, o falta un campo que el resto del modulo da por hecho.
+ * Se separa de PostizResponseError para que 'status' solo signifique codigo HTTP real.
+ */
+export class PostizShapeError extends Error {
+    constructor(mensaje: string) {
+        super(mensaje)
+        this.name = 'PostizShapeError'
+    }
+}
