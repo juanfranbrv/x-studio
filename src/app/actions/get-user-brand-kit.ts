@@ -177,6 +177,8 @@ export async function getUserBrandKitById(brandKitId: string): Promise<{
 
         const brandDNA: BrandDNA = {
             id: data._id,
+            _id: data._id,
+            slug: data.slug || undefined,
             url: data.url || '',
             brand_name: data.brand_name || '',
             cta_url_enabled: typeof data.cta_url_enabled === 'boolean' ? data.cta_url_enabled : false,
@@ -249,6 +251,8 @@ export async function getUserBrandKit(clerkUserId: string): Promise<{
 
         const brandDNA: BrandDNA = {
             id: fullRecord._id,
+            _id: fullRecord._id,
+            slug: fullRecord.slug || undefined,
             url: fullRecord.url || '',
             brand_name: fullRecord.brand_name || '',
             cta_url_enabled: typeof fullRecord.cta_url_enabled === 'boolean' ? fullRecord.cta_url_enabled : false,

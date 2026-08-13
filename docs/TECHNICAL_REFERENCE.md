@@ -976,6 +976,106 @@ Verificado el 2026-08-11 contra el dashboard y contra el bundle JS de produccion
 Esto explica por que la seccion "Herramienta local de migracion a produccion" tiene
 origen y destino en el mismo deployment: es correcto, no es una errata.
 
+## Asistente de campañas y mega prompt (2026-08-12)
+
+El asistente de `/campaigns` no genera publicaciones ni llama al modelo de
+imagen. Recoge el briefing estratégico, reutiliza el Brand Kit activo y
+construye un mega prompt para un agente externo.
+
+Flujo cerrado:
+
+1. `CampaignAssistantWizard` recoge objetivo, oferta, audiencia, periodo,
+   canales, frecuencia, pilares, formato de imagen (`ig-square` para `1:1` o
+   `ig-portrait-feed` para `4:5`), CTA, palabras clave, métricas y restricciones.
+   La frecuencia se expresa siempre como publicaciones por día mediante
+   `postsPerDay`. El campo histórico `postsPerWeek` se admite solo al leer un
+   briefing anterior y su cifra se reinterpreta directamente como diaria, sin
+   conversión; si existen ambos campos, prevalece `postsPerDay`.
+2. `POST /api/v1/campaign-guide` resuelve el kit autenticado y los catálogos
+   vivos de estilos, plataformas e intenciones. El formato sí forma parte del
+   contrato porque lo fija el formulario. El layout no se expone: el agente
+   elige `intent` y PostLaboratory resuelve el primer layout de esa intención.
+3. `buildCampaignAssistantPrompt` combina el briefing, el contexto del kit,
+   las decisiones creativas y la guía técnica JSON existente. El agente puede
+   recibir ficheros adicionales de contexto: debe leerlos y utilizarlos para
+   completar la campaña. El briefing y el kit prevalecen sobre esos ficheros
+   en identidad, formato y activos; los ficheros prevalecen para el contexto
+   específico de la campaña.
+4. El agente externo trabaja en dos fases internas: primero diseña la
+   estrategia y después genera el calendario y las publicaciones. Devuelve dos
+   entregables: dos ficheros descargables independientes con nombres
+   significativos: `<slug-de-marca>-<slug-de-campaña>.md`, con un bloque de
+   prompt copiable por publicación, y el mismo nombre base con extensión
+   `.json`, listo para descargar e inyectar en PostLaboratory. No se deben usar
+   nombres genéricos como `campana.md` o `campana.json` salvo que la campaña se
+   llame literalmente «Campaña». No basta con mostrar el contenido en la
+   respuesta o dejarlo en bloques de código; el agente debe adjuntar ambos
+   archivos o proporcionar dos enlaces de descarga claramente identificados.
+   Cada publicación debe contener `headline`, `image_texts`, `body`, `cta`,
+   `cta_url`, `visual_content`, `intent`, `scheduled_at` y su propio `style` y
+   `format`. `body` es el caption editorial y no se imprime en la creatividad;
+   `image_texts` contiene entre dos y cuatro apoyos breves que sí se imprimen.
+   `cta` es obligatorio e incluye dentro de su propio texto la URL oficial del
+   kit; `cta_url` repite esa URL exacta para activar su jerarquía visual HERO.
+   No se usa `campaign.defaults.style`: el agente elige un estilo autorizado
+   para cada publicación y puede repetirlo cuando sea coherente. El `format` lo
+   fija el formulario para toda la campaña y debe repetirse en cada publicación.
+5. Postlaboratory recibe ese JSON en el formulario actual y sigue usando la
+   tubería existente de validación, cola y generación.
+
+El Brand Kit es la fuente única de verdad visual. El mega prompt no duplica
+colores, tipografías ni archivos de logo: transmite el slug del kit y las
+opciones de uso. Postlaboratory resuelve los activos reales al ejecutar cada
+publicación.
+
+### Integridad del contenido editorial y reparto de responsabilidades
+
+El agente externo produce `headline`, `image_texts`, `body`, `cta`, `cta_url`,
+`visual_content`, `intent` y la fecha de publicación. En el documento Markdown,
+cada publicación empieza por
+«Deseo crear una publicación para redes sociales (Facebook e Instagram) con
+este objetivo:» y contiene después «Este es el contenido que debe aparecer y
+no debes alterarlo:». Postlaboratory no debe reescribir, resumir, traducir,
+corregir, ampliar ni sustituir `headline`, `image_texts`, `body` o `cta`.
+`body` viaja separado como caption y nunca se inserta en el prompt de imagen.
+`visual_content` describe la escena visual concreta; no es un prompt técnico.
+
+Postlaboratory genera los hashtags a partir del contenido. El agente externo no
+debe incluir hashtags, prompts de imagen, layouts, colores, tipografías, logos,
+teléfonos, emails ni otros activos de marca en el JSON. La única duplicación
+deliberada es la URL: aparece dentro de `cta` como copy editorial completo y en
+`cta_url` como valor estructurado. El kit de marca, el layout por defecto, los
+activos, los contactos y la configuración visual se resuelven dentro de
+Postlaboratory.
+
+El formulario permite seleccionar uno o varios estilos visuales. El agente
+externo solo puede elegir entre ellos y debe escribir el estilo elegido en cada
+publicación del JSON. El motor de campañas resuelve `post.style` antes de
+generar cada imagen. Los formatos, logos auxiliares y contactos se gestionan
+desde la plataforma, no desde el mega prompt.
+
+### Contrato de texto visible de campaña (2026-08-13)
+
+El generador por lotes ya no convierte `body` en texto obligatorio de la
+creatividad. La pila P09 recibe únicamente:
+
+- `headline`, como titular visible;
+- `image_texts`, como dos a cuatro apoyos visibles breves;
+- `cta`, sin repetir la URL en el copy secundario;
+- `cta_url`, como elemento HERO independiente.
+
+Para manifiestos anteriores, si falta `cta_url` pero `cta` contiene una URL, el
+constructor la extrae y activa la misma jerarquía. `cta_url: false` sigue siendo
+la exclusión explícita. Si no existe `layout`, `intent` selecciona el primer
+layout real de `LAYOUTS_BY_INTENT`; el worker usa esa misma resolución para la
+directiva del prompt y para `layoutReference`.
+
+El estilo visual admite tres modos de decisión:
+
+- `locked`: decisión fijada por el usuario.
+- `allowed`: el agente solo puede elegir entre las opciones autorizadas.
+- `delegated`: la elección queda delegada al agente dentro del catálogo real.
+
 ## Paridad de prompt entre el panel de imagen y las campañas (2026-08-12)
 
 **Regla: existe UNA sola forma de construir un prompt de imagen, la pila de

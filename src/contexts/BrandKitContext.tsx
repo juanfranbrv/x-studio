@@ -8,6 +8,7 @@ import { getAllUserBrandKits, getUserBrandKitById } from '@/app/actions/get-user
 import { deleteBrandKit } from '@/app/actions/delete-brand-kit'
 import { updateUserBrandKit } from '@/app/actions/update-user-brand-kit'
 import type { BrandKitSummary, BrandDNA } from '@/lib/brand-types'
+import { getCanonicalBrandId } from '@/lib/brand-kit-identity'
 
 interface BrandKitContextType {
     activeBrandKit: BrandDNA | null
@@ -352,7 +353,8 @@ export function BrandKitProvider({ children }: { children: ReactNode }) {
     }
 
     const syncActiveBrandKit = (data: BrandDNA) => {
-        setActiveBrandKitState(data)
+        const id = getCanonicalBrandId(data)
+        setActiveBrandKitState(id ? { ...data, id } : data)
     }
 
     useEffect(() => {

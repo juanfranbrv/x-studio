@@ -1,166 +1,194 @@
 /**
- * Genera la guia que se entrega a quien disena una campana (persona o IA) para
- * que produzca un manifiesto valido.
+ * Genera la guía que se entrega a quien diseña una campaña.
  *
- * Se construye a partir de los catalogos VIVOS de la plataforma en lugar de
- * mantenerse a mano: los estilos cambian, se anaden y se renombran, y una guia
- * escrita a mano nace obsoleta. Quien la lea vera siempre lo que existe hoy.
+ * El agente externo decide la estrategia, el contenido editorial y el
+ * calendario. PostLaboratory resuelve después la identidad visual y los
+ * activos del kit de marca.
  */
 
 export type GuideCatalog = {
     brands: Array<{ slug: string; name: string }>
     styles: Array<{ slug: string; name: string; description?: string | null }>
     formats: Array<{ id: string; platform: string; name: string; aspect_ratio: string; description?: string }>
-    /** Layouts genericos, validos para cualquier intencion. */
+    /** Se conserva para compatibilidad con consumidores antiguos. No se imprime en la guía. */
     layouts: Array<{ id: string; name: string; description?: string | null }>
-    /**
-     * Layouts especificos de cada intencion. El panel los presenta asi: al
-     * detectar el intent muestra sus layouts. Listarlos todos juntos daria
-     * cientos de opciones que en la interfaz nunca aparecen a la vez.
-     */
+    /** Se conserva para compatibilidad con consumidores antiguos. No se imprime en la guía. */
     layoutsByIntent?: Array<{ intent: string; layouts: Array<{ id: string; name: string; description?: string }> }>
+    intents?: Array<{ id: string; name: string; description?: string | null }>
     platforms: string[]
 }
 
-function listar<T>(items: T[], render: (item: T) => string, vacio: string): string {
-    if (items.length === 0) return vacio
-    return items.map((item) => `- ${render(item)}`).join('\n')
+function renderBrands(catalog: GuideCatalog): string {
+    return catalog.brands.map((brand) => '- ' + brand.slug + ' — ' + brand.name).join('\n') || '- (no hay marcas disponibles)'
+}
+
+function renderPlatforms(catalog: GuideCatalog): string {
+    return catalog.platforms.map((platform) => '- ' + platform).join('\n') || '- (sin plataformas)'
+}
+
+function renderStyles(catalog: GuideCatalog): string {
+    return (
+        catalog.styles
+            .map((style) => '- ' + style.slug + ' — ' + style.name + (style.description ? ': ' + style.description : ''))
+            .join('\n') || '- (sin estilos)'
+    )
+}
+
+function renderCampaignFormats(catalog: GuideCatalog): string {
+    const allowed = new Set(['ig-square', 'ig-portrait-feed'])
+    return (
+        catalog.formats
+            .filter((format) => format.platform === 'instagram' && allowed.has(format.id))
+            .map((format) => '- ' + format.id + ' — ' + format.aspect_ratio + (format.description ? ': ' + format.description : ''))
+            .join('\n') || '- (sin formatos de Instagram disponibles)'
+    )
+}
+
+function renderIntents(catalog: GuideCatalog): string {
+    return (
+        (catalog.intents ?? [])
+            .map((intent) => '- ' + intent.id + ' — ' + intent.name + (intent.description ? ': ' + intent.description : ''))
+            .join('\n') || '- (sin intenciones disponibles)'
+    )
 }
 
 /**
- * Prompt de sistema listo para pegar en cualquier IA. Le da el formato exacto
- * del manifiesto y, sobre todo, QUE puede elegir: sin el catalogo delante, una
- * IA inventa nombres de estilo que no existen y el lote se rechaza entero.
+ * Prompt listo para pegar en cualquier IA. Solo expone las decisiones que
+ * corresponden al agente externo y el contrato mínimo de PostLaboratory.
  */
 export function buildCampaignPrompt(catalog: GuideCatalog): string {
-    return `Eres un planificador de campanas para redes sociales. Tu tarea es
-producir un MANIFIESTO DE CAMPANA en JSON que la plataforma pueda ejecutar para
-generar todas las imagenes de una campana de una sola vez.
-
-# Formato de salida
-
-Responde UNICAMENTE con un objeto JSON valido, sin texto alrededor:
-
-{
-  "version": 1,
-  "campaign": {
-    "name": "<nombre de la campana>",
-    "brand": "<slug de marca del catalogo>",
-    "defaults": {
-      "platform": "instagram",
-      "publish_to": ["facebook", "instagram"],
-      "format": "<id de formato del catalogo>",
-      "style": "<slug de estilo del catalogo, opcional>",
-      "layout": "<id de layout del catalogo, opcional>",
-      "logo": true,
-      "cta_url": true,
-      "phone": false,
-      "address": false,
-      "extra_logos": false
-    }
-  },
-  "posts": [
-    {
-      "ref": "REF-01",
-      "scheduled_at": "2026-08-11T09:30:00+02:00",
-      "prompt": "<texto libre describiendo la publicacion>",
-      "headline": "<titular, opcional>",
-      "body": "<cuerpo, opcional>",
-      "cta": "<llamada a la accion, opcional>",
-      "hashtags": ["#Ejemplo"],
-      "visual_content": "<que se ve en la imagen, opcional pero recomendado>",
-      "style": "<slug de estilo, opcional: pisa el de la campana>",
-      "format": "<id de formato, opcional: pisa el de la campana>"
-    }
-  ]
-}
-
-# Reglas
-
-1. Cada publicacion necesita una "ref" unica que sirva como nombre de fichero
-   (solo letras, numeros, guion y guion bajo). Sera el nombre de su imagen.
-2. Cada publicacion debe describir algo que generar: "prompt" en prosa, o al
-   menos "headline" o "body". El prompt en prosa es perfectamente valido y no
-   hace falta trocear el texto en campos.
-3. "scheduled_at" en formato ISO 8601 con zona horaria. Determina donde cae la
-   pieza en el calendario.
-4. **Solo puedes usar identificadores que aparezcan en los catalogos de abajo.**
-   Un slug o id inventado hace que se rechace la campana entera.
-5. Lo que pongas en un post pisa lo que haya en "defaults".
-6. **"platform" y "publish_to" NO son lo mismo.** \`platform\` dice para que red
-   se OPTIMIZA la imagen (afecta al encuadre); \`publish_to\` dice en que redes
-   se PUBLICARA. Lo normal es una imagen optimizada para Instagram que se
-   publica a la vez en Facebook e Instagram, que es el valor por defecto.
-7. **Datos de marca que apareceran en la imagen.** Con \`true\` se toma el valor
-   del kit; con una cadena se pisa con otro valor; con \`false\` no aparece:
-   - \`cta_url\`: la web de la marca. Casi siempre conviene ponerla a \`true\`,
-     porque es la llamada a la accion de la publicacion.
-   - \`phone\`, \`email\`, \`address\`: datos de contacto. Usalos solo cuando la
-     publicacion lo pida; llenar la imagen de datos la ensucia.
-   - \`extra_logos\`: sellos y certificaciones (Cambridge, Pearson...).
-     \`true\` incluye todos los del kit; tambien admite una lista de ids.
-8. **"visual_content" describe QUE SE VE en la imagen** (la escena, el sujeto,
-   el ambiente), no el texto que aparece escrito. Ejemplo: "Un pequeno robot
-   con luces LED moviendose sobre un tablero educativo con circuitos". Si no lo
-   indicas, la plataforma lo decide por su cuenta; indicarlo es la unica forma
-   de controlar la imagen. Descripcion visual concreta y en una o dos frases.
-9. **Los hashtags van SOLO en "hashtags", nunca dentro de la imagen.** Son
-   texto del copy de la publicacion: no los escribas en "prompt", "headline",
-   "body" ni "cta". Una imagen con almohadillas impresas se ve amateur.
-10. **El texto que debe aparecer impreso va en "headline", "body" y "cta".**
-   "prompt" es contexto de intencion para el generador, no copy literal: lo que
-   escribas ahi orienta la pieza, pero no se imprime palabra por palabra.
-
-# Catalogos disponibles
-
-## Marcas (campaign.brand)
-${listar(catalog.brands, (b) => `\`${b.slug}\` — ${b.name}`, '- (no hay marcas disponibles)')}
-
-## Plataformas (platform)
-${catalog.platforms.map((p) => `- \`${p}\``).join('\n')}
-
-## Formatos (format)
-${listar(
-        catalog.formats,
-        (f) => `\`${f.id}\` — ${f.name} (${f.aspect_ratio}), ${f.platform}${f.description ? `. ${f.description}` : ''}`,
-        '- (sin formatos)',
-    )}
-
-## Layouts genericos (layout)
-${listar(catalog.layouts, (l) => `\`${l.id}\` — ${l.name}${l.description ? `: ${l.description}` : ''}`, '- (sin layouts)')}
-
-## Layouts por tipo de publicacion
-Cada tipo de publicacion tiene composiciones propias. Usa uno de estos solo si
-encaja con lo que cuenta la publicacion.
-
-${
-        (catalog.layoutsByIntent ?? [])
-            .map(
-                (grupo) =>
-                    `### ${grupo.intent}\n${grupo.layouts
-                        .map((l) => `- \`${l.id}\` — ${l.name}${l.description ? `: ${l.description}` : ''}`)
-                        .join('\n')}`,
-            )
-            .join('\n\n') || '(sin layouts especificos)'
-    }
-
-## Estilos visuales (style)
-${listar(catalog.styles, (s) => `\`${s.slug}\` — ${s.name}${s.description ? `: ${s.description}` : ''}`, '- (sin estilos)')}
-
-# Como elegir el estilo
-
-Si el usuario no indica un estilo, elige uno del catalogo coherente con el tono
-de la campana y usalo como "style" en los defaults, para que toda la campana
-tenga un aspecto homogeneo. Cambia de estilo en publicaciones concretas solo si
-hay una razon clara (por ejemplo, una subcampana con publico distinto).`
-}
-
-/** Version corta, para mostrar en la interfaz junto al boton de descarga. */
-export function buildCatalogSummary(catalog: GuideCatalog): string {
     return [
-        `${catalog.brands.length} marcas`,
-        `${catalog.styles.length} estilos`,
-        `${catalog.formats.length} formatos`,
-        `${catalog.layouts.length} layouts`,
-    ].join(' · ')
+        'Eres un planificador de campañas para redes sociales. Diseña la estrategia completa y prepara dos entregables coordinados para PostLaboratory.',
+        '',
+        'Trabaja en dos fases internas:',
+        '1. Define el objetivo, las subcampañas, los pilares, la distribución y el calendario.',
+        '2. Convierte esas decisiones en publicaciones completas, con copy editorial definitivo y una idea visual concreta.',
+        '',
+        'No expliques el proceso ni añadas comentarios fuera de los dos entregables.',
+        '',
+        '## Ficheros adicionales de contexto',
+        '',
+        'Si recibes ficheros adicionales de contexto junto con este encargo, debes leerlos y utilizarlos para completar la estrategia, el calendario, el contenido editorial y las ideas visuales cuando aporten información relevante.',
+        'No ignores esos ficheros ni inventes datos que contradigan su contenido. Si existe una contradicción, el briefing estructurado y las reglas del kit de marca tienen prioridad sobre los ficheros para identidad, formato y activos; los ficheros tienen prioridad para información específica de la campaña.',
+        '',
+        '## Entregable 1: documento Markdown para uso manual (fichero descargable obligatorio)',
+        '',
+        'Genera un archivo descargable independiente con un nombre significativo siguiendo esta convención: `<slug-de-marca>-<slug-de-campaña>.md`. Usa el slug de la marca de campaign.brand y un slug descriptivo de campaign.name, en minúsculas, sin tildes y separado por guiones. No uses nombres genéricos como `campana.md` salvo que la campaña se llame literalmente «Campaña». No basta con mostrar el contenido en la respuesta ni con dejarlo únicamente dentro de un bloque de código: el usuario debe poder descargar el fichero Markdown completo.',
+        '',
+        'Genera un documento Markdown con una sección por publicación. Cada publicación debe contener un bloque de código independiente para poder copiarlo y pegarlo manualmente en PostLaboratory.',
+        '',
+        'Usa esta estructura para cada publicación:',
+        '',
+        '## <ref> · <fecha y hora> · <subcampaña>',
+        '',
+        '```text',
+        'Deseo crear una publicación para redes sociales (Facebook e Instagram) con este objetivo: <objetivo de la campaña o de esta publicación>.',
+        '',
+        'Este es el contenido que debe aparecer y no debes alterarlo:',
+        '',
+        'Headline: <headline literal>',
+        'Textos de apoyo visibles:',
+        '- <image_texts[0] literal>',
+        '- <image_texts[1] literal>',
+        'CTA: <cta literal con la URL oficial incluida>',
+        'URL protagonista: <cta_url exacta>',
+        'Formato de imagen: <1:1 (ig-square) o 4:5 (ig-portrait-feed)>',
+        '',
+        'La imagen debe mostrar: <visual_content concreto y producible>.',
+        '',
+        'Body/caption para publicar (NO debe aparecer en la imagen):',
+        '<body literal>',
+        '```',
+        '',
+        'El bloque debe empezar exactamente con la frase «Deseo crear una publicación...» y conservar literalmente headline, image_texts, body y CTA. La CTA debe incluir la URL oficial del kit y cta_url debe repetir esa URL exacta para que PostLaboratory pueda darle tratamiento protagonista. El body es el caption editorial para publicar y no forma parte del texto visible de la imagen. No metas colores, logos, estilos, layouts, teléfonos, emails ni hashtags en este prompt: PostLaboratory los aplica desde el kit y su configuración.',
+        '',
+        '## Entregable 2: JSON descargable para PostLaboratory (fichero descargable obligatorio)',
+        '',
+        'Genera un archivo descargable independiente con el mismo nombre base y extensión `.json`: `<slug-de-marca>-<slug-de-campaña>.json`. Debe contener el manifiesto completo. No uses un nombre genérico como `campana.json` salvo que la campaña se llame literalmente «Campaña». No basta con mostrar el JSON en la respuesta ni con dejarlo únicamente dentro de un bloque de código.',
+        '',
+        'Adjunta ambos archivos con ese nombre significativo o proporciona dos enlaces de descarga claramente identificados. Los dos deben compartir exactamente el mismo nombre base y diferenciarse solo por `.md` y `.json`. Estos dos ficheros descargables son la salida obligatoria del encargo; mostrar el contenido sin ofrecer su descarga no cumple el encargo.',
+        '',
+        'Después de adjuntar los archivos, puedes mostrar una vista previa o los bloques de código, pero nunca como sustituto de los ficheros descargables.',
+        '',
+        '```json',
+        '{',
+        '  "version": 1,',
+        '  "campaign": {',
+        '    "name": "<nombre de la campaña>",',
+        '    "brand": "<slug de marca del catálogo>",',
+        '    "defaults": {',
+        '      "platform": "instagram",',
+        '      "publish_to": ["facebook", "instagram"]',
+        '    }',
+        '  },',
+        '  "posts": [',
+        '    {',
+        '      "ref": "REF-01",',
+        '      "scheduled_at": "<fecha y hora ISO 8601 con zona horaria>",',
+        '      "group": "<subcampaña>",',
+        '      "goal": "<objetivo de esta publicación>",',
+        '      "intent": "<intención autorizada para elegir el layout predeterminado>",',
+        '      "style": "<slug de estilo autorizado para esta publicación>",',
+        '      "format": "<identificador de formato autorizado para esta publicación>",',
+        '      "headline": "<titular final>",',
+        '      "image_texts": [',
+        '        "<texto visible breve 1>",',
+        '        "<texto visible breve 2>"',
+        '      ],',
+        '      "body": "<caption editorial final; no aparece en la imagen>",',
+        '      "cta": "<llamada a la acción final con la URL oficial incluida>",',
+        '      "cta_url": "<URL oficial exacta que también aparece dentro de cta>",',
+        '      "visual_content": "<idea visual concreta y producible>"',
+        '    }',
+        '  ]',
+        '}',
+        '```',
+        '',
+        '# Reglas',
+        '',
+        '1. Cada publicación necesita una ref única que sirva como nombre de fichero. Usa solo letras, números, guion y guion bajo.',
+        '2. Cada publicación debe incluir obligatoriamente scheduled_at, style, format, intent, headline, image_texts, body, cta, cta_url y visual_content. No dejes ninguno vacío.',
+        '3. scheduled_at debe estar dentro del periodo indicado y respetar la frecuencia definida por plataforma.',
+        '4. headline, image_texts, body y cta son contenido editorial definitivo. Escríbelo completo y no lo sustituyas por instrucciones para otra IA.',
+        '5. body es el caption editorial de la publicación: debe conservarse para publicar, pero nunca debe renderizarse dentro de la imagen.',
+        '6. image_texts contiene de 2 a 4 textos breves que sí deben aparecer literalmente en la imagen. Divide aquí los beneficios o datos escaneables; no copies el párrafo completo del body.',
+        '7. La CTA es obligatoria. cta contiene la frase final completa con la URL oficial incluida y cta_url repite únicamente esa URL exacta para que PostLaboratory la convierta en el elemento protagonista.',
+        '8. visual_content describe QUÉ SE VE: sujeto, acción, ambiente y tratamiento de la escena. Debe ser concreto, producible y no abstracto.',
+        '9. No representes fachadas, aulas, oficinas, instalaciones o espacios identificables que puedan no corresponder a la empresa real. Para una academia, usa escenas conceptuales de aprendizaje, progreso, idiomas, tecnología, concentración o colaboración, sin representar un local concreto.',
+        '10. No escribas texto dentro de visual_content salvo que ese texto aparezca también de forma literal en headline, image_texts o cta.',
+        '11. platform indica para qué red se optimiza la publicación; publish_to indica dónde se publica.',
+        '12. Usa solo marcas, plataformas, estilos, formatos e intenciones presentes en los catálogos. Un identificador inventado hace que se rechace la campaña.',
+        '13. Cada publicación debe elegir exactamente un estilo de la lista autorizada. Elige el estilo según el objetivo, el pilar y el tipo de contenido de esa publicación; puedes repetir estilos cuando sea coherente. No uses "campaign.defaults.style" ni dejes que PostLaboratory lo decida.',
+        '14. El formato de imagen es una decisión de campaña fijada por el formulario. Copia el mismo formato autorizado en el campo format de cada publicación y en su prompt Markdown: usa solo ig-square (1:1) o ig-portrait-feed (4:5). No inventes formatos ni dejes que PostLaboratory lo decida.',
+        '15. Elige intent según la función comunicativa de cada publicación. El agente externo no elige ningún layout: PostLaboratory elige automáticamente el layout predeterminado asociado a intent.',
+        '16. No generes hashtags. PostLaboratory los generará a partir del contenido.',
+        '17. No generes prompt técnico de imagen, layout, colores, logos, tipografías ni datos de contacto. PostLaboratory aplica esos elementos desde el kit y desde su configuración lateral.',
+        '18. No incluyas claves adicionales en el JSON.',
+        '',
+        '# Catálogos disponibles',
+        '',
+        '## Marcas (campaign.brand)',
+        renderBrands(catalog),
+        '',
+        '## Plataformas (platform)',
+        renderPlatforms(catalog),
+        '',
+        '## Estilos visuales (style)',
+        renderStyles(catalog),
+        '',
+        '## Formatos de imagen permitidos (format)',
+        renderCampaignFormats(catalog),
+        '',
+        '## Intenciones permitidas (intent)',
+        renderIntents(catalog),
+        '',
+        '# Responsabilidades de PostLaboratory',
+        '',
+        'PostLaboratory resolverá el kit indicado en campaign.brand, aplicará su identidad visual, elegirá el layout predeterminado de intent, incorporará los activos configurados en la interfaz y respetará literalmente headline, image_texts, body y cta. Solo headline, image_texts, cta y cta_url forman parte del texto visible; body se conserva como caption editorial.',
+    ].join('\n')
+}
+
+/** Versión corta para mostrar junto al botón de descarga. */
+export function buildCatalogSummary(catalog: GuideCatalog): string {
+    return [catalog.brands.length + ' marcas', catalog.styles.length + ' estilos'].join(' · ')
 }

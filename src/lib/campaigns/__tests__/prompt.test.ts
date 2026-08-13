@@ -15,9 +15,11 @@ const basePost: ManifestPost = {
     ref: 'BAU-01',
     headline: 'Ver tu progreso es lo que te hará seguir',
     body: 'La evaluación es continua y la orientación, trimestral.',
-    cta: 'Matricúlate para septiembre',
+    image_texts: ['Evaluación continua', 'Orientación trimestral'],
+    cta: 'Matricúlate para septiembre en bauset.es',
+    cta_url: 'bauset.es',
+    intent: 'servicio',
     hashtags: ['#AcademiaBauset', '#Meliana'],
-    cta_url: true,
 }
 
 const build = (post: Partial<ManifestPost> = {}, extra: Partial<Parameters<typeof buildCampaignImagePrompt>[0]> = {}) =>
@@ -99,12 +101,42 @@ describe('buildCampaignImagePrompt', () => {
     it('coloca la llamada a la accion como copy secundario sobre la URL', () => {
         const prompt = build()
         expect(prompt).toContain('SECONDARY ACTION COPY: "Matricúlate para septiembre"')
+        expect(prompt).not.toContain('SECONDARY ACTION COPY: "Matricúlate para septiembre en bauset.es"')
+    })
+
+    it('extrae la URL incrustada en CTA aunque un manifiesto antiguo no incluya cta_url', () => {
+        const prompt = build({
+            cta: 'Consulta niveles y horarios en https://bauset.es y reserva tu plaza.',
+            cta_url: undefined,
+        })
+
+        expect(prompt).toContain('URL VISUAL ELEMENT (HERO): "https://bauset.es"')
+        expect(prompt).toContain('SECONDARY ACTION COPY: "Consulta niveles y horarios y reserva tu plaza."')
+        expect(prompt).not.toContain('ACTION COPY: "Consulta niveles y horarios en https://bauset.es y reserva tu plaza."')
     })
 
     it('sin web, la llamada a la accion va sola', () => {
-        const prompt = build({ cta_url: false })
+        const prompt = build({ cta: 'Matricúlate para septiembre', cta_url: false })
         expect(prompt).toContain('ACTION COPY: "Matricúlate para septiembre"')
         expect(prompt).not.toContain('URL VISUAL ELEMENT (HERO)')
+    })
+
+    it('no convierte el body editorial en texto visible de la imagen', () => {
+        const prompt = build({
+            body: 'Este párrafo completo pertenece al pie de la publicación y no debe renderizarse.',
+            image_texts: ['Montaje y programación propia', 'Grupos reducidos: máximo 6 alumnos'],
+        })
+
+        expect(prompt).not.toContain('Este párrafo completo pertenece al pie')
+        expect(prompt).not.toContain('- BODY:')
+        expect(prompt).toContain('- SUPPORT TEXT 1: "Montaje y programación propia"')
+        expect(prompt).toContain('- SUPPORT TEXT 2: "Grupos reducidos: máximo 6 alumnos"')
+    })
+
+    it('aplica el layout predeterminado de la intención cuando el JSON no especifica layout', () => {
+        const prompt = build({ intent: 'servicio', layout: undefined })
+        expect(prompt).toContain('PRIORITY 7 - COMPOSITION & LAYOUT')
+        expect(prompt).toContain('COMPOSICIÓN Y ESTRUCTURA (OBLIGATORIO)')
     })
 
     it('separa los datos de contacto del resto del texto', () => {

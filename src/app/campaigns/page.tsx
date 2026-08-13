@@ -41,7 +41,7 @@ export default function CampaignsPage() {
                         </p>
                     </header>
 
-                    <CampaignGuideCard />
+                    <CampaignGuideCard activeBrandKit={activeBrandKit} />
 
                     <CampaignManifestForm onEnqueued={refrescar} />
 

@@ -19,7 +19,10 @@ const manifestoValido = {
             scheduled_at: '2026-08-11T09:30:00+02:00',
             headline: 'El curso 2026-2027 ya está abierto',
             body: 'Agosto también es para descansar...',
-            cta: 'Infórmate en nuestra web',
+            image_texts: ['Matrícula abierta', 'Plazas limitadas'],
+            cta: 'Infórmate en academia-bauset.es',
+            cta_url: 'academia-bauset.es',
+            intent: 'servicio',
             hashtags: ['#AcademiaBauset'],
         },
     ],
@@ -36,6 +39,27 @@ describe('validateManifest', () => {
         if (!result.ok) return
         expect(result.manifest.posts).toHaveLength(1)
         expect(result.manifest.campaign.brand).toBe('academia-bauset')
+        expect(result.manifest.posts[0].image_texts).toEqual(['Matrícula abierta', 'Plazas limitadas'])
+        expect(result.manifest.posts[0].cta_url).toBe('academia-bauset.es')
+        expect(result.manifest.posts[0].intent).toBe('servicio')
+    })
+
+    it('rechaza intenciones inventadas', () => {
+        const m = clonar()
+        ;(m.posts as Array<Record<string, unknown>>)[0].intent = 'publicidad-magica'
+        const result = validateManifest(m)
+        expect(result.ok).toBe(false)
+        if (result.ok) return
+        expect(result.errors.some((error) => error.path.endsWith('.intent'))).toBe(true)
+    })
+
+    it('rechaza más de cuatro textos visibles', () => {
+        const m = clonar()
+        ;(m.posts as Array<Record<string, unknown>>)[0].image_texts = ['Uno', 'Dos', 'Tres', 'Cuatro', 'Cinco']
+        const result = validateManifest(m)
+        expect(result.ok).toBe(false)
+        if (result.ok) return
+        expect(result.errors.some((error) => error.path.endsWith('.image_texts'))).toBe(true)
     })
 
     it('acepta un post descrito solo con prompt en prosa', () => {

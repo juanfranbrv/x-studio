@@ -26,6 +26,7 @@ import type { SelectedColor } from '@/lib/creation-flow-types'
 import { detectLanguage } from '@/lib/language-detection'
 import { resolveAsset } from '@/lib/campaigns/brand-assets'
 import { buildLayoutDirective } from '@/lib/campaigns/layout-directive'
+import { resolveCampaignLayout } from '@/lib/campaigns/catalogs'
 import * as P12 from '@/lib/prompts/priorities/p12-preferred-language'
 import * as P10 from '@/lib/prompts/priorities/p10-logo-integrity'
 import { P10B } from '@/lib/prompts/priorities/p10b-secondary-logos'
@@ -82,6 +83,41 @@ export function stripHashtags(text: string | undefined | null): string {
         .join('\n')
         .replace(/[ \t]{2,}/g, ' ')
         .replace(/\n{3,}/g, '\n\n')
+        .trim()
+}
+
+const URL_PATTERN = /\b(?:https?:\/\/|www\.)?[a-z0-9](?:[a-z0-9-]*[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]*[a-z0-9])?)+(?:\/[^\s]*)?/iu
+
+function trimUrlPunctuation(value: string): string {
+    return value.replace(/[.,;:!?)}\]]+$/u, '')
+}
+
+function extractUrl(value: string): string | null {
+    const match = value.match(URL_PATTERN)?.[0]
+    return match ? trimUrlPunctuation(match) : null
+}
+
+function normalizedUrl(value: string): string {
+    return trimUrlPunctuation(value)
+        .replace(/^https?:\/\//iu, '')
+        .replace(/^www\./iu, '')
+        .replace(/\/$/u, '')
+        .toLowerCase()
+}
+
+function withoutUrlFromCta(cta: string, ctaUrl: string | null): string {
+    if (!ctaUrl) return cta
+
+    const embedded = extractUrl(cta)
+    if (!embedded || normalizedUrl(embedded) !== normalizedUrl(ctaUrl)) return cta
+
+    const start = cta.indexOf(embedded)
+    const before = cta.slice(0, start).replace(/\b(?:en|at|on|via)\s*$/iu, '').trimEnd()
+    const after = cta.slice(start + embedded.length).trimStart()
+
+    return `${before} ${after}`
+        .replace(/\s+([.,;:!?])/gu, '$1')
+        .replace(/\s{2,}/gu, ' ')
         .trim()
 }
 
@@ -166,6 +202,7 @@ export function buildCampaignImagePrompt(input: CampaignPromptInput): string {
     const cta = stripHashtags(post.cta)
     const goal = stripHashtags(post.goal)
     const visual = stripHashtags(post.visual_content || post.visual_note)
+    const imageTexts = (post.image_texts ?? []).map((text) => stripHashtags(text)).filter(Boolean)
 
     // -----------------------------------------------------------------------
     // PRIORITY 12 - IDIOMA
@@ -208,20 +245,22 @@ export function buildCampaignImagePrompt(input: CampaignPromptInput): string {
 
     // La web es la llamada a la accion de la pieza: recibe el tratamiento de
     // elemento protagonista (P09b), no el de dato de contacto.
-    const ctaUrl = resolveAsset(post.cta_url, brand?.url)
+    const configuredCtaUrl = resolveAsset(post.cta_url, brand?.url)
+    const ctaUrl = configuredCtaUrl ?? (post.cta_url === false ? null : extractUrl(cta))
+    const ctaLabel = withoutUrlFromCta(cta, ctaUrl)
     const phone = resolveAsset(post.phone, brand?.phones)
     const email = resolveAsset(post.email, brand?.emails)
     const address = resolveAsset(post.address, brand?.addresses)
 
     const textParts: string[] = []
     if (headline) textParts.push(`- HEADLINE: "${headline}"`)
-    if (body) textParts.push(`- BODY: "${body}"`)
+    imageTexts.forEach((text, index) => textParts.push(`- SUPPORT TEXT ${index + 1}: "${text}"`))
 
     if (ctaUrl) {
         textParts.push(P09B.URL_HERO_INSTRUCTION(ctaUrl))
-        if (cta) textParts.push(P09B.CTA_SECONDARY_INSTRUCTION(cta))
-    } else if (cta) {
-        textParts.push(P09B.CTA_ONLY_INSTRUCTION(cta))
+        if (ctaLabel) textParts.push(P09B.CTA_SECONDARY_INSTRUCTION(ctaLabel))
+    } else if (ctaLabel) {
+        textParts.push(P09B.CTA_ONLY_INSTRUCTION(ctaLabel))
     }
 
     const contactParts = [
@@ -236,7 +275,7 @@ export function buildCampaignImagePrompt(input: CampaignPromptInput): string {
         sections.push(P09.buildTypographyContract(firstFontList(brand?.fonts)))
         if (ctaUrl) {
             sections.push(
-                cta
+                ctaLabel
                     ? P09B.CRITICAL_HIERARCHY_INSTRUCTION(ctaUrl)
                     : P09B.CRITICAL_URL_ONLY_INSTRUCTION(ctaUrl),
             )
@@ -270,7 +309,8 @@ export function buildCampaignImagePrompt(input: CampaignPromptInput): string {
     // -----------------------------------------------------------------------
     // PRIORITY 7 - COMPOSICION Y LAYOUT
     // -----------------------------------------------------------------------
-    const layoutDirective = buildLayoutDirective(post.layout)
+    const resolvedLayout = resolveCampaignLayout(post.layout, post.intent)
+    const layoutDirective = buildLayoutDirective(resolvedLayout?.id)
     if (layoutDirective) {
         sections.push(
             `╔═════════════════════════════════════════════════════════════════╗`,

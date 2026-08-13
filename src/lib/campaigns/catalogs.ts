@@ -1,4 +1,4 @@
-import { SOCIAL_FORMATS, LAYOUTS_BY_INTENT } from '@/lib/creation-flow-types'
+import { SOCIAL_FORMATS, LAYOUTS_BY_INTENT, type IntentCategory } from '@/lib/creation-flow-types'
 import { DEFAULT_LAYOUTS, LAB_ADVANCED_LAYOUTS } from '@/lib/creation-flow/layout-catalog'
 
 /**
@@ -76,6 +76,17 @@ export function findLayout(id: string) {
         ...Object.values(LAYOUTS_BY_INTENT).flatMap((group) => group ?? []),
     ]
     return todos.find((layout) => layout?.id === id) ?? null
+}
+
+/** Primer layout del intent: replica la selección automática del módulo manual. */
+export function findDefaultLayoutForIntent(intent: IntentCategory | undefined) {
+    if (!intent) return null
+    return LAYOUTS_BY_INTENT[intent]?.[0] ?? null
+}
+
+/** Un layout explícito conserva prioridad; en su ausencia manda la intención. */
+export function resolveCampaignLayout(layoutId: string | undefined, intent: IntentCategory | undefined) {
+    return layoutId ? findLayout(layoutId) : findDefaultLayoutForIntent(intent)
 }
 
 /** Ids de formato validos, para poder sugerirlos en el mensaje de error. */

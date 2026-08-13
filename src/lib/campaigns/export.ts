@@ -187,9 +187,8 @@ export function escapeCsv(value: unknown): string {
 /**
  * Marca de orden de bytes UTF-8.
  *
- * Sin ella, Excel abre el CSV como ANSI y destroza cualquier acento: "Mañana"
- * se convierte en "MaÃ±ana". El fichero estaba bien codificado, pero quien lo
- * abre no tiene forma de saberlo. Con el BOM, Excel lo reconoce solo.
+ * Sin ella, Excel puede abrir el CSV como ANSI y corromper los acentos aunque
+ * el fichero esté bien codificado. Con el BOM, Excel reconoce UTF-8.
  */
 const BOM_UTF8 = '\uFEFF'
 

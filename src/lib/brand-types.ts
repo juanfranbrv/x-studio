@@ -11,6 +11,8 @@ export interface TextAssets {
 
 export interface BrandDNA {
     id?: string;
+    _id?: string;
+    slug?: string;
     url: string;
     brand_name: string;
     cta_url_enabled?: boolean;

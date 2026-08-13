@@ -5,7 +5,7 @@ import type { Id } from '@/../convex/_generated/dataModel'
 import { authedFetchQuery, authedFetchMutation } from '@/lib/convex-server'
 import { generateContentImageUnified } from '@/lib/gemini'
 import type { BrandDNA } from '@/lib/brand-types'
-import { findSocialFormat, findLayout } from '@/lib/campaigns/catalogs'
+import { findSocialFormat, resolveCampaignLayout } from '@/lib/campaigns/catalogs'
 import { persistGeneratedImage } from '@/lib/campaigns/store-image'
 import { resolveCampaignColors } from '@/lib/campaigns/brand-colors'
 import { buildCampaignContext, type ContextItem } from '@/lib/campaigns/brand-logo'
@@ -57,7 +57,7 @@ function buildOptions(
 ) {
     const format = post.format ? findSocialFormat(post.format) : null
     const analysis = (style?.analysis ?? {}) as { keywords?: string[]; subjectLabel?: string }
-    const layout = post.layout ? findLayout(post.layout) : null
+    const layout = resolveCampaignLayout(post.layout, post.intent)
 
     return {
         // Saneados igual que en el prompt: hoy el generador no usa estos dos

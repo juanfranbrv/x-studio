@@ -175,7 +175,7 @@ describe('buildCampaignCsv', () => {
             ]),
         )
         expect(conAcentos).toContain('Mañana la cuenta atrás')
-        expect(conAcentos).not.toContain('MaÃ±ana')
+        expect(conAcentos).not.toContain(`Ma${String.fromCodePoint(0xc3, 0xb1)}ana`)
     })
 
     it('empieza por la cabecera', () => {

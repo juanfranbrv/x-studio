@@ -1,3 +1,5 @@
+import { INTENT_CATALOG, type IntentCategory } from '@/lib/creation-flow-types'
+
 /**
  * Validacion del manifiesto de campana (docs/API_AUTOMATIZACION.md).
  *
@@ -7,6 +9,7 @@
  */
 
 export type CampaignPlatform = 'instagram' | 'facebook' | 'tiktok' | 'youtube' | 'linkedin' | 'x'
+export type CampaignIntent = IntentCategory
 
 export const CAMPAIGN_PLATFORMS: CampaignPlatform[] = [
     'instagram',
@@ -57,6 +60,10 @@ export type ManifestPost = {
     /** Prompt en prosa. Si viene, manda sobre headline/body/cta. */
     prompt?: string
     headline?: string
+    /** Textos breves que sí deben aparecer dentro de la creatividad. */
+    image_texts?: string[]
+    /** Determina el layout predeterminado sin exponer layouts al agente externo. */
+    intent?: CampaignIntent
     body?: string
     cta?: string
     hashtags?: string[]
@@ -169,6 +176,22 @@ function validatePlatform(value: unknown, path: string, errors: ManifestIssue[],
     return platform as CampaignPlatform
 }
 
+const CAMPAIGN_INTENTS = new Set<CampaignIntent>(INTENT_CATALOG.map((intent) => intent.id))
+
+function validateIntent(value: unknown, path: string, errors: ManifestIssue[], ref?: string): CampaignIntent | undefined {
+    const intent = readString(value)
+    if (!intent) return undefined
+    if (!CAMPAIGN_INTENTS.has(intent as CampaignIntent)) {
+        errors.push({
+            path,
+            ref,
+            message: `Intención no reconocida: "${intent}".`,
+        })
+        return undefined
+    }
+    return intent as CampaignIntent
+}
+
 /**
  * Valida la forma del manifiesto. NO comprueba que la marca, el estilo o el
  * formato existan de verdad: eso exige base de datos y se hace despues, al
@@ -262,6 +285,15 @@ export function validateManifest(input: unknown): ManifestValidation {
             errors.push({ path: `${path}.scheduled_at`, ref, message: `Fecha no valida: "${scheduledAt}". Se espera formato ISO 8601.` })
         }
 
+        const imageTexts = readStringArray(raw.image_texts)
+        if (Array.isArray(raw.image_texts) && imageTexts.length > 4) {
+            errors.push({
+                path: `${path}.image_texts`,
+                ref,
+                message: 'Cada publicación admite un máximo de cuatro textos visibles de apoyo.',
+            })
+        }
+
         const post: ManifestPost = {
             ref,
             scheduled_at: scheduledAt || undefined,
@@ -269,6 +301,8 @@ export function validateManifest(input: unknown): ManifestValidation {
             goal: readString(raw.goal) || undefined,
             prompt: readString(raw.prompt) || undefined,
             headline: readString(raw.headline) || undefined,
+            image_texts: imageTexts.length > 0 ? imageTexts : undefined,
+            intent: validateIntent(raw.intent, `${path}.intent`, errors, ref),
             body: readString(raw.body) || undefined,
             cta: readString(raw.cta) || undefined,
             hashtags: readStringArray(raw.hashtags),
