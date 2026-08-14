@@ -2,7 +2,7 @@
 import { mutation, query } from "./_generated/server";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
 import type { Doc, Id } from "./_generated/dataModel";
-import { requireSameUser, requireAdmin, assertInternalAccess } from "./lib/authz";
+import { requireSameUser, assertInternalAccess } from "./lib/authz";
 
 const ADMIN_EMAILS = ["juanfranbrv@gmail.com"];
 
@@ -46,41 +46,6 @@ function resolveExistingUserAccess(
     return access;
 }
 
-async function migrateUserOwnershipIfNeeded(
-    ctx: MutationCtx,
-    oldClerkId: string,
-    newClerkId: string,
-    email: string
-) {
-    if (!oldClerkId || !newClerkId || oldClerkId === newClerkId) return;
-
-    const [brandDNA, legacyBrands, presets, feedbackItems] = await Promise.all([
-        ctx.db
-            .query("brand_dna")
-            .withIndex("by_clerk_id", (q) => q.eq("clerk_user_id", oldClerkId))
-            .collect(),
-        ctx.db
-            .query("brands")
-            .withIndex("by_owner", (q) => q.eq("owner_id", oldClerkId))
-            .collect(),
-        ctx.db
-            .query("presets")
-            .withIndex("by_user", (q) => q.eq("userId", oldClerkId))
-            .collect(),
-        ctx.db
-            .query("feedback")
-            .withIndex("by_user", (q) => q.eq("userId", oldClerkId))
-            .collect(),
-    ]);
-
-    await Promise.all([
-        ...brandDNA.map((item) => ctx.db.patch(item._id, { clerk_user_id: newClerkId })),
-        ...legacyBrands.map((item) => ctx.db.patch(item._id, { owner_id: newClerkId })),
-        ...presets.map((item) => ctx.db.patch(item._id, { userId: newClerkId })),
-        ...feedbackItems.map((item) => ctx.db.patch(item._id, { userId: newClerkId, userEmail: email })),
-    ]);
-}
-
 async function findUserByEmail(ctx: MutationCtx, email: string) {
     const emailLower = email.toLowerCase().trim();
     return await ctx.db
@@ -120,94 +85,6 @@ async function ensureUserReferralCode(ctx: MutationCtx, user: Doc<"users">) {
     const referralCode = await createUniqueReferralCode(ctx, user.email)
     await ctx.db.patch(user._id, { referral_code: referralCode })
     return referralCode
-}
-
-async function findUsersByEmail(ctx: MutationCtx, email: string) {
-    const emailLower = email.toLowerCase().trim();
-    return await ctx.db
-        .query("users")
-        .withIndex("by_email", (q) => q.eq("email", emailLower))
-        .collect();
-}
-
-async function reconcileUsersByEmail(
-    ctx: MutationCtx,
-    targetUser: Doc<"users">,
-    newClerkId: string,
-    email: string
-) {
-    const matches = await findUsersByEmail(ctx, email);
-    const duplicates = matches.filter((user) => user._id !== targetUser._id);
-
-    if (duplicates.length === 0) {
-        const normalizedEmail = email.toLowerCase().trim();
-        if (targetUser.clerk_id !== newClerkId || targetUser.email !== normalizedEmail) {
-            await ctx.db.patch(targetUser._id, { clerk_id: newClerkId, email: normalizedEmail });
-            return { ...targetUser, clerk_id: newClerkId, email: normalizedEmail };
-        }
-        return targetUser;
-    }
-
-    let maxCredits = targetUser.credits || 0;
-    let fallbackCurrentBrand = targetUser.current_brand_id;
-
-    for (const duplicate of duplicates) {
-        maxCredits = Math.max(maxCredits, duplicate.credits || 0);
-        if (!fallbackCurrentBrand && duplicate.current_brand_id) {
-            fallbackCurrentBrand = duplicate.current_brand_id;
-        }
-
-        await migrateUserOwnershipIfNeeded(ctx, duplicate.clerk_id, newClerkId, email);
-
-        const txs = await ctx.db
-            .query("credit_transactions")
-            .withIndex("by_user", (q) => q.eq("user_id", duplicate._id))
-            .collect();
-        const referredUsers = await ctx.db
-            .query("users")
-            .withIndex("by_referred_by_user_id", (q) => q.eq("referred_by_user_id", duplicate._id))
-            .collect();
-        const referralsAsReferrer = await ctx.db
-            .query("referrals")
-            .withIndex("by_referrer_user_id", (q) => q.eq("referrer_user_id", duplicate._id))
-            .collect();
-        const referralsAsReferred = await ctx.db
-            .query("referrals")
-            .withIndex("by_referred_user_id", (q) => q.eq("referred_user_id", duplicate._id))
-            .collect();
-        const rewardsAsReferrer = await ctx.db
-            .query("referral_rewards")
-            .withIndex("by_referrer_user_id", (q) => q.eq("referrer_user_id", duplicate._id))
-            .collect();
-        const rewardsAsReferred = await ctx.db
-            .query("referral_rewards")
-            .withIndex("by_referred_user_id", (q) => q.eq("referred_user_id", duplicate._id))
-            .collect();
-        await Promise.all(txs.map((tx) => ctx.db.patch(tx._id, { user_id: targetUser._id })));
-        await Promise.all(referredUsers.map((item) => ctx.db.patch(item._id, { referred_by_user_id: targetUser._id })));
-        await Promise.all(referralsAsReferrer.map((item) => ctx.db.patch(item._id, { referrer_user_id: targetUser._id })));
-        await Promise.all(referralsAsReferred.map((item) => ctx.db.patch(item._id, { referred_user_id: targetUser._id })));
-        await Promise.all(rewardsAsReferrer.map((item) => ctx.db.patch(item._id, { referrer_user_id: targetUser._id })));
-        await Promise.all(rewardsAsReferred.map((item) => ctx.db.patch(item._id, { referred_user_id: targetUser._id })));
-
-        await ctx.db.delete(duplicate._id);
-    }
-
-    const normalizedEmail = email.toLowerCase().trim();
-    await ctx.db.patch(targetUser._id, {
-        clerk_id: newClerkId,
-        email: normalizedEmail,
-        credits: maxCredits,
-        current_brand_id: fallbackCurrentBrand,
-    });
-
-    return {
-        ...targetUser,
-        clerk_id: newClerkId,
-        email: normalizedEmail,
-        credits: maxCredits,
-        current_brand_id: fallbackCurrentBrand,
-    };
 }
 
 async function updateUserAccessAndCredits(
@@ -362,22 +239,14 @@ export const upsertUser = mutation({
         const access = await resolveUserAccess(ctx, args.email);
 
         if (existing) {
-            const reconciled = await reconcileUsersByEmail(ctx, existing, args.clerk_id, emailLower);
-            await updateUserAccessAndCredits(ctx, reconciled, access, emailLower, "Activation after beta approval");
-            await ensureUserReferralCode(ctx, reconciled);
-            return reconciled._id;
+            await updateUserAccessAndCredits(ctx, existing, access, emailLower, "Activation after beta approval");
+            await ensureUserReferralCode(ctx, existing);
+            return existing._id;
         }
 
         const existingByEmail = await findUserByEmail(ctx, emailLower);
         if (existingByEmail) {
-            const oldClerkId = existingByEmail.clerk_id;
-            if (oldClerkId !== args.clerk_id) {
-                await migrateUserOwnershipIfNeeded(ctx, oldClerkId, args.clerk_id, emailLower);
-            }
-            const reconciled = await reconcileUsersByEmail(ctx, existingByEmail, args.clerk_id, emailLower);
-            await updateUserAccessAndCredits(ctx, reconciled, access, emailLower, "Activation after beta approval");
-            await ensureUserReferralCode(ctx, reconciled);
-            return reconciled._id;
+            throw new Error("identity_email_conflict");
         }
 
         const initialCredits = access.approved
@@ -453,34 +322,20 @@ export const syncUserFromClerkWebhook = mutation({
             : 0;
 
         if (existing) {
-            const reconciled = await reconcileUsersByEmail(ctx, existing, args.clerk_id, emailLower);
             const { effectiveAccess } = await updateUserAccessAndCredits(
                 ctx,
-                reconciled,
+                existing,
                 access,
                 emailLower,
                 "Clerk webhook beta approval"
             );
-            await ensureUserReferralCode(ctx, reconciled);
-            return { action: "updated", userId: reconciled._id, role: effectiveAccess.role, status: effectiveAccess.status };
+            await ensureUserReferralCode(ctx, existing);
+            return { action: "updated", userId: existing._id, role: effectiveAccess.role, status: effectiveAccess.status };
         }
 
         const existingByEmail = await findUserByEmail(ctx, emailLower);
         if (existingByEmail) {
-            const oldClerkId = existingByEmail.clerk_id;
-            if (oldClerkId !== args.clerk_id) {
-                await migrateUserOwnershipIfNeeded(ctx, oldClerkId, args.clerk_id, emailLower);
-            }
-            const reconciled = await reconcileUsersByEmail(ctx, existingByEmail, args.clerk_id, emailLower);
-            const { effectiveAccess } = await updateUserAccessAndCredits(
-                ctx,
-                reconciled,
-                access,
-                emailLower,
-                "Clerk webhook beta approval"
-            );
-            await ensureUserReferralCode(ctx, reconciled);
-            return { action: "updated", userId: reconciled._id, role: effectiveAccess.role, status: effectiveAccess.status };
+            throw new Error("identity_email_conflict");
         }
 
         const userId = await ctx.db.insert("users", {
@@ -531,41 +386,6 @@ export const deleteUserByClerkId = mutation({
         await ctx.db.delete(user._id);
 
         return { success: true, deleted: true };
-    },
-});
-
-export const reconcileUserByEmail = mutation({
-    args: {
-        admin_email: v.string(),
-        email: v.string(),
-    },
-    handler: async (ctx, args) => {
-        // El rol admin se verifica contra la identidad real del JWT,
-        // nunca contra el argumento admin_email (que se conserva por compatibilidad).
-        await requireAdmin(ctx);
-
-        const emailLower = args.email.toLowerCase().trim();
-        const matches = await findUsersByEmail(ctx, emailLower);
-        if (matches.length <= 1) {
-            return { success: true, message: "No duplicates found", count: matches.length };
-        }
-
-        const target =
-            matches.find((user) => user.role === "admin") ??
-            matches.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0];
-
-        const beforeCount = matches.length;
-        await reconcileUsersByEmail(ctx, target, target.clerk_id, emailLower);
-        const after = await findUsersByEmail(ctx, emailLower);
-
-        return {
-            success: true,
-            message: "Reconciled",
-            beforeCount,
-            afterCount: after.length,
-            targetUserId: target._id,
-            targetClerkId: target.clerk_id,
-        };
     },
 });
 

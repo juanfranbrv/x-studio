@@ -10,6 +10,8 @@ import { Toaster } from "@/components/ui/toaster";
 import { ReferralTracker } from "@/components/providers/ReferralTracker";
 import { brand } from "@/lib/brand";
 import { cn } from "@/lib/utils";
+import { EnvironmentBanner } from "@/components/layout/EnvironmentBanner";
+import { resolveRuntimeEnvironment } from "@/lib/runtime-environment";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -46,6 +48,16 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const runtimeEnvironment = resolveRuntimeEnvironment({
+    appEnvironment: process.env.NEXT_PUBLIC_APP_ENV,
+    convexUrl: process.env.NEXT_PUBLIC_CONVEX_URL,
+    productionConvexUrl:
+      process.env.NEXT_PUBLIC_PRODUCTION_CONVEX_URL ??
+      "prestigious-pigeon-784",
+    vercelEnvironment: process.env.VERCEL_ENV,
+  });
+  const environmentBannerHeight = runtimeEnvironment === "production" ? "0px" : "8px";
+
   return (
     <html lang="es" suppressHydrationWarning>
       <head>
@@ -69,11 +81,15 @@ export default function RootLayout({
               <DynamicThemeProvider>
                 <BrandKitProvider>
                   <UIProvider>
-                    <div className="relative flex min-h-dvh flex-col">
+                    <div
+                      className="relative flex min-h-dvh flex-col"
+                      style={{ "--environment-banner-height": environmentBannerHeight } as React.CSSProperties}
+                    >
+                      <EnvironmentBanner environment={runtimeEnvironment} />
                       <Suspense fallback={null}>
                         <ReferralTracker />
                       </Suspense>
-                      <main className="flex-1">
+                      <main className="min-h-0 flex-1">
                         {children}
                       </main>
                     </div>

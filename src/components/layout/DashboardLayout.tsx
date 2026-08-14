@@ -118,7 +118,7 @@ export function DashboardLayout({
 
     return (
         <ProtectedRoute>
-            <div className="fixed inset-0 flex overflow-hidden bg-[radial-gradient(circle_at_top_left,hsl(var(--primary)/0.08),transparent_24%),radial-gradient(circle_at_top_right,hsl(var(--accent)/0.07),transparent_18%),linear-gradient(180deg,hsl(var(--surface-alt)),hsl(var(--surface)))] text-foreground md:relative md:inset-auto md:h-dvh">
+            <div className="fixed inset-x-0 bottom-0 top-[var(--environment-banner-height)] flex overflow-hidden bg-[radial-gradient(circle_at_top_left,hsl(var(--primary)/0.08),transparent_24%),radial-gradient(circle_at_top_right,hsl(var(--accent)/0.07),transparent_18%),linear-gradient(180deg,hsl(var(--surface-alt)),hsl(var(--surface)))] text-foreground md:relative md:inset-auto md:h-[calc(100dvh-var(--environment-banner-height))]">
                 {headerVariant === 'bar' ? (
                     <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
                         <Header

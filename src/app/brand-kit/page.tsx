@@ -1015,7 +1015,7 @@ function BrandKitPageContent() {
                             <p className="mt-2 text-sm leading-6 text-muted-foreground">
                                 {loadError
                                     ? t('recovery.serverErrorDescription', { defaultValue: 'La lectura inicial falló. Puedes reintentar la carga sin salir de esta pantalla.' })
-                                    : t('recovery.errorDescription', { defaultValue: 'La comprobación no devolvió un estado válido. Reintentaremos la carga completa.' })}
+                                    : t('recovery.selectionErrorDescription', { defaultValue: 'Encontramos tus kits, pero no pudimos activar el seleccionado. Reintenta la carga.' })}
                             </p>
                             <Button
                                 type="button"

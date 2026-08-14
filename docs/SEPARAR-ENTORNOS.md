@@ -1,6 +1,8 @@
 # Operación: separar entornos de desarrollo y producción
 
-> **Estado: EN CURSO.** Fase 0 completada el 2026-08-14. Resto pendiente.
+> **Estado: COMPLETADO el 2026-08-14.** Las Fases 0–6 están ejecutadas. El backend
+> Convex está publicado en ambos deployments; los cambios de frontend siguen en la
+> rama local y requieren el flujo separado de validación, commit y despliegue web.
 > **Este documento es autosuficiente:** contiene todo lo necesario para continuar sin
 > haber participado en la investigación. Si lo retoma otro agente, empieza por §1 y §2.
 > Decisión tomada por Juanfran el 2026-08-14 tras ver el diagnóstico de §2.
@@ -129,7 +131,7 @@ Resultado: `.backups/convex-2026-08-14.zip`, 728 KB, 34 tablas. `.backups/` aña
 
 **Antes de cualquier fase destructiva, repetir el export con la fecha del día.**
 
-### Fase 1 — Crear la base de desarrollo ⏳ PENDIENTE
+### Fase 1 — Crear la base de desarrollo ✅ COMPLETADA
 
 **Principio rector: NO se mueven los datos de producción.** `prestigious-pigeon-784` se
 queda como está, sirviendo a `postlaboratory.com`. Lo que se crea es una base nueva y
@@ -143,10 +145,10 @@ reutilizar `watchful-retriever-328`, para no arrastrar la confusión de etiqueta
 npx convex dev --once --configure=new
 ```
 
-Verificación: el panel de Convex muestra el proyecto nuevo con las tablas del esquema
-creadas y vacías.
+Resultado: proyecto `gradeyourwritings/x-studio-dev`, deployment europeo
+`moonlit-marten-227`. El esquema se publicó correctamente.
 
-### Fase 2 — Apuntar local a la base nueva ⏳ PENDIENTE
+### Fase 2 — Apuntar local a la base nueva ✅ COMPLETADA
 
 En `.env.local`, cambiar `CONVEX_DEPLOYMENT` y `NEXT_PUBLIC_CONVEX_URL` a los del
 deployment nuevo. **Clerk se queda como está** (`pk_test`/`sk_test`): local con Clerk de
@@ -158,10 +160,10 @@ atrás en segundos.
 ⚠ `CONVEX_DEPLOY_KEY` en `.env.local` apunta hoy a `prestigious-pigeon-784`. Revisar que
 no siga forzando el deployment antiguo.
 
-Verificación: `npx convex dev --once` reporta el deployment NUEVO, no
-`prestigious-pigeon-784`.
+Verificación: `npx convex dev --once` reporta `moonlit-marten-227`. La clave histórica
+de `prestigious-pigeon-784` queda comentada y `NEXT_PUBLIC_APP_ENV=local`.
 
-### Fase 3 — Sembrar la configuración mínima ⏳ PENDIENTE
+### Fase 3 — Sembrar la configuración mínima ✅ COMPLETADA
 
 La base nueva estará vacía y la aplicación necesita filas de configuración para arrancar.
 Revisar como mínimo: `app_settings`, `system_prompts`, `model_costs`, `billing_packs`.
@@ -169,9 +171,13 @@ Revisar como mínimo: `app_settings`, `system_prompts`, `model_costs`, `billing_
 Se pueden extraer del export de la Fase 0 (el zip trae un `.jsonl` por tabla) e
 importarlas **solo esas** al deployment nuevo. **NO importar datos de usuarios.**
 
-Verificación: entrar en `localhost:3000`, crear un kit de marca de prueba y generar algo.
+Resultado verificado: 28 filas en `app_settings`, 3 en `system_prompts`, 28 en
+`model_costs` y 3 en `billing_packs`. Las otras 30 tablas del esquema quedaron vacías.
+La validación posterior creó el kit `Kit de prueba entorno local`, analizó un briefing y
+generó una imagen con respuesta HTTP 200; el navegador mantuvo WebSocket exclusivamente
+contra `moonlit-marten-227` y mostró la banda local durante todo el flujo.
 
-### Fase 4 — Indicador visible de entorno ⏳ PENDIENTE
+### Fase 4 — Indicador visible de entorno ✅ COMPLETADA EN CÓDIGO
 
 Requisito explícito de Juanfran: *"no siempre lo tengo claro"*.
 
@@ -181,26 +187,46 @@ entorno, **no** por `NODE_ENV` (un despliegue de vista previa también es "produ
 
 Verificación: se ve en `localhost:3000` y NO se ve en `postlaboratory.com`.
 
-### Fase 5 — Consolidar el trabajo ya partido en producción ⏳ PENDIENTE
+Implementación local del 2026-08-14:
+
+- `src/lib/runtime-environment.ts` resuelve `production`, `preview` o `local` sin
+  usar `NODE_ENV`.
+- La precedencia es `NEXT_PUBLIC_APP_ENV`, `VERCEL_ENV` y comparación entre los
+  nombres de deployment extraídos de `NEXT_PUBLIC_CONVEX_URL` y
+  `NEXT_PUBLIC_PRODUCTION_CONVEX_URL`; así se tolera el segmento regional de Convex.
+- `EnvironmentBanner` se monta en el layout raíz y reserva 30 px también para los
+  layouts fijos.
+- Local declara `NEXT_PUBLIC_APP_ENV=local` y apunta a `moonlit-marten-227`, por lo que
+  la banda se muestra. En producción se oculta.
+
+### Fase 5 — Consolidar el trabajo ya partido en producción ✅ COMPLETADA
 
 **Esta es la fase destructiva. Requiere backup del día y confirmación explícita.**
 
 En producción quedan 58 sesiones y 77 activos bajo `user_37R8Mi...` que son **trabajo
 real** hecho desde local. Hay que reasignarlos a la identidad buena.
 
-- **Identidad destino: `user_3AB2BmaIPSkUvq1jIap4rKqRqdL`** — es la que tiene más trabajo
-  (116 sesiones) y la única registrada en `users`, con los 58 créditos y ACADEMIA BAUSET.
-- **Identidad origen: `user_37R8MiIJvgY7ZIQaMyDnQCqDl5t`** — ni siquiera existe en `users`.
+- **Identidad destino: `user_3AB2BmaIPSkUvq1jIap4rKqRqdL`** — verificada en el tenant
+  Clerk de producción `clerk.adstudio.click`.
+- **Identidad origen: `user_37R8MiIJvgY7ZIQaMyDnQCqDl5t`** — verificada únicamente en
+  el tenant Clerk local `supreme-chipmunk-83.clerk.accounts.dev`.
 
-Tablas a reasignar (campo entre paréntesis):
+Tablas con propiedad directa a reasignar (campo entre paréntesis):
 
 ```
 work_sessions (user_id)              session_images (user_id)
 content_asset_annotations (user_id)  content_campaigns (user_id)
-postiz_accounts (user_id)            credit_transactions (user_id)
+postiz_accounts (user_id)
 brand_dna (clerk_user_id)            brands (owner_id)
 presets (userId)                     feedback (userId)
+campaign_jobs (user_id)              campaign_job_items (user_id)
+economic_audit_events (user_clerk_id)
 ```
+
+Corrección verificada durante la ejecución: la fila `users` pertenecía al origen y el
+destino todavía no tenía fila. La migración conserva el mismo `Id<"users">`, sus 58
+créditos, rol y referencias internas, y cambia su `clerk_id` al destino dentro de la
+misma transacción. Si existen filas `users` para ambos Clerk ID, la ejecución se bloquea.
 
 ⚠ **Cuidado con las colisiones**: `content_asset_annotations` tiene índice
 `by_user_asset`, y `convex/postiz.ts` usa `.unique()` sobre él. Si el mismo `asset_key`
@@ -210,7 +236,30 @@ empezará a lanzar. Hay que detectar duplicados ANTES y decidir con cuál quedar
 Verificación: contar filas por identidad antes y después; la de origen debe quedar a 0 y
 los totales deben cuadrar.
 
-### Fase 6 — Cerrar el círculo ⏳ PENDIENTE
+Herramienta implementada en `convex/userOwnershipMigration.ts`:
+
+- `inspect`: solo lectura; devuelve conteos, límites y colisiones.
+- `execute`: requiere rol admin, frase de confirmación, una única fila `users` entre
+  origen y destino y cero colisiones.
+- cubre las 12 tablas con Clerk ID directo, incluidas las tres omitidas inicialmente.
+- rechaza la operación completa si existe un `asset_key` duplicado o una cuenta de
+  Postiz en ambos lados; no realiza escrituras parciales.
+- publicada e invocada en `prestigious-pigeon-784` el 2026-08-14.
+
+Evidencia de ejecución:
+
+- backup completo con almacenamiento:
+  `.backups/convex-production-pre-identity-migration-20260814-163216.zip`;
+- tamaño: 775.062.402 bytes; 2.048 entradas;
+- SHA-256: `75917A6ACD19C3133AC879E3FA0519309D3D94577D8345FA12A993EC396B3224`;
+- inspección previa: 1.697 filas origen, cero colisiones, sin overflow;
+- ejecución: 1.697 filas reasignadas;
+- comprobación posterior: origen a cero; destino con 2.357 filas, exactamente las
+  1.697 del origen más las 660 que ya tenía; igualdad verificada en las 12 tablas;
+- fila `users` conservada con `_id` `m57c4hnz3c2jm14571574z7nwx826j4m`, 58 créditos y
+  rol `admin`.
+
+### Fase 6 — Cerrar el círculo ✅ COMPLETADA EN CÓDIGO
 
 1. **Quitar la traza temporal** del commit `38842ac` (`__diag` en
    `src/app/actions/get-user-brand-kit.ts` y el `JSON.stringify` en
@@ -225,6 +274,20 @@ los totales deben cuadrar.
    de dispararse en el día a día, pero sigue siendo una bomba si alguna vez vuelven a
    convivir dos identidades. Como mínimo, que cubra TODAS las tablas con dueño, o que
    deje de existir.
+
+Decisión aplicada el 2026-08-14:
+
+- eliminadas `migrateUserOwnershipIfNeeded` y `reconcileUserByEmail`;
+- `upsertUser` y el webhook ya no reasignan por coincidencia de correo: devuelven
+  `identity_email_conflict` si un Clerk ID distinto intenta usar un correo existente;
+- la consolidación queda exclusivamente en la herramienta administrativa explícita de
+  la Fase 5;
+- retirada la traza `__diag` y su serialización en cliente;
+- el vacío legítimo conserva su estado «Todavía no tienes kits de marca» con acción de
+  creación; el copy de error restante describe un fallo real de lectura o selección.
+
+Las funciones Convex están publicadas. Los cambios de interfaz permanecen locales hasta
+que se autorice el flujo de commit y despliegue de Vercel.
 
 ---
 

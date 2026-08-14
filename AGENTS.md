@@ -8,16 +8,20 @@
 
 - Para reglas de coherencia visual, tipografia, botones, dropdowns y jerarquia de UI, consulta tambien docs/UI_SYSTEM_RULES.md antes de introducir controles nuevos o retocar patrones existentes.
 
-## ⛔ CONVEX: LEE ESTO ANTES DE TOCAR NADA (verificado en el dashboard el 2026-08-11)
+## ⛔ CONVEX: LEE ESTO ANTES DE TOCAR NADA (verificado el 2026-08-14)
 
-**ESTE PROYECTO NO TIENE SEPARACION ENTRE DESARROLLO Y PRODUCCION EN CONVEX.**
+**DESARROLLO LOCAL Y PRODUCCIÓN YA ESTÁN SEPARADOS.**
+
+**`.env.local` apunta al deployment de pruebas `moonlit-marten-227`, dentro del proyecto
+`gradeyourwritings/x-studio-dev`. `npx convex dev` trabaja por defecto contra esa base
+aislada. No contiene datos de usuarios; solo configuración mínima.**
 
 **SOLO HAY UN CONVEX REAL: `prestigious-pigeon-784`. AUNQUE CONVEX LO ETIQUETE COMO
 "DEVELOPMENT", ES EL QUE USA LA WEB PUBLICA `postlaboratory.com`.**
 
-**CONSECUENCIA: TRABAJAR EN LOCAL ES TRABAJAR EN PRODUCCION. CADA `npx convex dev`
-PUBLICA EN LA WEB REAL Y CADA DATO QUE SE TOCA ES DATO REAL DE USUARIOS.
-NO EXISTE UN ENTORNO DE PRUEBAS. NO LLAMES "DEV" A ESTE DEPLOYMENT.**
+**`prestigious-pigeon-784` sigue siendo la producción real aunque Convex lo etiquete
+"Development". Solo se alcanza reactivando deliberadamente su deploy key histórica o
+seleccionándolo de forma explícita. Cualquier operación contra él requiere confirmación.**
 
 **EL DEPLOYMENT LLAMADO "PRODUCTION" (`watchful-retriever-328`) ESTA VACIO Y NO LO USA
 NADIE: 0 LLAMADAS, TABLA `users` VACIA, ULTIMO DEPLOY HACE 2 MESES.
@@ -28,26 +32,30 @@ Evidencia (por si alguien vuelve a dudar):
 
 | Cosa | Valor real |
 |---|---|
+| Deployment local de pruebas | `moonlit-marten-227` — proyecto `gradeyourwritings/x-studio-dev` |
 | Deployment que sirve `postlaboratory.com` | `prestigious-pigeon-784` (visto en el bundle JS de produccion) |
 | Etiqueta que le pone Convex | `Development` |
 | Deployment etiquetado `Production` | `watchful-retriever-328` — vacio, sin trafico |
-| `NEXT_PUBLIC_CONVEX_URL`, `CONVEX_PROD_URL`, `MIGRATION_SOURCE_URL`, `MIGRATION_TARGET_URL` | los cuatro → `prestigious-pigeon-784` |
-| `CONVEX_DEPLOY_KEY` | `dev:prestigious-pigeon-784` (la real, la que usa el CLI) |
+| `NEXT_PUBLIC_CONVEX_URL` local | `moonlit-marten-227` |
+| `CONVEX_PROD_URL`, `MIGRATION_SOURCE_URL`, `MIGRATION_TARGET_URL` | `prestigious-pigeon-784` |
+| Deploy key histórica real | comentada en `.env.local`; backup ignorado en `.backups/` |
 | `CONVEX_PROD_DEPLOY_KEY` | `prod:watchful-retriever-328` (el cascaron vacio) |
 | `warmhearted-schnauzer-446` | MUERTO, no responde. Si aparece en codigo o docs, es basura heredada |
 
 Reglas practicas que se derivan:
 
-1. **Antes de cualquier `npx convex dev --once` o `convex deploy`, avisa de que eso
-   publica en produccion y pide confirmacion.** No es un despliegue de pruebas.
+1. `npx convex dev --once` sin overrides publica en `moonlit-marten-227`. Antes de
+   usar `prestigious-pigeon-784`, su clave histórica o cualquier override de deployment,
+   avisar y pedir confirmación porque eso sí publica en producción.
 2. **El login del CLI de Convex es global por maquina** (`~/.convex/config.json`), asi
    que loguearse para otro proyecto rompe el acceso a este. Por eso existe
-   `CONVEX_DEPLOY_KEY` en `.env.local`: el CLI la usa y ya no depende del login.
+   La base local usa la sesión global. La clave de producción queda desactivada para
+   impedir selecciones accidentales.
 3. El migrador `/admin/migrate` tiene origen y destino en el MISMO deployment: solo
    copia de un usuario a otro. Es correcto, no es un bug.
-4. Riesgos abiertos y NO resueltos: el deployment con todos los datos **no tiene
-   backups** ("No backup yet") y corre con limites de tier Development (el dashboard
-   ya avisa "Queries hit concurrency limit").
+4. Existe un backup completo previo a la consolidación, con almacenamiento incluido, en
+   `.backups/convex-production-pre-identity-migration-20260814-163216.zip`. El riesgo
+   abierto es que producción sigue con límites de tier Development.
 ## 🧠 Instrucciones Críticas de Comportamiento (Persona & Workflow)
 
 ### 1. Razonamiento y Planificación (Core)
@@ -118,10 +126,11 @@ Antes de tomar cualquier acción o responder:
   - decisiones de producto ambiguas donde haya más de una dirección válida.
 - **Si el agente puede verificarlo por su cuenta, debe hacerlo**. La revisión manual de Juanfran pasa a ser una capa final, no un requisito para cada iteración pequeña.
 - **Si una validación visual no puede hacerse de forma fiable**, el agente debe explicar exactamente qué faltó para automatizarla.
-- **Norma operativa obligatoria para validación visual**:
-  - Antes de validar UI en navegador, arrancar el navegador de debug aislado del proyecto con `npm run chrome:debug`, `npm run chrome:debug:studio` o `npm run dev:debug-browser`.
-  - No depender de una sesión personal de Chrome ya abierta, porque bloquea Playwright y hace menos fiable la validación visual automatizada.
-  - Si el navegador aislado no está disponible, el agente debe intentar levantarlo por su cuenta antes de pedir revisión manual.
+- **Preferencia operativa obligatoria de Juanfran para validación visual**:
+  - Usar primero la extensión de ChatGPT instalada en el Chrome personal de Juanfran. Esta es la superficie prioritaria para revisar la UI, aprovechar sesiones autenticadas y comprobar el estado que Juanfran está viendo.
+  - Reutilizar las pestañas existentes cuando corresponda y evitar abrir navegadores o perfiles adicionales sin necesidad.
+  - Usar el navegador de debug aislado del proyecto (`npm run chrome:debug`, `npm run chrome:debug:studio` o `npm run dev:debug-browser`) solo si la extensión no está disponible, falla la conexión o la prueba exige aislamiento técnico.
+  - No arrancar el navegador aislado por defecto mientras la extensión de ChatGPT esté conectada y sea suficiente para la comprobación.
 
 ### 7. Rediseños y UI
 -   **PROHIBIDO realizar rediseños completos** de una página o componente sin consulta previa y autorización explícita de Juanfran.
@@ -204,7 +213,7 @@ Cuando Juanfran diga **"deploy"**, se considera **autorización explícita** par
     - Peticiones de red (Convex, APIs) para ver payloads y status.
     - Inspección de estilos computados para puzzles de CSS difíciles.
     - Verificación técnica de estados de la UI (ej. ¿está este botón realmente habilitado?).
-- **REGLA DE CONEXIÓN**: Siempre verifica que el puerto `9222` está abierto antes de intentar conectar.
+- **REGLA DE CONEXIÓN**: Prioriza la extensión de ChatGPT del Chrome personal. Verifica el puerto `9222` únicamente cuando sea necesario recurrir al navegador de debug aislado.
 - **ÉTICA DE USO (Cruce con Regla 6)**:
     - Úsalo para diagnóstico técnico, validación visual y resolución autónoma de bloqueos cuando haga falta.
     - Si Playwright no basta para explicar un fallo visual, usa DevTools para inspeccionar las tripas antes de parchear a ciegas.

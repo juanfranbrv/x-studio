@@ -655,7 +655,9 @@ These values are editable from Admin and must remain the single source of truth 
 - Dominio principal de producto: `postlaboratory.com`
 - Dominio legado a redirigir: `adstudio.click`
 - Dominio frontend de Clerk en produccion: `clerk.postlaboratory.com`
-- Mientras `postlaboratory.com` siga apuntando al deployment Convex compartido `prestigious-pigeon-784`, ese deployment debe aceptar tambien el issuer Clerk dev usado por local: `https://supreme-chipmunk-83.clerk.accounts.dev`.
+- Producción usa `prestigious-pigeon-784` y local usa `moonlit-marten-227`; cada
+  deployment debe tener configurado el issuer Clerk de su entorno. La aceptación del
+  issuer local en producción queda como compatibilidad heredada, no como dependencia.
 
 ### Regla operativa
 
@@ -663,7 +665,9 @@ These values are editable from Admin and must remain the single source of truth 
 2. `CLERK_ISSUER_URL` debe apuntar siempre a `https://clerk.postlaboratory.com`.
 3. La `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` de produccion debe corresponder al frontend API `clerk.postlaboratory.com`.
 4. Cualquier dominio legado (`adstudio.click`, `adstudio.com` y variantes `www`) debe redirigir de forma permanente al dominio principal.
-5. `convex/auth.config.ts` acepta una variable opcional `CLERK_DEV_ISSUER_URL` para el issuer local. No sustituye a `CLERK_ISSUER_URL`; evita romper local cuando el deployment compartido se rehornea para produccion.
+5. `convex/auth.config.ts` admite `CLERK_ISSUER_URL` y `CLERK_DEV_ISSUER_URL`; en el
+   deployment local ambas variables están provisionadas con el issuer de pruebas porque
+   Convex exige valores para toda variable referenciada por `auth.config.ts`.
 
 ## Gobernanza del tema visual
 
@@ -963,18 +967,48 @@ Dos cosas aprendidas al construirlo, verificadas contra el modelo real:
 
 `thinkingConfig.thinkingBudget` NO es admisible en este modelo: devuelve HTTP 400.
 
-## Topologia de Convex (resuelto y cerrado)
+## Topología de Convex y separación de entornos
 
 La informacion definitiva vive en `AGENTS.md`, seccion "CONVEX: LEE ESTO ANTES DE
 TOCAR NADA". Resumen de una linea para no tener que abrirlo:
 
-**Solo hay un Convex real, `prestigious-pigeon-784`. Convex lo etiqueta "Development"
-pero es el que sirve `postlaboratory.com`. El deployment llamado "production"
-(`watchful-retriever-328`) esta vacio y no lo usa nadie.**
+**Local usa `moonlit-marten-227` (`gradeyourwritings/x-studio-dev`) y producción usa
+`prestigious-pigeon-784`. Convex etiqueta este último como "Development", pero sigue
+siendo el que sirve `postlaboratory.com`. `watchful-retriever-328` permanece vacío.**
 
 Verificado el 2026-08-11 contra el dashboard y contra el bundle JS de produccion.
 Esto explica por que la seccion "Herramienta local de migracion a produccion" tiene
 origen y destino en el mismo deployment: es correcto, no es una errata.
+
+Decisiones ejecutadas el 2026-08-14:
+
+- local usa el proyecto Convex nuevo `x-studio-dev`, deployment
+  `moonlit-marten-227`; producción no se movió;
+- la interfaz resuelve el entorno mediante `NEXT_PUBLIC_APP_ENV`, `VERCEL_ENV` y las
+  URLs de Convex, nunca mediante `NODE_ENV`;
+- fuera de producción se muestra una banda global «LOCAL/PREVIEW · datos de prueba»;
+- el login y el webhook no migran propiedad por coincidencia de correo;
+- una discrepancia entre Clerk ID y correo existente produce
+  `identity_email_conflict`;
+- las migraciones de propiedad solo pueden hacerse mediante
+  `convex/userOwnershipMigration.ts`, con inspección administrativa previa, límites,
+  confirmación y rechazo por colisiones;
+- la migración directa cubre `brand_dna`, `brands`, `presets`, `feedback`,
+  `work_sessions`, `session_images`, `content_asset_annotations`, `content_campaigns`,
+  `campaign_jobs`, `campaign_job_items`, `postiz_accounts` y
+  `economic_audit_events`.
+- la consolidación movió 1.697 filas directas del Clerk local al Clerk de producción;
+  conservó la única fila `users` y su `Id<"users">`, por lo que saldos, compras y
+  referencias internas no cambiaron;
+- la verificación posterior comparó las 12 tablas con el backup y confirmó 2.357 filas
+  en destino y cero en origen.
+- la validación de la base aislada creó un kit y completó una generación de imagen con
+  respuesta 200, sin errores de consola y con conexión WebSocket a
+  `moonlit-marten-227`.
+
+`npx convex dev` usa `moonlit-marten-227` por defecto. Para alcanzar
+`prestigious-pigeon-784` hay que reactivar deliberadamente su clave histórica o aplicar
+un override explícito; esa operación requiere confirmación previa.
 
 ## Asistente de campañas y mega prompt (2026-08-12)
 
