@@ -68,3 +68,6 @@ tools/.worker-results/
 .opencode/
 .trae/
 .windsurf/
+
+# Copias de seguridad de Convex (datos reales, NUNCA al repositorio)
+.backups/
