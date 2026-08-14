@@ -208,11 +208,6 @@ export async function POST(request: NextRequest) {
             brand = await authedFetchQuery(api.brands.getBrandDNABySlug, { slug: brandSlug, clerk_user_id: userId })
         }
 
-        const [styles, brands] = await Promise.all([
-            authedFetchQuery(api.stylePresets.listCatalog, {}),
-            authedFetchQuery(api.brands.listSummariesByClerkId, { clerk_user_id: userId }),
-        ])
-
         if (!brand) {
             return NextResponse.json(
                 { ok: false, error: { code: 'unknown_brand', message: `No existe el kit de marca solicitado.` } },
@@ -220,9 +215,25 @@ export async function POST(request: NextRequest) {
             )
         }
 
+        const [styles, brands, activeContextDocument] = await Promise.all([
+            authedFetchQuery(api.stylePresets.listCatalog, {}),
+            authedFetchQuery(api.brands.listSummariesByClerkId, { clerk_user_id: userId }),
+            authedFetchQuery(api.contextDocuments.getActiveForBrand, {
+                brand_id: brand._id,
+                clerk_user_id: userId,
+            }),
+        ])
+        const contextDocument = activeContextDocument
+            ? {
+                id: String(activeContextDocument._id),
+                title: activeContextDocument.title,
+                content: activeContextDocument.content,
+            }
+            : null
+
         const catalog = buildCatalog(styles, brands)
         const brandContext = buildBrandContext(brand as unknown as Record<string, unknown>, brandSlug ?? '')
-        const prompt = buildCampaignAssistantPrompt({ brief, brand: brandContext, catalog })
+        const prompt = buildCampaignAssistantPrompt({ brief, brand: brandContext, catalog, contextDocument })
 
         return NextResponse.json({
             ok: true,

@@ -1197,11 +1197,16 @@ documentos dentro de la misma mutación. La duplicación de un Brand Kit y sus
 documentos también es atómica; no deja copias parciales si falla.
 
 El documento activo coexiste con `business_overview`, pero se serializa en un
-bloque separado de datos no confiables. Se inyecta solo en los prompts de análisis
-de Imagen y Carrusel, antes de la solicitud y de las reglas de salida. Nunca entra
-como texto bruto en los prompts visuales finales. El bloque escapa delimitadores
-HTML y declara reglas explícitas de antiinyección, uso factual y precedencia de la
-solicitud del usuario.
+bloque separado de datos no confiables. Imagen y Carrusel usan ese documento
+durante el análisis. `POST /api/v1/campaign-guide` obtiene el documento activo del
+Brand Kit validado y lo incluye íntegramente en el mega prompt personalizado
+mediante el mismo bloque seguro: título y contenido completo, sin resumen ni
+truncado adicional. `GET /api/v1/campaign-guide` continúa generando una guía
+genérica y nunca incluye documentos. Los prompts visuales finales continúan sin
+recibir el documento bruto. El bloque escapa delimitadores HTML y declara reglas
+explícitas de antiinyección, uso factual y precedencia de la solicitud del usuario.
+Si falla la consulta del contexto, se aborta la construcción del mega prompt y la
+ruta responde con error, sin devolver un prompt parcial.
 
 Cada resultado analítico devuelve la firma indivisible
 `{ brandId, contextDocumentId }`. Imagen y Carrusel comparan la firma solicitada,

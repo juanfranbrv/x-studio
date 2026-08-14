@@ -1,4 +1,5 @@
 import { buildCampaignPrompt, type GuideCatalog } from './guide'
+import { buildContextDocumentPromptBlock, type AnalyticalContextDocument } from '@/lib/prompts/context-document'
 
 export type CampaignDecisionMode = 'locked' | 'allowed' | 'delegated'
 
@@ -53,6 +54,7 @@ type BuildCampaignAssistantPromptInput = {
     brief: CampaignAssistantBrief
     brand: CampaignBrandContext
     catalog: GuideCatalog
+    contextDocument: AnalyticalContextDocument | null
 }
 
 function clean(value: string | undefined): string {
@@ -266,15 +268,16 @@ function narrowCatalog(catalog: GuideCatalog, brief: CampaignAssistantBrief, bra
     }
 }
 
-export function buildCampaignAssistantPrompt({ brief, brand, catalog }: BuildCampaignAssistantPromptInput): string {
+export function buildCampaignAssistantPrompt({ brief, brand, catalog, contextDocument }: BuildCampaignAssistantPromptInput): string {
     const scopedCatalog = narrowCatalog(catalog, brief, brand)
 
     return [
         agentContract(),
+        buildContextDocumentPromptBlock(contextDocument),
         renderBrandContext(brand),
         renderBrief(brief),
         integrityContract(),
         '## Contrato técnico de salida',
         buildCampaignPrompt(scopedCatalog),
-    ].join('\n\n')
+    ].filter(Boolean).join('\n\n')
 }
