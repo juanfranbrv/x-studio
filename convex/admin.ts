@@ -1,6 +1,7 @@
 import { v } from "convex/values";
 import { requireAdmin } from "./lib/authz";
 import { mutation, query } from "./_generated/server";
+import { DEFAULT_IMAGE_GENERATION_MODEL } from "../src/lib/ai-model-defaults";
 
 // Admin emails - configurable, but this is the initial bootstrap list
 const ADMIN_EMAILS = ["juanfranbrv@gmail.com"];
@@ -84,7 +85,7 @@ export const initializeSettings = mutation({
             { key: "beta_initial_credits", value: 100, description: "Créditos iniciales para beta testers" },
             { key: "low_credits_threshold", value: 10, description: "Umbral para alerta de créditos bajos" },
             { key: "credits_per_generation", value: 1, description: "Créditos consumidos por generación" },
-            { key: "model_image_generation", value: "wisdom/gemini-3-pro-image-preview", description: "Modelo por defecto para generación de imagen" },
+            { key: "model_image_generation", value: DEFAULT_IMAGE_GENERATION_MODEL, description: "Modelo por defecto para generación de imagen" },
             { key: "model_intelligence", value: "wisdom/gemini-3-flash-preview", description: "Modelo por defecto para inteligencia y análisis" },
             { key: "provider_google_api_key", value: "", description: "API key de Google para modelos de texto google/*" },
             { key: "provider_wisdom_api_key", value: "", description: "API key de Wisdom para modelos wisdom/*" },

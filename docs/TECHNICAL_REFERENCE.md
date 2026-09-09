@@ -181,6 +181,20 @@ Nota operativa:
 - Si hay referencias visuales o plantilla de layout, se usa `POST https://api.openai.com/v1/images/edits` con `image[]` para conservar el contexto visual.
 - El tamano enviado a OpenAI se deriva del formato social con dimensiones validas multiplo de 16, por ejemplo `4:5 -> 1024x1280`, `9:16 -> 1024x1792` y `16:9 -> 1792x1024`.
 
+### GPT Image 2.5 Flare (2026-09-09)
+
+- ID oficial de API: `gpt-image-2.5-flare`.
+- Admin > Modelos ofrece `openai/gpt-image-2.5-flare-low` y `openai/gpt-image-2.5-flare-medium`. El catálogo de Economía incorpora ambas opciones mediante la sincronización existente.
+- `src/lib/ai-model-defaults.ts` define `openai/gpt-image-2.5-flare-low` como valor inicial compartido por Admin, `initializeSettings` y `getAIConfig`. Se mantiene Low para conservar el nivel de calidad predeterminado de la integración OpenAI.
+- `app_settings.model_image_generation` sigue siendo la fuente de verdad. Los valores guardados tienen prioridad; cambiar el valor inicial no sobrescribe configuraciones existentes. La activación se realiza mediante `settings.saveAppSetting` en el entorno autorizado.
+- El resolvedor separa el sufijo de calidad del ID oficial antes de llamar a OpenAI. Se reutilizan la clave configurada en Admin, `/images/generations` sin referencias y `/images/edits` con referencias, logos o plantilla.
+- Las tarifas estándar oficiales coinciden con GPT Image 2: por millón de tokens, texto de entrada 5 USD (caché 1,25), imagen de entrada 8 USD (caché 2), imagen de salida 30 USD. GPT Image 1.5 cobra 32 USD por millón de tokens de imagen de salida; GPT Image 1, 40 USD; GPT Image 1 Mini, 8 USD.
+- No se asigna un coste fijo en euros por imagen a partir de estas tarifas: el coste depende del consumo real, las referencias, las dimensiones, la calidad y el cambio de divisa. Las estimaciones de GPT Image 2 no deben trasladarse a Flare.
+- Activación verificada en `moonlit-marten-227`: `getAIConfig` devuelve `openai/gpt-image-2.5-flare-low`. Esta operación no cambia la configuración de producción.
+- Prueba real del 2026-09-09 con la clave de OpenAI configurada en pruebas: generación Low, 1024×1024, sin referencias; HTTP 200, imagen recibida en 9,7 s, 24 tokens de texto de entrada y 196 tokens de imagen de salida. Coste calculado con las tarifas estándar: 0,006 USD. Es una muestra concreta, no una tarifa fija por imagen.
+- Verificación: 19 pruebas de configuración, alias, formato, respuesta y peticiones al proveedor; TypeScript sin errores; Chrome confirma Low seleccionado, Medium disponible y ambas variantes presentes en Economía.
+- Fuentes: [modelo](https://developers.openai.com/api/docs/models/gpt-image-2.5-flare), [precios estándar y Batch](https://developers.openai.com/api/docs/pricing#image-generation), [generación y costes](https://developers.openai.com/api/docs/guides/image-generation#cost-and-latency).
+
 ### Preview desktop de texto en canvas
 
 - La preview editable de `image` en desktop ya no debe gobernarse por breakpoints de viewport ni por offsets negativos para encajar texto.

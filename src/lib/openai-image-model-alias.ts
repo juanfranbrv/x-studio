@@ -9,12 +9,12 @@ export function resolveOpenAICompatibleImageModel(model: string): {
     const normalized = String(model || '').trim()
     const lower = normalized.toLowerCase()
 
-    if (lower === 'gpt-image-2-low') {
-        return { providerModel: 'gpt-image-2', quality: 'low' }
-    }
-
-    if (lower === 'gpt-image-2-medium') {
-        return { providerModel: 'gpt-image-2', quality: 'medium' }
+    const qualityAlias = lower.match(/^(gpt-image-2|gpt-image-2\.5-flare)-(low|medium)$/)
+    if (qualityAlias) {
+        return {
+            providerModel: qualityAlias[1],
+            quality: qualityAlias[2] as OpenAIImageQuality,
+        }
     }
 
     return { providerModel: normalized, quality: DEFAULT_OPENAI_IMAGE_QUALITY }

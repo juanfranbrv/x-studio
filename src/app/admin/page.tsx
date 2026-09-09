@@ -59,8 +59,11 @@ import {
 import { STUDIO_DEBUG_OVERLAYS_ENABLED_SETTING_KEY, normalizeStudioDebugOverlaysEnabled } from '@/lib/studio-debug-visibility'
 import { REPLACE_MODULE_ENABLED_SETTING_KEY, normalizeReplaceModuleEnabled } from '@/lib/replace-module-visibility'
 import { getErrorMessage } from '@/lib/utils'
+import { DEFAULT_IMAGE_GENERATION_MODEL } from '@/lib/ai-model-defaults'
 
 const IMAGE_MODEL_OPTIONS = [
+    { value: 'openai/gpt-image-2.5-flare-low', label: 'OpenAI · GPT Image 2.5 Flare · Low' },
+    { value: 'openai/gpt-image-2.5-flare-medium', label: 'OpenAI · GPT Image 2.5 Flare · Medium' },
     { value: 'wisdom/gemini-3-pro-image-preview', label: 'Wisdom · Gemini 3 Pro Image Preview' },
     { value: 'wisdom/gemini-3.1-flash-image-preview', label: 'Wisdom · Gemini 3.1 Flash Image Preview' },
     { value: 'wisdom/gpt-image-2-low', label: 'Wisdom · GPT Image 2 · Low' },
@@ -80,6 +83,7 @@ const IMAGE_MODEL_OPTIONS = [
 function normalizeImageModelSettingValue(value: string): string {
     if (value === 'wisdom/gpt-image-2') return 'wisdom/gpt-image-2-low'
     if (value === 'openai/gpt-image-2') return 'openai/gpt-image-2-low'
+    if (value === 'openai/gpt-image-2.5-flare') return 'openai/gpt-image-2.5-flare-low'
     return value
 }
 
@@ -493,7 +497,7 @@ export default function AdminPage() {
         ])
     )
     const activeImageModel = normalizeImageModelSettingValue(
-        String(editingSettings.model_image_generation ?? 'wisdom/gemini-3-pro-image-preview')
+        String(editingSettings.model_image_generation ?? DEFAULT_IMAGE_GENERATION_MODEL)
     )
     const showStudioDebugOverlays = normalizeStudioDebugOverlaysEnabled(
         settings?.find((setting) => setting.key === STUDIO_DEBUG_OVERLAYS_ENABLED_SETTING_KEY)?.value

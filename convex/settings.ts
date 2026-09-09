@@ -1,6 +1,7 @@
 import { v } from "convex/values";
 import { requireAdmin } from "./lib/authz";
 import { query, mutation } from "./_generated/server";
+import { DEFAULT_IMAGE_GENERATION_MODEL } from "../src/lib/ai-model-defaults";
 import {
     normalizeStudioDebugOverlaysEnabled,
     STUDIO_DEBUG_OVERLAYS_ENABLED_SETTING_KEY,
@@ -60,7 +61,7 @@ export const getAIConfig = query({
             .first();
 
         return {
-            imageModel: (imageModel?.value as string) || "wisdom/gemini-3-pro-image-preview",
+            imageModel: (imageModel?.value as string) || DEFAULT_IMAGE_GENERATION_MODEL,
             intelligenceModel: (intelligenceModel?.value as string) || "wisdom/gemini-3-flash-preview",
         };
     },
